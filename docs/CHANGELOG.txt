@@ -1,0 +1,739 @@
+CHANGELOG — schedule_swap_HTML  (append to cumulative changelog)
+================================================================================
+
+Revision: s27   Date: 2026-07-25
+Base:     schedule_swap_HTML_s26_2026-06-17.html
+Author:   Claude (house sweep for public release)
+Type:     Stage 27 — public/GitHub edition. Data-only changes; ZERO engine, UI or
+          logic changes. Shipped as index.html at the repo root.
+
+WHY
+  s26 was packaged as a "ready-to-use" file: its embedded-data island carried the
+  real 2569/1 semester (3,823 rows, 186 teacher names) and the program phone book
+  (150 mobile numbers), and the frozen oracle fixture carried 93 more real names.
+  That is correct for a file handed to a colleague; it is not publishable to a
+  public GitHub repository. This revision produces the publishable edition.
+
+CHANGE 1 — embedded-data island emptied
+  - <script id="embedded-data"> is now empty, i.e. the state the file's own
+    comment at that island always specified for the master ("empty in the master;
+    filled only by self-export").
+  - Removed: 977,239 chars (semester rows + phone book + settings snapshot).
+  - Behaviour: ตรวจสอบระบบ now reports "ข้อมูลฝังในไฟล์: ไม่มี (ไฟล์ต้นฉบับ)";
+    bootEmbeddedData() returns false; the store starts empty and the user imports
+    or restores. No code path changed — this is the documented empty-island branch.
+
+CHANGE 2 — oracle fixture pseudonymised
+  - mini_dataset.rows[].teacher_name and searches[].expect.candidates[].y_name are
+    replaced by aliases "ครูทดสอบ 001".."ครูทดสอบ 110", assigned 1:1 by teacher_id
+    in sorted id order.
+  - Safe by construction: the engine keys on teacher_id everywhere (candidate
+    identity, the rank tie-break at Yid, the self-test's Yid|day2|per2 comparison
+    key); teacher_name is display-only. No score, rank or expectation depends on a
+    name. Row count, ids, days, periods, subjects, groups, rooms are untouched.
+  - The fixture stays FROZEN in every respect the oracle actually asserts.
+
+CHANGE 3 — phone-template sample row
+  - The built-in "แม่แบบเบอร์โทร" download had two sample rows, one of which was a
+    real colleague. Replaced with a fictitious "นางสาวสมหญิง ใจดี". The author's
+    own example row (0221) is unchanged. templates/template_phones.xlsx in the repo
+    got the same one-cell substitution.
+
+CHANGE 4 — provenance comment added inside <head> (cosmetic, inherited by
+  self-exported children).
+
+VERIFICATION (headless jsdom, https:// origin — not file://)
+  - In-app self-test: 21/21 GREEN, 1,455 field comparisons, miniRows 2,234
+    — identical to s26.
+  - BLUEPRINT §1.2 golden search (0221 / จันทร์ / p2): top-5 = 104/103/89/87/74,
+    rank-1 = 1202 พฤหัสฯ p6 — identical to s26 and to the frozen oracle.
+  - Zero console errors on cold load.
+  - First-run rehearsal on a clean https origin: restore
+    swap_backup_2569-1_2026-06-17.json into the empty build -> 3,823 rows,
+    150 phones, derived fields rebuilt in memory, golden search on the RESTORED
+    real data = 104/103/89/87/74 / rank-1 1202 พฤหัสฯ p6, phone lookup resolves,
+    localStorage persists 978 KB under key swapApp.v1.
+  - Real browser (Chromium, served over http:// from the repo root): page renders,
+    header reads "ยังไม่ได้นำเข้าข้อมูล / ยังไม่มีภาคเรียน", in-page self-test
+    21/21 GREEN (1,455 fields), zero console errors, and the devtools network log
+    records ZERO outbound requests — the offline claim holds when hosted, not just
+    on file://.
+  - Personal-data sweep of the shipped file: 0 real colleague names, 0 real phone
+    numbers. Checked by matching every git-tracked file (text, xlsx, docx and the
+    inflated PDF streams) against the real roster of 185 colleague names and 150
+    numbers loaded from the private backup — not by regex guesswork. What remains
+    is the author's own name and the dummy 0812345678, both as documentation
+    examples.
+
+NOT CHANGED
+  Engine, scoring, dates/D1/D2, search, dashboard, Log, timetable, form, print CSS,
+  self-export, backup/restore, import contract, phone book, settings, fonts.
+
+REPOSITORY NOTE
+  Real data (the s26 data-loaded file, the semester backup, phones_initial) lives in
+  private/ and is excluded by .gitignore. It must never be committed.
+================================================================================
+
+CHANGELOG — schedule_swap_HTML  (append to cumulative changelog)
+================================================================================
+
+Revision: s26   Date: 2026-06-17
+Base:     schedule_swap_HTML_s25.1_2026-06-17.html  (byte-identical content)
+Author:   Claude
+Type:     Stage 26 — Handover / packaging. NO code change; s26 is the final,
+          renamed master. PROJECT v1.
+
+DELIVERABLE BUNDLE
+  1. schedule_swap_HTML_s26_2026-06-17.html   — the master tool (offline, file://).
+  2. schedule_swap_HTML_CHANGELOG.txt          — this cumulative changelog.
+  3. template_schedule_VERIFIED_DATA.xlsx      — blank schedule template
+       (README tab + VERIFIED_DATA tab; the program reads VERIFIED_DATA only).
+  4. template_phones.xlsx                      — blank phone template
+       (columns: teacher_id / teacher_name / phone).
+  5. phones_initial_25691.xlsx                 — converted initial phone file,
+       186 teachers, semester 2569/1.
+  6. swap_backup_2569-1_2026-06-17.json        — fresh lean backup of 2569/1
+       (3,823 rows; derived fields stripped; 0 log entries = clean restore point).
+  7. quickstart_swap_TH.docx                   — one-page Thai quick-start (TH Sarabun
+       New, editable; fill in school name / contact before printing). A print-ready
+       PDF (quickstart_swap_TH.pdf) is included alongside it.
+
+v1 DONE CRITERION (Stage 26 done-gate)
+  Chutpong completes, entirely unaided: a semester import + one full swap search +
+  one printed form.
+
+POST-v1 BACKLOG (parked, not dropped)
+  - #3 realtime scoring across already-swapped dates (engine-touching; would break
+       the frozen-oracle guarantee for v1).
+  - Stage 19 memo PDF formatting refinements (specifics TBD).
+  - Optional approver-name persistence as Settings defaults.
+  - Program-level phone book with freshness tracking (design locked).
+  - Whole-schedule per-teacher weekly handout PDF generator.
+  - Auto-fill teacher B's phone into Log หมายเหตุ (needs merged phone dataset).
+================================================================================
+
+Revision: s25.1   Date: 2026-06-17
+Base:     schedule_swap_HTML_s25_2026-06-15.html
+Author:   Claude
+Type:     Intra-stage polish from the Stage 25 manual gate. Four UI/UX fixes from
+          Chutpong's findings; one finding (#3) deferred to the post-v1 backlog.
+          Engine UNTOUCHED — oracle fixture frozen; full regression re-run
+          identical (self-test 21/21; golden 104/103/89/87/74).
+
+FIX #1 — phone prominence
+  - Candidate detail (ผลการค้นหา): phone is now a near-black, name-weight
+    tap-to-call link (<a class="d-phone" href="tel:…">), no longer muted/greyed.
+  - Log tab (บันทึกการสลับ): every row shows the partner phone as a prominent
+    tap-to-call line (📞, <a class="l-phone">), so calls can be made and statuses
+    changed without leaving the tab.
+  - Dashboard (หน้าหลัก ②): deliberately NO phone added (kept uncluttered).
+
+FIX #2 — double-book hard-block            [BLUEPRINT DEVIATION — logged here]
+  - Committing a second substitute for a give-up slot already covered by an active
+    (non-ยกเลิก) Log row — same teacher + same absent date + same period — is now
+    hard-blocked at save time, with a Thai message naming who already holds it
+    ("คาบนี้มีผู้สอนแทนอยู่แล้ว — <ชื่อ> (สถานะ: …) … ให้ยกเลิกรายการเดิมก่อน").
+  - Cancelling the existing row frees the slot. Multi-period swaps on the same day
+    remain fully allowed (the guard keys on period, not on day).
+  - Not in the original BLUEPRINT; recorded here as a deviation per governance.
+
+FIX #2b — dashboard declutter              [BLUEPRINT DEVIATION — logged here]
+  - The ผลกระทบนักเรียน column is removed from the หน้าหลัก ② dashboard table.
+  - Its ⚠️ give-back workload warning is NOT lost: relocated inline beneath the
+    สถานะ cell (small amber line, shown only when a warning exists).
+  - Pure render change; dashStatus and scoring unchanged.
+
+FIX #4 — moved-in/out timetable clarity (handout)
+  - Stronger cell fills (ย้ายคาบเข้า #bfe8cd / ย้ายคาบออก #f7c9c5); existing
+    green/red "ย้ายคาบเข้า / ย้ายคาบออก" pills kept.
+  - print-color-adjust:exact added so the colours survive printing (Chrome/Edge).
+  - A legend added above the grid explaining the two colours.
+
+FIX #5 — copy table optimised for MS Word
+  - "คัดลอกตาราง" now writes a real HTML <table> to the clipboard via ClipboardItem
+    (Word pastes it as an editable table), plus a TSV text/plain flavour, with the
+    previous execCommand path kept as a fallback.
+
+DEFERRED to post-v1 backlog (Chutpong's agreement)
+  #3 — realtime scoring across already-swapped dates. Engine-touching; would break
+       the frozen-oracle guarantee for v1. Parked, not dropped.
+
+TESTING
+  - Full existing harness re-run vs s25.1: 30/30 (rehearsal 12, p3d1 7, selfexport
+    4, barcount 4, leanbackup 3); self-test 21/21; golden top-5 104/103/89/87/74
+    and rank-1 1202 พฤหัสฯ p6 unchanged → engine firewall holds.
+  - New s25.1 behaviour suite: 17/17 (guard block + cancel-frees + multi-period
+    allowed; .d-phone / .l-phone tap-to-call; dashboard column dropped; legend
+    present; static markup + print-safety audit).
+  - Manual gate (browser): Word paste, printed timetable colours+legend, phone
+    prominence — all PASS.
+================================================================================
+Revision: s25   Date: 2026-06-15
+Base:     schedule_swap_HTML_s23.1_2026-06-15.html
+Author:   Claude
+Type:     Stage 25 — edge sweep + cross-browser + print. Includes one code change
+          (lean backups, folded in per Chutpong's s24 decision). BLUEPRINT untouched.
+
+CODE CHANGE — lean exports + re-derive on restore
+  - backupBlob() now serialises with leanReplacer (derived fields stripped),
+    matching localStorage and self-export. ~1.8x smaller backup files.
+  - bundleBlob() (archived-semester export / export-then-purge) likewise lean,
+    for consistency.
+  - restoreFromObject() now re-derives every semester in memory immediately
+    (ensureSemesterDerived) for BOTH the full-store and single-bundle branches,
+    so a restored lean file is usable at once — no reload required.
+
+  VERIFICATION (headless jsdom): 8/8 —
+    backup has no derived fields; keeps real fields + the approved Log; restoring
+    a lean backup into a wiped instance rebuilds derived fields in memory, the Log
+    survives with status อนุมัติแล้ว, the golden search still returns
+    104/103/89/87/74, and the self-test is green — all without a page reload.
+
+  REGRESSION (all on s25): 3-gen reproduction 19/19, single-bar 9/9, s22a 22/22,
+    s22 30/30, lean storage 10/10, dashboard/backup/reload 8/8, p3+D1 14/14.
+
+EDGE SWEEP (automated portion)
+  All 21 oracle cases green via the in-app self-test (ตรวจสอบระบบ):
+    golden_p2, s20_p3, 6 edge cases (combined / role-bound / flexible / lunch /
+    free / thin-group), 10 breadth cases, 3 lunch-display cases. Zero console
+    errors across every headless load this stage.
+
+REMAINING FOR s25 (manual — your 👁️, cannot be automated):
+  [ ] Full pass in Chrome AND Edge (the project's target browsers; Safari has the
+      shared-file://-storage quirk noted earlier).
+  [ ] Print preview of the ใบแลกคาบ form — Chrome and Edge — A4, TH Sarabun,
+      correct 0221<->1202 content.
+  [ ] Print preview of a per-teacher updated timetable handout — both browsers.
+  [ ] Mobile viewport smoke-check: read-only candidate viewing renders sensibly.
+  [ ] Confirm no console errors during a normal session in each browser.
+--------------------------------------------------------------------------------
+CHANGELOG — schedule_swap_HTML  (append to cumulative changelog)
+================================================================================
+Revision: s23.1   Date: 2026-06-15
+Base:     schedule_swap_HTML_s23_2026-06-15.html
+Author:   Claude
+Type:     Intra-stage fix (Stage 23). BLUEPRINT untouched.
+
+BUG (found by Chutpong, Safari Private, on an exported grandchild file):
+  The data-management bar (สำรองข้อมูล / กู้คืน / สร้างไฟล์พร้อมใช้) appeared
+  multiple times — once more per export generation.
+
+ROOT CAUSE:
+  backupUI builds the bar in JS and appendChild's it to #importPanel. Self-export
+  captures document.documentElement.outerHTML, which bakes the already-rendered
+  bar into the exported file's template. On load, the export's own backupUI runs
+  and appends ANOTHER bar -> +1 every generation. (Baked-in copies also have no
+  event listeners, so the extras were dead buttons.)
+
+FIX:
+  backupUI now removes any pre-existing .backup-bar inside #importPanel before
+  appending its own freshly-wired bar:
+      var __old = host.querySelectorAll('.backup-bar');
+      for(var __i=0;__i<__old.length;__i++) __old[__i].remove();
+  Result: every load yields exactly ONE bar, and it is always the freshly-wired
+  (functional) one. Self-healing: opening a file that already has duplicates
+  collapses them to one on load.
+
+VERIFICATION (headless jsdom, 4 generations):
+  master / child / grandchild / great-grandchild each show exactly 1 backup-bar;
+  export button present each generation; self-test GREEN each generation. 9/9.
+  (s23's 3-generation reproduction, escaping, and integrity results still hold.)
+
+NOTE for Chutpong:
+  Your existing exported files were made with s23 (old code) and stay duplicated —
+  discard them and re-export from s23.1. New files exported from s23.1 are clean.
+--------------------------------------------------------------------------------
+CHANGELOG — schedule_swap_HTML  (append to cumulative changelog)
+================================================================================
+Revision: s23   Date: 2026-06-15
+Base:     schedule_swap_HTML_s22a_2026-06-15.html
+Author:   Claude
+Type:     New stage — PLAN Stage 23: Self-export (flagged HIGHEST RISK #3).
+          Lineage now realigned: file s23 == plan Stage 23. BLUEPRINT untouched.
+
+--------------------------------------------------------------------------------
+STAGE 23 — Self-export "สร้างไฟล์พร้อมใช้ (.html)"
+
+  What it does:
+    - New button in ตั้งค่า → data-management bar: "สร้างไฟล์พร้อมใช้ (.html)".
+    - Serializes the running document into a fresh single .html whose embedded-
+      data island is filled with the ACTIVE semester's schedule + the program
+      phone book + settings — and deliberately NOT the Log.
+    - Filename: ระบบสลับคาบ_{label}_พร้อมใช้.html
+    - Restore-state line confirms "✓ สร้างไฟล์พร้อมใช้แล้ว (ไม่รวม Log)".
+
+  How it works (technical):
+    - buildReadyFileHTML(): builds the payload {semester:{label,start,end,
+      sourceFilename,rows}, phones, settings}, serialises with the lean replacer
+      (rows carry NO derived fields — the child re-derives on load), escapes the
+      one HTML-breaking sequence "</script" -> "<\/script" (JSON-safe; restored on
+      parse), sets the embedded-data island's textContent, captures
+      '<!DOCTYPE html>\n' + document.documentElement.outerHTML, then RESTORES the
+      live page's island + body class so the running page is unchanged.
+    - exportReadyFile(): wraps that in a Blob download.
+    - Load precedence (already present from earlier stages): the browser store
+      wins if it already has an active semester; the embedded island only seeds an
+      empty store; a prior "ล้างทั้งหมด" (noEmbed) still suppresses it.
+    - The export carries the lean schedule (~0.9 MB) so the child stays small.
+
+  Acceptance — three-generation reproduction (the plan's hard loop), headless
+  jsdom, each generation on a CLEAN origin:
+    - gen0 (master) boots embedded semester; a Log row is added to prove it is
+      NOT exported; an adversarial value "X</script>Y<!--Z-->W" is injected into a
+      row.
+    - gen1 (child): no boot errors; loaded embedded data; FULL self-test GREEN
+      21/21; Log ABSENT; phones present; 3823 rows; "</script>" + "<!--" survived
+      byte-exact; leading-zero teacher_id preserved; Thai (จันทร์) intact.
+    - gen1 re-exports -> gen2 (grandchild): no boot errors; self-test GREEN; data
+      present + Log still absent; "</script>" survived 3 generations; Thai
+      byte-exact across all three (teacher_name compared gen1 vs gen2).
+    - Result: 19/19. No data corruption, no encoding loss, three generations deep.
+
+  Regression: s22a 22/22, s22 features 30/30, lean storage 10/10, engine 21/21.
+
+  TESTING CAVEAT for manual verification on this machine (Safari):
+    - Safari shares localStorage across ALL file:// pages, so opening the exported
+      file in a window that already has data means "store wins" and the embedded
+      data is (correctly) ignored. To see the true cold-open colleague experience,
+      open the exported file in a FRESH Private window (empty storage), or in
+      Chrome/Edge with a clean profile. The headless test above already proves the
+      cold-open path on a clean origin.
+
+  Visual review target (👁️) — light, since the heavy test is automated:
+    - From a file that HAS a schedule (open s23 in a Private window so the embedded
+      test data loads): ตั้งค่า → "สร้างไฟล์พร้อมใช้ (.html)" → a file downloads.
+    - Open that downloaded file in a NEW Private window → it opens with the
+      semester present and the บันทึกการสลับ (Log) empty. That is the colleague
+      experience: data present, your Log absent.
+
+--------------------------------------------------------------------------------
+CHANGELOG — schedule_swap_HTML  (append to cumulative changelog)
+================================================================================
+Revision: s22a   Date: 2026-06-15
+Base:     schedule_swap_HTML_s22.1_2026-06-15.html
+Author:   Claude
+Type:     New stage implementation — the PLAN's Stage 22 (backup-reminder trio +
+          capacity + export-then-purge). Named s22a (not s23) to absorb the
+          earlier side-quest's numbering: s22/s22.1 were the data-lifecycle
+          detour; this is the planned Stage 22. LINEAGE REALIGNS AFTER THIS —
+          next file is s23 = plan Stage 23 (self-export). BLUEPRINT untouched.
+
+--------------------------------------------------------------------------------
+STAGE 22 — backup reminders + capacity + export-then-purge
+
+  Bug fix (prerequisite, found during build):
+    - approvedSinceBackup was never incremented — it was initialised and reset
+      but nothing bumped it on approval, so the soft nag could never detect new
+      approvals. Now incremented when a Log row transitions INTO อนุมัติแล้ว
+      (both the dropdown handler and the test hook), de-duplicated so re-setting
+      the same approved status does not double-count. Reset to 0 on backup.
+
+  The four reminders (firing conditions + exact Thai wording):
+    #1 End-of-semester (LOUD, rose banner on หน้าหลัก; live semester only):
+       - within 14 days of end: "ใกล้สิ้นภาคเรียน {label} (สิ้นสุด {วันที่}) —
+         อย่าลืมสำรองข้อมูลก่อนปิดเทอม และเตรียมนำเข้าตารางของภาคเรียนถัดไป"
+       - past end date: "ภาคเรียน {label} สิ้นสุดแล้ว — สำรองข้อมูลแล้วเริ่ม
+         ภาคเรียนใหม่ได้เลย"
+       - suppressed while viewing an archived semester.
+    #2 Last-backup line (passive header, already existed):
+       - now tinted amber (.backup-stale) when >30 days since last backup.
+    #3 Soft backup nag (amber note on หน้าหลัก):
+       - fires iff approvedSinceBackup>0 AND (never backed up OR >30 days):
+         "คุณอนุมัติการสลับ {N} รายการตั้งแต่สำรองข้อมูลครั้งล่าสุด —
+         แนะนำให้สำรองข้อมูลไว้กันพลาด"
+    #4 Storage capacity (amber note on หน้าหลัก):
+       - fires when used storage > 1.8 MB (see recalibration note below):
+         "พื้นที่จัดเก็บที่ใช้ ~{X} MB — เริ่มใกล้เต็ม (เครื่องนี้เก็บได้ราว 2
+         ภาคเรียน) — แนะนำให้สำรองข้อมูลแล้วลบภาคเรียนเก่าที่ไม่ใช้"
+    Reminders refresh on boot, on every dashboard refresh, on semester switch,
+    and after a backup.
+
+  CAPACITY THRESHOLD RECALIBRATED (3.5 MB -> 1.8 MB):
+    - The agreed 3.5 MB figure assumed a ~4.5 MB budget. Real-world evidence
+      contradicts it: on s22 (heavy storage) the browser walled at TWO full
+      semesters (~3.3 MB of characters; localStorage is effectively counted
+      near-doubled), and on s22.1 (lean) two semesters fit (~1.86 MB) but a third
+      (~2.8 MB) is risky. A 3.5 MB warning would never fire before the wall.
+    - Recalibrated to warn at ~1.8 MB — i.e. once you are holding about two
+      semesters, which is the realistic point to start pruning. The wording no
+      longer claims a false "~4.5 MB safe" ceiling. (User was informed; open to
+      a different number.)
+
+  Export-then-purge (per-archived-semester; ตั้งค่าขั้นสูง):
+    - New STORE.deleteSemester(label): removes one semester; refuses to delete
+      the active one; refuses if not found.
+    - New advanced section "จัดการภาคเรียนที่เก็บไว้": lists archived semesters,
+      each with "ส่งออก .json แล้วลบ" — downloads that one semester as a bundle
+      (STORE.bundleBlob) then removes only it from storage (restore later via the
+      existing กู้คืนข้อมูล button). This is the proper space-reclaim path that
+      pairs with the capacity warning; the all-or-nothing "ล้างทั้งหมด" remains.
+
+  Verified (headless jsdom, real origin; bundled Node):
+    - No boot errors; engine self-test green 21/21, golden 104/103/89/87/74.
+    - Approval counter: +1 on approve, no double-count on re-approve, +1 again on
+      a second row, reset to 0 on backup, lastBackupAt set.
+    - #1 silent >14d, loud ≤14d, "ended" past end.
+    - #3 fires (>30d + approvals, shows count), silent at 0 approvals, silent when
+      freshly backed up.
+    - #4 warns when large, silent at one semester (post-recalibration).
+    - #2 backup line amber when stale, normal when fresh.
+    - deleteSemester refuses active, removes archived; export-purge button renders
+      for each archived semester in advanced.
+    - Full regression: s22 feature suite 30/30 (phonebook, freshness, both resets,
+      type-to-confirm), lean-storage suite 10/10, s21 archive read-only intact.
+
+  Companion throwaway (not lineage):
+    - schedule_swap_HTML_s22a_DEMO_reminders_2026-06-15.html — boots with all four
+      reminders forced on (end-of-semester in ~10 days, backed up 60 days ago with
+      2 approvals, one archived semester) so each reminder's wording is visible,
+      plus an archived semester to exercise export-then-purge.
+
+  Visual review target (👁️):
+    - In the DEMO file, read all four reminders on หน้าหลัก and the amber backup
+      line — judge the Thai.
+    - ตั้งค่า → ตั้งค่าขั้นสูง → "จัดการภาคเรียนที่เก็บไว้": run "ส่งออก .json
+      แล้วลบ" on 2568/2 — confirm the .json downloads and the semester disappears.
+    - In the MAIN s22a file, approve a swap then check the soft nag appears after
+      (it will once >30 days since backup, or immediately if never backed up).
+
+--------------------------------------------------------------------------------
+CHANGELOG — schedule_swap_HTML  (append to cumulative changelog)
+================================================================================
+Revision: s22.1   Date: 2026-06-15
+Base:     schedule_swap_HTML_s22_2026-06-15.html
+Author:   Claude
+Type:     Intra-stage fix (revision of s22). Single root-cause fix for a
+          "storage full" defect surfaced during user testing when importing a
+          second full semester. No feature/spec change; engine and all UI
+          behavior unchanged.
+
+--------------------------------------------------------------------------------
+FIX — lean localStorage (schedules persisted without derived fields)
+
+  Symptom (user-reported, with screenshot):
+    Importing a 2nd full semester (3,823 rows) failed with
+    "บันทึกไม่สำเร็จ: พื้นที่จัดเก็บในเครื่องเต็ม". Archiving itself was fine —
+    it is automatic on import (the active semester auto-archives, the new one
+    becomes active) — the SAVE is what overflowed.
+
+  Root cause:
+    Each schedule row was persisted WITH ~10 derived fields (level, lunch_period,
+    is_lunch, is_combined, nt_class, is_teaching, is_eligible, building, key_tdp,
+    key_gdp). That made one semester ~1.67 MB and two ~3.33 MB. On file://,
+    localStorage is accounted in UTF-16 (≈2 bytes/char) and Thai text is
+    multi-byte, so the effective footprint crossed the browser's ~5 MB ceiling at
+    the second full semester.
+
+  Fix (in-memory model and engine UNCHANGED; only the persisted form changes):
+    - STORE.save() now serialises with a replacer (leanReplacer) that omits the
+      10 derived fields. Persisted rows keep only raw fields
+      (teacher_id, teacher_name, day, period, subject, group, room, raw_cell,
+      status, audit_note).
+    - On load, the existing boot pass already re-derives any semester lacking
+      derived flags (ensureSemesterDerived → deriveRows). Lean rows are therefore
+      re-hydrated in memory before the engine ever uses them.
+    - The boot pass now re-persists once on every open (was: only if it had to
+      derive), so an existing heavy store shrinks to lean the first time s22.1 is
+      opened — reclaiming space immediately.
+    - QuotaExceededError message improved to guide the user (back up first, then
+      use "ล้างทั้งหมด" in advanced settings, or remove unused old semesters).
+
+  Result:
+    - Per semester: 1.67 MB → 0.93 MB (≈44% smaller).
+    - Two semesters: 3.33 MB → 1.86 MB (well under the ceiling; import succeeds).
+    - Headroom: roughly 5 full semesters now fit where 2 used to fail.
+
+  Verified (headless jsdom, real origin; bundled Node):
+    - Persisted rows are lean (none of the 10 derived keys present); raw fields
+      retained.
+    - In-memory rows still carry derived fields (key_tdp present) — engine intact.
+    - Correctness: re-deriving a lean-stored semester reproduces the ORIGINAL
+      derived flags exactly — 0 mismatches across all 3,823 rows.
+    - Two-semester save succeeds; persisted size 1.86 MB.
+    - Engine self-test still green: 21/21, golden top-5 104/103/89/87/74.
+    - Regression: full s22 feature suite 30/30 (phonebook, freshness, both resets,
+      type-to-confirm); s21 archive read-only 5/5. No boot errors.
+
+  Deferred (proposed follow-ups, not in this rev):
+    - Proactive storage-capacity meter/warning (the originally-deferred Stage 22
+      item) — show usage and warn before the ceiling.
+    - Per-semester delete for archived terms (so old semesters can be removed
+      individually instead of only via "ล้างทั้งหมด"), for long-term capacity.
+
+  How to use the fix:
+    - Open schedule_swap_HTML_s22.1_2026-06-15.html (it self-shrinks any existing
+      store on open). Then import a second semester normally — it will archive the
+      current one automatically and save successfully. If anything looks stuck,
+      ตั้งค่า → ตั้งค่าขั้นสูง → "ล้างทั้งหมด" gives a clean slate.
+
+--------------------------------------------------------------------------------
+CHANGELOG — schedule_swap_HTML  (append to cumulative changelog)
+================================================================================
+Revision: s22   Date: 2026-06-15
+Base:     schedule_swap_HTML_s21_2026-06-14.html
+Author:   Claude (continuing the build; s21 was produced in Codex)
+Type:     New stage implementation. Re-scopes the original Stage 22 around two
+          user-requested data-lifecycle features. Engine and all prior UI stages
+          unchanged. BLUEPRINT untouched — the items below are recorded design
+          deviations agreed in chat.
+
+--------------------------------------------------------------------------------
+STAGE 22 — data resets + program-level phone book + phone freshness
+
+  A) Program-level phone book (replaces per-semester phones)
+     - New store field: data.phonebook = { map:{id:digits}, lastImportedAt, sourceFilename }.
+     - Phones are now keyed by teacher_id at the PROGRAM level, shared by every
+       semester and surviving a schedule reset. (Rationale: teacher_id is stable
+       across years; phones should not be re-entered every term, and must persist
+       when the schedule is wiped.)
+     - Migration (_migrate): if phonebook is empty, legacy per-semester phones are
+       lifted from the active (or most-recent) semester into the book, dated from
+       that semester's importedAt. Old backups restored via restoreFromObject get
+       the same migration. Per-semester `phones:{}` is left as a harmless legacy
+       field; nothing reads it anymore.
+     - All live phone READS repointed to phoneFor(id): result detail panel,
+       saveToLog snapshot, __SWAP_PHONE__.phones getter. (renderLog still shows the
+       y_phone stored on the Log row at save time — unchanged.)
+     - All phone WRITES repointed to the book: importPhones, bootEmbeddedData.
+       importPhones still requires an active schedule (to validate ids) and still
+       refuses while viewing an archived/read-only semester.
+
+  B) Phone freshness indicator (passive, non-blocking)
+     - Stale rule: phonebook.lastImportedAt is BEFORE the active semester's start
+       date  (i.e. "not refreshed for THIS term yet"). No import ever = stale.
+     - Settings เบอร์ติดต่อ area:
+         fresh -> green note "เบอร์ติดต่ออัปเดตสำหรับภาคเรียนนี้แล้ว (อายุ)"
+         stale -> amber note "เบอร์ติดต่อชุดนี้อัปเดตล่าสุด <วันที่ BE> (อายุ) —
+                  ยังเป็นข้อมูลจากภาคเรียนก่อน แนะนำให้นำเข้าไฟล์เบอร์ติดต่อสำหรับภาคเรียนนี้"
+       phoneState line shows "<N> เบอร์ · อัปเดตล่าสุด: <วันที่> (อายุ)".
+     - Header strip: compact amber note "⚠️ เบอร์ติดต่อ: ยังไม่ได้อัปเดตสำหรับเทอมนี้"
+       shown ONLY when stale.
+     - Age text: วันนี้ / N วันที่แล้ว / N เดือนที่แล้ว / N ปีที่แล้ว.
+     - Refreshed on boot, after phone import, and after every semester switch.
+
+  C) Two reset actions (ตั้งค่าขั้นสูง only; type-to-confirm = type "ล้าง")
+     - "ล้างเฉพาะ Log การสลับ (ภาคเรียนปัจจุบัน)": empties the active semester's
+       Log only; keeps schedule + phones. Refuses while viewing an archived
+       (read-only) semester. (Kept in advanced settings so the Log's
+       "permanent register" promise to colleagues is not contradicted.)
+     - "ล้างทั้งหมด / เริ่มจากศูนย์": STORE.clearAllData() — drops the active
+       schedule + Log + ALL archived semesters, keeps phonebook + settings, and
+       sets data.noEmbed=true so the embedded auto-load does NOT re-seed; then
+       reloads to a genuine blank slate for a fresh import.
+     - Both buttons start disabled and enable only when the confirm word matches,
+       then a final confirm() dialog before acting.
+
+  D) Auto-load suppressor (root-cause fix for "can't get a blank slate")
+     - bootEmbeddedData() now returns false when data.noEmbed is set, so after a
+       full reset the program stays empty until the user imports — instead of the
+       embedded island re-seeding itself on every empty store.
+
+  Decisions ledger (recorded deviations; agreed in chat 2026-06-15):
+     - Full reset drops archived semesters too (treated as demo/test history).
+     - Reset keeps phones + tuned settings.
+     - Phones are program-level and meant to be refreshed every semester; the
+       freshness nudge encodes that cadence (stale = older than the term start).
+     - Phone freshness is a passive note, never a popup/block.
+
+  Deferred (still owed from the original Stage 22 plan — NOT in this build):
+     - Backup-reminder trio (after N approvals / on first action of the day /
+       before destructive ops) and the localStorage capacity warning.
+       To be scheduled separately.
+
+  Verified (headless jsdom on a real origin; bundled Node):
+     - No boot errors; JS executes clean.
+     - Engine self-test still green: 21/21 cases, 1455 fields.
+     - Phone book: populated from embed (150), phoneFor reads from book,
+       __SWAP_PHONE__.phones === book map.
+     - Freshness: fresh after embed (not stale, green note, strip hidden);
+       forced-old -> stale true, amber note, strip shown; age reads "ปี".
+     - clearLog: empties log, keeps schedule + phonebook, returns true on current
+       semester; refuses on archived.
+     - clearAll: drops all semesters, active=null, keeps phonebook + tuned
+       setting, sets noEmbed; bootEmbeddedData then refuses.
+     - Migration: legacy per-semester phones lifted into the book.
+     - Reset buttons render in advanced; type-to-confirm enables/disables correctly.
+     - Regression: s21 archive read-only intact (status disabled, no delete,
+       mutations refused, editable after switch back).
+
+  Companion throwaway (not lineage):
+     - schedule_swap_HTML_s22_DEMO_stalephone_2026-06-15.html — boots with the
+       phone book pre-dated 2 years so the stale wording is visible for review.
+
+  Visual review target (👁️):
+     - ตั้งค่า → read the เบอร์ติดต่อ freshness wording (fresh in the main file;
+       stale in the demo) and the header strip note. Judge the Thai.
+     - ตั้งค่า → ตั้งค่าขั้นสูง → try both reset actions (type ล้าง). Confirm
+       "ล้าง Log" keeps the schedule, and "ล้างทั้งหมด" gives a blank slate you
+       can then import into — with phones still present afterwards.
+
+--------------------------------------------------------------------------------
+CHANGELOG — schedule_swap_HTML  (append to cumulative changelog)
+================================================================================
+Revision: s21   Date: 2026-06-14
+Base:     schedule_swap_HTML_s20_2026-06-14.html
+Type:     New stage implementation. Adds the colleague-facing readme, header
+          semester switcher, and archived-semester read-only enforcement.
+
+--------------------------------------------------------------------------------
+STAGE 21 — อ่านก่อนใช้งาน + strip + switcher
+
+  What s21 adds:
+    - Replaces the placeholder "อ่านก่อนใช้งาน" page with Thai colleague-facing
+      guidance:
+        - overall workflow;
+        - what each page is for;
+        - how to start a new semester;
+        - how backups/restores work;
+        - what archived/read-only semesters mean.
+    - Adds a semester dropdown in the header strip.
+    - Keeps the existing active-semester label and "สำรองล่าสุด" line.
+    - Shows the existing archived badge when viewing an archived semester.
+    - Switching semester refreshes home, results, log, form, and timetable views.
+
+  Archived-semester read-only behavior:
+    - Archived semesters remain viewable/searchable/printable.
+    - "บันทึกลง Log" is disabled in result details.
+    - saveToLog refuses to commit while viewing an archived semester.
+    - Log status dropdowns are disabled when archived.
+    - Log delete actions are hidden/replaced with "อ่านอย่างเดียว" when archived.
+    - Log test hooks also refuse status/delete mutation while archived.
+    - Phone import refuses to change phones for an archived semester.
+
+  Verified:
+    - JavaScript parse check passes with bundled Node runtime.
+    - Source assertions pass for:
+        readme content,
+        semester switcher,
+        read-only helper,
+        Log-save guard,
+        phone-import guard,
+        Log edit/delete guard.
+    - Localhost HTML served for browser smoke. The in-app browser loaded the DOM
+      and header controls, but its runtime hook check was limited in this session.
+      `npx` is not available, so the Playwright CLI wrapper could not be used.
+
+  Visual review target (👁️):
+    - Read the "อ่านก่อนใช้งาน" page as if you were a teacher down the hall.
+    - Check whether the steps are understandable without calling you.
+    - Confirm the header semester dropdown and archived badge wording are clear.
+
+--------------------------------------------------------------------------------
+Revision: s20   Date: 2026-06-14
+Base:     schedule_swap_HTML_s19.2_2026-06-13.html
+Type:     New stage implementation. Stage 19.2 PDF/layout cleanup is explicitly
+          deferred; this stage only adds the ตารางสอน handout.
+
+--------------------------------------------------------------------------------
+STAGE 20 — ตารางสอน handout
+
+  What s20 adds:
+    - New working "ตารางสอน" tab.
+    - Teacher picker defaults to teachers touched by approved swaps, then offers
+      all teachers.
+    - Auto-detects affected weeks from approved Log rows where the teacher is
+      either the give-up teacher or the partner teacher.
+    - Pre-selects those affected weeks.
+    - Prints one handout grid per selected affected week.
+    - Applies date-specific swaps from approved Log entries only.
+    - Highlights swapped-in cells and swapped-out cells.
+    - Adds footnotes under each grid explaining who teaches for whom and which
+      Log date the change came from.
+
+  Layout correction after first user review:
+    - Grid orientation is now the normal school-table orientation:
+        ROWS    = weekdays (จันทร์-ศุกร์)
+        COLUMNS = periods (คาบ 1-9)
+    - The first column shows weekday + BE date. The header row shows คาบ 1
+      through คาบ 9.
+
+  Swap-detail correction after screenshot review:
+    - Corrected the timetable semantics: แลกคาบ swaps the teaching time only.
+    - A teacher keeps their own subject, student group, and room when their
+      period moves.
+    - Partner moved-in cells now show the partner's own `y_sub` + group + room,
+      not the absent teacher's `subject_give`.
+    - Give-back moved-in cells now show the absent teacher's own `subject_give`
+      + group + room, not the partner's subject.
+    - Footnotes now say "ย้ายคาบเข้า/ออก" and "ย้ายจาก/ย้ายไป" so it does not
+      read as if one teacher teaches the other teacher's subject.
+
+  Print behavior:
+    - Timetable print mode is isolated behind body.print-timetable.
+    - Existing Stage 19 form print rules are not changed.
+    - Timetable print hides controls and prints one week grid per page.
+
+  Visual review target (👁️):
+    - For the golden swap, check your handout and partner 1202's handout.
+    - Your absent-date cell should say that 1202 teaches instead of you.
+    - 1202's absent-date cell should show the class/room 1202 needs to cover.
+    - Your give-back-date cell should show the return teaching duty.
+    - 1202's give-back-date cell should mirror that duty as swapped out.
+    - The untouched week between them should not print.
+    - If the receiving teacher is missing subject/group/room or the note does
+      not clearly say who they cover, flag it.
+
+  Verified:
+    - JavaScript parse check passes with bundled Node runtime.
+    - Localhost browser smoke check: page loads, no console errors, timetable
+      tab opens, controls render.
+    - Source assertion confirms table orientation: weekday rows, period columns.
+    - Source assertion confirms moved-in cells keep teacher-owned class details.
+    - User visual review passed Stage 20 after the timetable semantics correction.
+
+--------------------------------------------------------------------------------
+Revision: s19.2   Date: 2026-06-13
+Base:     schedule_swap_HTML_s19.1_2026-06-13.html
+Type:     Intra-stage fix. Single change vs s19.1 — the เหตุผล (reason) field.
+          Fixes 2, 3, 4 from s19.1 are carried forward UNCHANGED and re-verified.
+
+--------------------------------------------------------------------------------
+FIX 1 (REDONE) — reason field: now reliably fillable, wraps, never cuts off.
+
+  What was wrong in s19.1:
+    The reason was an inline contenteditable <span> with a dotted ::before
+    placeholder. Two real problems:
+      (a) Not fillable in normal use. An empty inline contenteditable is fragile
+          for real input — especially Thai IME — even though synthetic typing
+          "worked" in a headless test. Confirmed via hit-testing: clicks at the
+          field's center could route to the parent <p> instead of the field.
+      (b) Wrapping wasn't dependable; cutoff risk remained.
+
+  What s19.2 does:
+    The reason is now a real, auto-growing <textarea id="reqReason"> rendered as a
+    full-width block on its own line(s), directly under "...มีความจำเป็น":
+      - Reliably clickable/fillable (native control; Thai IME works normally).
+      - Fills the width and WRAPS across as many lines as needed.
+      - Auto-grows in height as you type — NO cutoff, ever.
+      - "จึงขอแลกเปลี่ยนคาบสอน..." starts fresh on the line after the reason
+        (the "cut จึงขอ to another line" you asked for).
+      - Empty = a clean full-width dotted blank (fill on screen, or handwrite
+        after printing).
+
+  Implementation notes:
+    - .fin-reason: display:block; width:100%; min-height:1.55em (always clickable);
+      dotted bottom border; transparent; resize:none; overflow:hidden; 16pt.
+    - Auto-grow JS (growReason) is GUARDED: it never runs while the form is hidden
+      (that hidden-run was the s19.1-textarea bug that pinned height to ~1px) and
+      never shrinks below one line. Runs on input and once when the form opens.
+
+  Verified (headless Chromium, real click + keyboard typing):
+    - field is 33px tall and the click point lands on the textarea (not the <p>);
+    - real click focuses it; short and long Thai reasons both type in;
+    - a 170-char reason grows to 3 lines, scrollHeight == clientHeight (no hidden
+      overflow / no cutoff);
+    - on-screen and printed renders confirm clean wrapping; "จึงขอ..." below.
+
+--------------------------------------------------------------------------------
+CARRIED FORWARD FROM s19.1 (unchanged, re-verified in s19.2):
+  - FIX 2  งานหน้าที่อื่น ๆ default ☒ ไม่มี (โฮมรูม/เวรประจำวัน/การประชุม), clickable radio pairs.
+  - FIX 3  approver names manual-fill (apprHeadName/apprHeadDept/apprAsstName/
+           apprDeputyName/apprDirName); date stubs left as-is (3 present).
+  - FIX 3.1 label corrected: "...ผู้ช่วยผู้อำนวยการกลุ่มวิชาการ" (บริหาร dropped).
+  - FIX 4  genuine TH Sarabun New v1.3 embedded (Regular+Bold); memo at 16pt.
+
+PAGE FIT: worst case (7-swap multi-day) with a long wrapped reason still prints to
+          exactly 2 pages (A4, 14mm/12mm margins). No overflow.
+TESTING:  headless Chromium build 1194; zero console/page errors; PDF page-count
+          and rasterised pages checked.
+================================================================================

@@ -1,0 +1,29 @@
+# ─────────────────────────────────────────────────────────────
+#  ห้าม commit ข้อมูลส่วนบุคคล (ชื่อครู / เบอร์โทร / ตารางสอนจริง)
+#  repo นี้เป็น public — ทุกอย่างที่ commit จะเห็นได้ทั้งโลกและถูก Google index
+# ─────────────────────────────────────────────────────────────
+private/
+*ข้อมูลจริง*
+swap_backup_*.json
+phones_initial*.xlsx
+ระบบสลับคาบ_*_พร้อมใช้.html
+*_พร้อมใช้.html
+
+# ไฟล์ต้นฉบับข้อมูลโรงเรียน
+*ALL_DEPARTMENTS*
+*บุคลากร*
+*ตารางสอน*.pdf
+
+# ─── macOS / editor junk ───
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+*.swp
+*~
+
+# ─── dev scratch ───
+node_modules/
+package-lock.json
+*.log
