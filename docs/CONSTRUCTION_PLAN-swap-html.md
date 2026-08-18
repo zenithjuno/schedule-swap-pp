@@ -286,8 +286,8 @@ LATE (post-v1, each needs its own explicit approval):
 👁️ The search that caused the incident, re-run on your real data, now refusing to offer the slot — and the week going green again the moment you cancel the row holding it.
 ✅ Incident unreproducible via search; round-trip (hold → free → hold) exact; self-test 21/21 and golden numbers **byte-identical** to the 28a baseline.
 
-## Stage 28d — Gates G2 + G3 (commit and approve)
-🔨 `saveToLog` rebuilds the ledger at write time and validates all four claims (§5.9.6), refusing with the holder-naming Thai message; the s25.1 give-up guard is kept verbatim as a special case. Status promotion to `อนุมัติแล้ว` validates against a ledger built **excluding that row** (§5.9.7) and reverts the dropdown on refusal. Every transition **to** `ยกเลิก` stays unconditionally allowed.
+## Stage 28d — Gates G2 + G3 (commit and approve)  ·  **DONE 2026-08-18**
+🔨 One shared `ledgerConflicts(log, entry, excludeId)` serves both gates, so they can never drift apart. `saveToLog` rebuilds the ledger at write time and validates all four claims (§5.9.6), refusing with the holder-naming Thai message; the s25.1 give-up guard is kept verbatim as a special case. Status promotion to `อนุมัติแล้ว` validates against a ledger built **excluding that row** (§5.9.7) and reverts the dropdown on refusal. Every transition **to** `ยกเลิก` stays unconditionally allowed.
 🧪 Stale-page defeat: hold a results page, approve a conflicting row in another tab, then commit → refused, nothing written. Approval defeat: two `เสนอ` rows on the same slot (creatable only by hand-editing, i.e. the restored-backup case) → the first approves, the second is refused with both rows named. Escape hatch: a row inside a conflict can always be cancelled.
 👁️ The two refusal messages in Thai — do they tell you *who* holds the slot, *when*, and *what to do next* without you having to think?
 ✅ Neither gate can be walked past; no state is ever half-written; you are never stuck; baseline numbers unchanged.

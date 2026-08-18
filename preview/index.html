@@ -1939,9 +1939,38 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     return {collisions:col, uncovered:unc, ok:(col.length===0 && unc.length===0)};
   }
 
+  /* A1 / STAGE 28d — the one function both write-gates call (§5.9.6, §5.9.7).
+     Returns the conflicts a candidate entry WOULD create against an existing
+     log. excludeId ignores a row already in the log (G3 re-validates a row in
+     place). Rebuilt from the log every call — that is what defeats a results
+     page left open for an hour: offset_info may be stale, the ledger never is. */
+  function ledgerConflicts(log, entry, excludeId){
+    var rest=[], i, all=log||[];
+    for(i=0;i<all.length;i++) if(!excludeId || all[i].id!==excludeId) rest.push(all[i]);
+    var L=buildLedger(rest), mine=claimsOfEntry(entry), out=[];
+    for(i=0;i<mine.length;i++){
+      var c=mine[i];
+      var hit = (c.kind==='BUSY') ? L.busyAt(c.tid,c.date,c.per) : L.handoverAt(c.tid,c.date,c.per);
+      if(hit.length) out.push({claim:c, against:hit});
+    }
+    return out;
+  }
+
+  // Plain-Thai sentence naming WHO holds the slot, WHEN, and in what state.
+  function ledgerConflictText(conf){
+    var c=conf.claim, o=conf.against[0], e=o.entry;
+    var who = (o.tid===e.me_id) ? (e.me_name||e.me_id) : (e.y_name||e.y_id);
+    var when = 'วัน'+weekdayThai(c.date)+' คาบ '+c.per+' วันที่ '+formatBE(c.date,false);
+    var what = (c.kind==='BUSY')
+      ? who+' ต้องสอน '+when+' อยู่แล้ว'
+      : who+' ยกคาบ '+when+' ให้คนอื่นไปแล้ว';
+    return what+' — รายการ: '+(e.me_name||e.me_id)+' ↔ '+(e.y_name||e.y_id)+' (สถานะ: '+e.status+')';
+  }
+
   window.__SWAP_LEDGER__ = {
     key:ledKey, claimsOfEntry:claimsOfEntry, build:buildLedger, holdStrength:holdStrength,
     collisions:ledgerCollisions, uncovered:ledgerUncovered, audit:auditLedger,
+    conflicts:ledgerConflicts, conflictText:ledgerConflictText,
     auditActive:function(){
       var sem = (typeof STORE!=='undefined' && STORE.activeSemester) ? STORE.activeSemester() : null;
       return auditLedger((sem && sem.log) || []);
@@ -3359,6 +3388,12 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       score:c.SCORE, impact_tag:(compactItems(c).slice(0,1)[0]||'—'),
       warnings:compactItems(c)
     };
+    /* A1 G2 (§5.9.6): re-derive the ledger NOW and re-check. The candidate's
+       offset_info is a snapshot from search time; this is not. Nothing is
+       written when it refuses. */
+    var __cf=ledgerConflicts(sem.log, entry);
+    if(__cf.length) return {ok:false, error:'ชนกับรายการที่มีอยู่ — '+ledgerConflictText(__cf[0])+' — เลือกสัปดาห์อื่น หรือยกเลิกรายการเดิมก่อน'};
+
     sem.log.push(entry);
     var r=STORE.save();
     return r.ok ? {ok:true} : {ok:false, error:r.error};
@@ -3668,6 +3703,20 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     return null;
   }
 
+  /* A1 G3 (§5.9.7): a row may always be ยกเลิก'd — the escape hatch must never
+     close. Any other target status re-emits this row's claims, so re-validate
+     against a ledger built WITHOUT this row. Covers promotion to อนุมัติแล้ว and
+     the un-cancelling of a ยกเลิก row, which carries the same risk. */
+  function statusChangeBlocked(f, newStatus){
+    if(newStatus==='ยกเลิก' || newStatus===f.e.status) return '';
+    var sem=STORE.activeSemester(); if(!sem || !sem.log) return '';
+    var probe={}; for(var k in f.e) probe[k]=f.e[k]; probe.status=newStatus;
+    var cf=ledgerConflicts(sem.log, probe, f.e.id);
+    if(!cf.length) return '';
+    return 'ไม่สามารถเปลี่ยนสถานะเป็น “'+newStatus+'” ได้\n\n'+ledgerConflictText(cf[0])+
+           '\n\nต้องยกเลิกรายการใดรายการหนึ่งก่อน';
+  }
+
   function bumpApprovalIfNeeded(oldS,newS){ if(newS==='อนุมัติแล้ว' && oldS!=='อนุมัติแล้ว'){ STORE.data.approvedSinceBackup=(STORE.data.approvedSinceBackup||0)+1; } }
   function renderReminders(){
     var host=document.getElementById('reminderArea'); if(!host) return;
@@ -3695,6 +3744,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       sel.addEventListener('change', function(){
         if(isReadOnlySemester()){ renderLog(); return; }
         var f=findLogEntry(sel.getAttribute('data-id')); if(!f) return;
+        var __blk=statusChangeBlocked(f, sel.value);
+        if(__blk){ alert(__blk); renderLog(); return; }        // A1 G3: dropdown reverts
         var __old=f.e.status; f.e.status=sel.value; bumpApprovalIfNeeded(__old, sel.value); STORE.save();
         renderLog();                                  // re-tint + re-filter
         if(typeof refreshHome==='function') refreshHome();   // dashboard reflects new status
@@ -3718,9 +3769,14 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     render:renderLog,
     all:function(){ return logEntries(); },
     filtered:function(){ return logFiltered(); },
-    setStatus:function(id,st){ if(isReadOnlySemester()) return false; var f=findLogEntry(id); if(f){ var __o=f.e.status; f.e.status=st; bumpApprovalIfNeeded(__o,st); STORE.save(); renderLog(); if(typeof refreshHome==='function') refreshHome(); } return !!f; },
+    setStatus:function(id,st){ if(isReadOnlySemester()) return false; var f=findLogEntry(id);
+      if(f && statusChangeBlocked(f, st)) return false;
+      if(f){ var __o=f.e.status; f.e.status=st; bumpApprovalIfNeeded(__o,st); STORE.save(); renderLog(); if(typeof refreshHome==='function') refreshHome(); } return !!f; },
     del:function(id){ if(isReadOnlySemester()) return false; var f=findLogEntry(id); if(f&&f.e.status==='เสนอ'){ f.log.splice(f.i,1); STORE.save(); renderLog(); return true; } return false; },
     setFilter:function(m){ LOG_FILTER=m; renderLog(); },
+    // A1: the reason a status change would be refused ('' = allowed). Test hook
+    // for the ledger suite; the UI path shows this same string in an alert.
+    statusBlockReason:function(id,st){ var f=findLogEntry(id); return f ? statusChangeBlocked(f,st) : ''; },
     state:function(){ return {filter:LOG_FILTER, today:todayISO()}; },
     isFinished:isFinished
   };

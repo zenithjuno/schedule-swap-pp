@@ -306,7 +306,7 @@ The existing give-up-side guard (s25.1 FIX #2) is retained verbatim; it is now t
 
 > `ไม่สามารถอนุมัติได้ — ชนกับ {ชื่อครู} วัน{วัน} คาบ {คาบ} วันที่ {วันที่ BE} (สถานะ: {สถานะ}) — ต้องยกเลิกรายการใดรายการหนึ่งก่อน`
 
-All other transitions (including any transition **to** `ยกเลิก`) are always allowed — the owner must never be trapped in an unfixable state. G3 exists because G1+G2 cannot cover a log edited by hand, restored from a backup written by an older build, or promoted in an order nobody predicted.
+**Scope widened at 28d:** the check runs on **every** transition to a non-`ยกเลิก` status, not only on promotion to `อนุมัติแล้ว`. Un-cancelling a `ยกเลิก` row re-emits its claims and carries exactly the same risk, and a row sitting in a conflict should not be allowed to advance at all. Transitions **to** `ยกเลิก` are always allowed — the escape hatch must never close, or the owner is trapped in a state they cannot repair. G3 exists because G1+G2 cannot cover a log edited by hand, restored from a backup written by an older build, or promoted in an order nobody predicted.
 
 **5.9.8 The auditor — whole-log integrity, shown not hidden.** `auditLedger(log)` returns every key holding two claims **of the same kind** — two `BUSY` (the teacher is in two rooms at once) or two `HANDOVER` (one class period promised away twice) — each with the full list of offending entries and which kind was violated. Surfaces:
 
