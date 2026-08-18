@@ -61,7 +61,24 @@ PHASE 4 — HARDENING & DISTRIBUTION
   s25  Edge-case sweep + cross-browser + print verification
   s26  Handover: changelog, deliverables, final file
 
-LATE (post-v1, each needs its own explicit approval): F3 Mode B · F4 full-day grids
+PHASE 5 — POST-v1 CORRECTNESS (Amendment A1, BLUEPRINT §5.9)
+  s27  Public/GitHub edition (data-only; already shipped)
+  s28  A1 occupancy ledger — six gated steps, one delivered file:
+       28a  Safety net + regression baseline      ← nothing is touched until this passes
+       28b  Ledger + auditor (READ-ONLY: diagnoses, changes nothing)
+       28c  Gate G1 — search
+       28d  Gates G2 + G3 — commit and approve
+       28e  Surfaces — Log banner, uncovered-slot report, handout collision cell
+       28f  Ledger suite + full regression + both editions + changelog
+
+LATE (post-v1, each needs its own explicit approval):
+  F3  Mode B (specify both slots)          F4  full-day before/after grids
+  F9  kind แลกคาบ/สอนแทน  ─┐              F10 per-teacher summary message
+  F13 ผู้สอนแทนนอกระบบ    ─┴ one design pass, one build — see BLUEPRINT §11.1
+  F11 per-class (รายห้อง) swap view       (F12 uncovered-slot → promoted into s28e)
+  F10/F11 are read-only derivations of the Log and are cheap — but both must
+  wait for s28: a summary sent to a colleague, or a class view, built on a
+  log that still double-books would push the error to other people.
 ```
 
 ---
@@ -237,6 +254,55 @@ LATE (post-v1, each needs its own explicit approval): F3 Mode B · F4 full-day g
 👁️ You import next semester's file (or a copy of 69/1 relabeled) entirely unaided.
 ✅ You complete an unaided semester import + one full swap search + one form print. **Project v1 done.**
 
+
+---
+
+# PHASE 5 — AMENDMENT A1 (post-v1 correctness fix)
+
+**Why this phase exists:** BLUEPRINT §5.9. Live use on 2026-08-17 produced three `อนุมัติแล้ว` rows all giving back at พุธ คาบ 1 / 26 ส.ค. 2569 — the owner committed to two groups in two rooms in one period, with no warning anywhere, including on the printed handout. Reads as the s25.1 backlog item "DEFERRED #3", whose stated reason (would break the frozen oracle) is demonstrably false: the fixture carries no log rows and the self-test calls `search()` with no `opts`, so the occupancy path has **never** been exercised by any test.
+
+**Where this ships (corrected 2026-08-18, BLUEPRINT §5.9.0).** The owner's daily tool is the **published page** at `zenithjuno.github.io/schedule-swap-pp/`, served from committed `index.html`. They have never opened a local copy. So **the deliverable of this phase is a push, not a file** — and their real data lives in `localStorage` under that web origin, which no local or `localhost` copy can see. The `private/` data-loaded file receives the identical patch (the code region is byte-identical, verified by diff) but is a handout artefact, not anyone's working copy. Earlier drafts of this plan had that backwards; do not re-derive the old assumption.
+
+**Build target during the amendment: `preview/index.html`, published at `zenithjuno.github.io/schedule-swap-pp/preview/`.** The site root keeps serving committed v1 (s27) untouched for the whole phase, so the owner's daily tool and any colleague using it are never exposed to a half-finished build. Because Pages serves the same origin, the preview sees the owner's **real** `localStorage` data with no import or restore — that is the point of choosing this route (owner's decision, 2026-08-18). The preview build carries a red `#a1PreviewBar` banner that exists **only** there; Stage 28f promotes the file to the root, strips the banner, and deletes `preview/`. Root `index.html` is deliberately left at HEAD until then — do not "helpfully" patch it early.
+
+**Sequencing principle:** diagnose before changing (28b is read-only), then close the future (28c–28d), then make the present visible (28e), then prove it (28f). Each step is independently revertible; no step depends on a later one being finished.
+
+## Stage 28a — Safety net + regression baseline
+🔨 No code. Export a full backup JSON from the owner's live working file (§7.2) and store it outside the app; copy both HTML editions to timestamped baselines; record the current pass numbers (self-test 21/21, golden top-5 104/103/89/87/74, rank-1 = 1202 พฤหัสฯ p6) as the figures every later step must reproduce **unchanged**.
+🧪 Restore the backup into a scratch browser profile and confirm the log comes back intact, including the three conflicting August rows — a backup that has not been restored once is not a backup.
+👁️ Your own log, reappearing in a fresh profile, with the row count you expect.
+✅ A restorable backup exists and has been proven by restoring it; baseline numbers written down. **No code is touched before this gate passes.**
+
+## Stage 28b — Ledger + auditor (READ-ONLY)
+🔨 `buildLedger(log)` and `auditLedger(log)` per §5.9.1–5.9.3: claims keyed `teacher_id | ISO date | period`, emitted **per entry** (never hard-coded to four — §5.9.12, so F9 drops in later untouched), `ยกเลิก` emits nothing. Exposed on `window.__SWAP_LEDGER__` for testing. **Nothing calls them yet. No existing behaviour changes.**
+🧪 Unit cases on a synthetic log (clean log → zero conflicts; the incident's three rows → exactly one conflicting key naming all three entries; cancelling one → conflict persists with two; cancelling two → clean). Then run the auditor over the owner's **real** log.
+👁️ A plain-Thai report of what the auditor finds in your actual data — the พุธ p1 / 26 ส.ค. collision named explicitly, plus anything else we did not know about. This is the step that tells us the true size of the problem.
+✅ Auditor output matches hand-verification on the real log; self-test still 21/21 and golden numbers unchanged (they must be — nothing is wired in yet, and that is the point of checking).
+
+## Stage 28c — Gate G1 (search)
+🔨 `_applyDates` reads the ledger instead of `_occupied`: every non-`ยกเลิก` status holds (§5.9.4), give-up end checks **all** claim kinds not just `ycover` (closing the asymmetry at [index.html:1748]), week-picker labels `(ติดคิวแล้ว)` for hard holds and `(จองไว้แล้ว — ยังไม่อนุมัติ)` for soft. Drop-only-when-all-offsets-blocked is unchanged (§5.8 rule 1).
+🧪 Replay the incident: with the two พฤหัสฯ rows sitting at `เสนอ`, search ศุกร์ p6 → 26 ส.ค. is greyed and labelled as a soft hold, and the default lands elsewhere. `ยกเลิก` one → that week frees immediately. New case: partner Y already owes a make-up at the absence date+period → that candidate's give-up end blocks.
+👁️ The search that caused the incident, re-run on your real data, now refusing to offer the slot — and the week going green again the moment you cancel the row holding it.
+✅ Incident unreproducible via search; round-trip (hold → free → hold) exact; self-test 21/21 and golden numbers **byte-identical** to the 28a baseline.
+
+## Stage 28d — Gates G2 + G3 (commit and approve)
+🔨 `saveToLog` rebuilds the ledger at write time and validates all four claims (§5.9.6), refusing with the holder-naming Thai message; the s25.1 give-up guard is kept verbatim as a special case. Status promotion to `อนุมัติแล้ว` validates against a ledger built **excluding that row** (§5.9.7) and reverts the dropdown on refusal. Every transition **to** `ยกเลิก` stays unconditionally allowed.
+🧪 Stale-page defeat: hold a results page, approve a conflicting row in another tab, then commit → refused, nothing written. Approval defeat: two `เสนอ` rows on the same slot (creatable only by hand-editing, i.e. the restored-backup case) → the first approves, the second is refused with both rows named. Escape hatch: a row inside a conflict can always be cancelled.
+👁️ The two refusal messages in Thai — do they tell you *who* holds the slot, *when*, and *what to do next* without you having to think?
+✅ Neither gate can be walked past; no state is ever half-written; you are never stuck; baseline numbers unchanged.
+
+## Stage 28e — Surfaces (make the present visible)
+🔨 **Two reports, one ledger.** (1) Collisions — บันทึกการสลับ gets `⚠️ พบการสอนซ้อน {N} จุดในบันทึกนี้ — ต้องแก้ก่อนใช้งาน` + a marker on every row in a conflicting set, recomputed each render (§5.9.8); ตารางสอน's `ttSwapCell` collects **all** matches and renders `⚠️ สอนซ้อน {N} รายการ` instead of silently returning the first (§5.9.9, law §9.6), one footnote per match; same banner on ฟอร์ม พพ.1-1. (2) **Uncovered slots** (owner decision 2026-08-18, §5.9.11) — groups of log rows all `ยกเลิก`; future/today ones go to the หน้าหลัก reminder strip where they are still fixable, all of them to the Log banner. Slots with no rows at all are **not** reported.
+🧪 Owner's real log → collision banner correct; fix rows → clears with no reload. Uncovered report reproduces the 28a finding exactly (พฤหัสฯ 20 ส.ค. คาบ 4, two cancelled attempts) and stays silent on never-attempted periods; arrange cover → the reminder disappears; a *past* uncovered slot leaves the reminder strip but stays in the Log banner. Print the handout for 26 ส.ค. before and after.
+👁️ **The handout for พุธ 26 ส.ค., printed** — before this stage one tidy wrong class, after it the collision. Then the หน้าหลัก strip telling you about an uncovered period **before** you find out two days ahead by accident. Those two are the gate.
+✅ No conflict can reach paper disguised as an ordinary swap; no dropped arrangement stays invisible while it is still fixable; both banners clear themselves when the data is fixed.
+
+## Stage 28f — Ledger suite + both editions + changelog
+🔨 The ledger suite (§5.9.10) as a second frozen set, independent of the oracle fixture: incident replay, soft-hold round-trip, asymmetric give-up hole, stale-page defeat, auditor on the corrupt real log, uncovered-slot report (all-cancelled group reported, never-attempted group silent, past vs future routing), handout collision rendering, s25.1 FIX #2 non-regression. Apply the identical patch to the private data-loaded edition. Write `CHANGELOG.txt` entry s28 in the house format (WHY / CHANGE n / TESTING), recording A1 and its BLUEPRINT origin.
+🧪 Ledger suite green on clean code; sabotage each gate in turn → the matching cases go red with readable diffs → revert. Full existing harness re-run on **both** editions. Private edition: real data still loads, log intact, semester switcher and self-export unaffected.
+👁️ The green ledger board, then the sabotaged red board proving the tests actually test — the same proof pattern as s15. Then your own file, opened normally, with your data where you left it.
+✅ Ledger suite green-red-green; self-test 21/21 and golden top-5 unchanged on both editions; the owner's real data loads untouched; changelog written. **A1 done.**
+
 ---
 
 ## WHAT I NEED FROM YOU DURING THE BUILD
@@ -254,6 +320,9 @@ LATE (post-v1, each needs its own explicit approval): F3 Mode B · F4 full-day g
 - D1 semantics (consumed vs busy entries) and the all-offsets-blocked drop rule (s14).
 - `</script>` escaping + UTF-8 integrity in self-export (s23).
 - Print CSS differences Chrome vs Edge (s25).
+- **A1 (s28):** the owner's real log lives in `localStorage` of the private edition — back it up and prove the restore *before* any edit (28a), and do not rename that file mid-amendment (BLUEPRINT §2 flags `file://` storage as origin-scoped per path in some configurations). · Both editions must receive the identical patch, or the owner keeps running the broken one. · The claim emitter must be per-entry, never a hard-coded four, or F9 (§5.9.12) needs surgery later. · Every step re-runs the 28a baseline numbers: A1 is oracle-neutral by construction, so any movement in them means A1 touched something it must not.
 
 ## DELIVERABLES
 `schedule_swap_HTML_s{NN}_{date}.html` (versioned lineage) · `schedule_swap_HTML_CHANGELOG.txt` (cumulative) · `oracle_fixture.json` (embedded + standalone copy) · blank schedule + phone template .xlsx · initial converted phone file · `BLUEPRINT-swap-html.md` + this plan as the durable record.
+
+**Added by A1 (s28):** the patched public edition (`index.html`) **and** the patched private data-loaded edition — both, or the fix does not exist for the person who reported it · the ledger suite as a second frozen test set alongside `oracle_fixture.json` · a proven-by-restoring backup of the owner's live log, taken at 28a.

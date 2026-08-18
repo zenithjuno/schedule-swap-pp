@@ -2,7 +2,10 @@
 
 **Version:** 1.0 (build-ready spec)
 **Owner:** ครูชัชพงษ์ โชคพนารัตน์ (teacher_id 0221), โรงเรียนพิษณุโลกพิทยาคม
-**Status:** Approved design, NOT yet built. SACRED document: never edited mid-build; deviations are recorded only in `schedule_swap_HTML_CHANGELOG.txt` (with date + rationale). To learn "what the system actually does today," read this file first, then apply changelog overrides on top.
+**Status:** Approved design, built and shipped (v1 = s26 master / s27 public edition). SACRED document: never edited mid-build; deviations are recorded only in `schedule_swap_HTML_CHANGELOG.txt` (with date + rationale). To learn "what the system actually does today," read this file first, then apply changelog overrides on top.
+
+**AMENDMENT LOG** — post-v1 spec changes, each a dated numbered section that supersedes what it names. Amendments are additive: nothing above them is rewritten or deleted, so the original design intent stays readable.
+- **A1 · 2026-08-17 · §5.9 Occupancy ledger.** Closes the double-booking defect found in live use (three approved swaps landing on one give-back slot). Supersedes part of §5.8. Approved by the owner; oracle-neutral by construction.
 **Audience:** a fresh Claude session with ZERO prior context must be able to build flawlessly from this file alone (+ the two reference xlsx files listed in §2). The owner is NOT the main audience.
 **Companion:** `CONSTRUCTION_PLAN-swap-html.md` (the staged how).
 
@@ -31,7 +34,7 @@ Input: teacher **0221**, day **จันทร์**, period **2**, absence date 
 Expected: top-5 scores **104 / 103 / 89 / 87 / 74**; rank-1 partner **1202**, give-back **พฤหัสฯ period 6**, subject **ญ30213**. (Period-2 search yields 5 partners; the same teacher/date at period 3 yields 9 partners — also in the fixture.)
 
 ### 1.3 The ONLY two deliberate deviations from the oracle (everything else must match)
-- **D1 — Date-aware block-list** (POC blocked teacher+weekday+period, date-unaware = accepted over-blocking debt). HTML semantics in §5.8.
+- **D1 — Date-aware block-list** (POC blocked teacher+weekday+period, date-unaware = accepted over-blocking debt). HTML semantics in §5.8, **binding rules in §5.9 (A1)**.
 - **D2 — Smart week default**: the auto-suggested week-offset skips any week whose give-back date equals the absence date (the POC only warned after the fact). The loud warning REMAINS if the user manually forces the clashing week.
 The oracle test harness (§10) encodes both as *expected differences*, never as failures.
 
@@ -217,7 +220,7 @@ swapApp.v1 = {
   status: เสนอ|รออนุมัติ|อนุมัติแล้ว|ยกเลิก,
   reason, notes, impactTag, scoreAtCommit, warningsAtCommit[] }
 ```
-All display values stored static at commit time (POC lesson: logs must survive data changes). Exactly the canonical **4 statuses** — never invent a fifth.
+All display values stored static at commit time (POC lesson: logs must survive data changes). Exactly the canonical **4 statuses** — never invent a fifth. (A future แลกคาบ/สอนแทน distinction is an *orthogonal* field, not a fifth status — see §5.9.12.)
 
 ### 5.3 Log behavior (replaces the paste-values ritual, which is dropped scar tissue)
 - Normal table: add (via "บันทึกลง Log" in the candidate detail), edit status via dropdown, **delete allowed ONLY while status = เสนอ** (confirm dialog); anything past เสนอ can only be ยกเลิก'd. Append-only history otherwise.
@@ -231,6 +234,105 @@ Each อนุมัติแล้ว LogEntry generates date-specific entries 
 1. **Consumed give-back slot:** (Y.teacherId, dateGiveback, period2) — Y's G-class at that slot on that date is already promised. A candidate (Y, day2, period2) is NOT removed from results; instead, any week-offset whose computed give-back date hits a consumed/busy entry is **disabled (greyed) in that candidate's week picker** and skipped by the default. Only if ALL offsets −3..+3 are blocked is the candidate dropped.
 2. **Busy entries:** (Y.teacherId, dateAbsent, period1) — Y now covers Me's class then; (Me.teacherId, dateGiveback, period2) — Me teaches the make-up then. Checks A/B consult busy entries whenever a concrete date is known for the slot being checked; the existing self-collision loud warning is the Me-side surface of the same data.
 Net effect: an approved June swap is invisible to a September search — the POC's over-blocking disappears. Document in the test harness as expected-difference vs the xlsx.
+
+> **SUPERSEDED IN PART by §5.9 (Amendment A1, 2026-08-17).** §5.8's *date-aware* principle stands and is unchanged. What §5.9 replaces is (a) the restriction of block-list generation to `อนุมัติแล้ว` rows only, and (b) the assumption that consulting the block list at search time is sufficient. Read §5.8 for intent, §5.9 for the binding rules.
+
+### 5.9 Occupancy ledger — the single source of truth for "who is where, when" (AMENDMENT A1 · 2026-08-17)
+
+**Why this amendment exists (the incident, recorded so it is never re-litigated).** On 2026-08-17 the owner's live log held **three `อนุมัติแล้ว` rows all giving back at พุธ คาบ 1 / 26 ส.ค. 2569** for the same teacher (0221): give-ups พฤหัสฯ p1 (Y=1301, group 4.7, room 328), พฤหัสฯ p4 (Y=0603, group 4.2, room 323) and ศุกร์ p6 (Y=0603, group 4.2, room 323). The owner was committed to teaching two different groups in two different rooms in one period, and the app said nothing. Root cause, in three layers:
+
+1. `_occupied()` skipped every row whose status was not `อนุมัติแล้ว`, so a `เสนอ`/`รออนุมัติ` row reserved **nothing**. Each of the three searches ran while the others were still `เสนอ` and correctly-but-blindly offered the same free slot.
+2. The block list was consulted **only** during candidate generation. `saveToLog()` guarded the give-up side only (`me_id + date_absent + per_give`, the s25.1 FIX #2 guard) and never looked at the give-back side; the status dropdown that promotes a row to `อนุมัติแล้ว` validated nothing at all; and each candidate's `offset_info` is a snapshot frozen at search time, so a results page left open bypassed even the search-time check.
+3. Nothing ever looked at the log as a whole. `impactTag`/`warningsAtCommit` are commit-time snapshots by design (§5.2), and the handout renderer returned on the *first* matching log row per cell — so a triple-booked cell **printed as a single ordinary swap**. The one document the owner physically carries was the one that hid the collision most completely.
+
+This is the debt logged as s25.1 "DEFERRED #3 — realtime scoring across already-swapped dates". The reason given for deferring it (would break the frozen-oracle guarantee) is **void**: the embedded self-test builds its engine with an empty log and calls `search()` with no `opts`, so it never executes the occupancy path at all. That also means the occupancy path shipped with **zero** automated coverage — see §5.9.9.
+
+**5.9.0 Where the owner's data actually lives (established 2026-08-18 — read this before assuming anything about deployment).** The owner runs the app from `https://zenithjuno.github.io/schedule-swap-pp/` and has never opened a local copy ("ไม่สะดวก หาไม่เจอ"). Three consequences that override the natural assumptions:
+- **The published page is the product.** A fix that exists only in a working tree does not exist. The unit of delivery is a **push**, not a saved file.
+- **`localStorage` is partitioned by origin, and the origin is the web page.** The entire semester — schedule, phone book, and the swap log — lives under the `zenithjuno.github.io` origin, imported there by hand; the empty embedded-data island of the public edition (§7.4) is never used to seed it. A local file, a `file://` copy and a `localhost` server are each a *different* store holding *different* data. Any test that opens a different origin is testing an empty program unless a backup is restored into it first.
+- **Same origin cuts both ways.** Anything published under that origin — including a `/preview/` path — shares the owner's live store. That is what makes real-data testing effortless, and it is exactly why an unfinished build must never be published to the site's root.
+
+**5.9.1 The ledger is derived, never stored.** One pure function, `buildLedger(log)`, folds the log into a map. It is recomputed from scratch at every point of use — the log is a few hundred rows per semester, so there is no cache, no incremental update, no invalidation, and therefore no staleness bug class. **`LogEntry`'s shape does not change; `schemaVersion` does not change; existing backups and archived semesters load untouched.** This is deliberate: the fix must not put the owner's real data at risk.
+
+**5.9.2 Claim key and claims.** The key is absolute — **`teacher_id | ISO date | period`** — never a weekday. Every `LogEntry` whose `status !== 'ยกเลิก'` emits exactly four claims:
+
+| # | claim | key | kind |
+|---|---|---|---|
+| 1 | Y covers Me's class | `y_id \| date_absent \| per_give` | `OCCUPY` |
+| 2 | Me teaches the make-up | `me_id \| date_back \| per_back` | `OCCUPY` |
+| 3 | Me is away | `me_id \| date_absent \| per_give` | `RELEASE` |
+| 4 | Y gave that slot up | `y_id \| date_back \| per_back` | `RELEASE` |
+
+Each claim carries `{entryId, status, kind, role}` so any conflict can be reported as "which rows, in what state". A `ยกเลิก` row emits nothing — cancelling frees the slot instantly, exactly as the s25.1 guard already behaves.
+
+`OCCUPY` means *this teacher is committed to a class in this exact slot on this exact date*. `RELEASE` means *this teacher's recurring timetable entry for that slot does not apply on that date*. `RELEASE` is recorded, not merely omitted, because it is what lets a released slot be legitimately reused later without the base timetable vetoing it.
+
+**5.9.3 The invariant (order-independent, and that is the point).**
+
+> **For every key, the number of `OCCUPY` claims is at most 1.**
+
+Correctness must not depend on the order rows were created, saved, approved, or restored from backup. `createdAt` is used **only** to describe a conflict to the human ("รายการที่บันทึกไว้ก่อน คือ …") — never to decide who wins. The app never auto-resolves a collision; a human picks which row to `ยกเลิก`.
+
+**5.9.4 Reservation strength (locked decision Q6-1).** Every non-`ยกเลิก` status reserves its slots:
+
+| status | hold | search treats it as | commit / approve |
+|---|---|---|---|
+| `เสนอ` | **soft** | blocked (identical to hard) | blocked, with the message naming the holder's status |
+| `รออนุมัติ` | **soft** | blocked (identical to hard) | blocked, ditto |
+| `อนุมัติแล้ว` | **hard** | blocked | blocked |
+| `ยกเลิก` | none | free | free |
+
+Rationale (owner's call, 2026-08-17): *"บล็อกเท่าอนุมัติแล้ว"*. §5.3 already permits exactly one substitute per give-up slot, so a soft hold costs the owner no real option — and a `เสนอ` row is a promise already made to a colleague by phone. If the owner changes their mind, `ยกเลิก` frees the slot in one click, which is the escape hatch the s25.1 guard already established. Search must *distinguish* the two strengths in its labels (§5.9.5) even though it blocks both, so the owner can see that a greyed week is freeable.
+
+**5.9.5 Gate G1 — search.** The give-back-offset scan consults the ledger for **both** ends and for **all** claim kinds, and it must be symmetric — the pre-A1 code checked every kind on the give-back end but only the `ycover` kind on the give-up end, so "partner Y already owes a make-up of their own at that date+period" slipped through. An offset is `blocked` when any `OCCUPY` claim from another entry matches (`Y` or `Me`) × the computed give-back date × `per2`; the give-up end is blocked when any `OCCUPY` claim matches `Y` × `dateAbsent` × `per1`. A candidate is dropped only when all offsets −3..+3 are blocked (§5.8 rule 1, unchanged). Week-picker labels: `(ติดคิวแล้ว)` for a hard hold, **`(จองไว้แล้ว — ยังไม่อนุมัติ)`** for a soft one.
+
+**5.9.6 Gate G2 — commit (`บันทึกลง Log`).** `saveToLog` **rebuilds the ledger at that instant** and re-validates all four claims of the row about to be written. This is what defeats the stale results page: `offset_info` may be minutes old, the ledger never is. On conflict the save is refused (nothing is written) with a message naming the holder, its slot, its date in BE, and its status:
+
+> `ชนกับรายการที่มีอยู่ — {ชื่อครู} ต้องสอน วัน{วัน} คาบ {คาบ} วันที่ {วันที่ BE} อยู่แล้ว (สถานะ: {สถานะ}) — เลือกสัปดาห์อื่น หรือยกเลิกรายการเดิมก่อน`
+
+The existing give-up-side guard (s25.1 FIX #2) is retained verbatim; it is now the special case of a general rule rather than the only rule.
+
+**5.9.7 Gate G3 — approve.** Promoting a row to `อนุมัติแล้ว` re-validates its four claims against a freshly built ledger *excluding that row*. If the promotion would create a second `OCCUPY` on any key, the status change is **refused** (the dropdown reverts) with:
+
+> `ไม่สามารถอนุมัติได้ — ชนกับ {ชื่อครู} วัน{วัน} คาบ {คาบ} วันที่ {วันที่ BE} (สถานะ: {สถานะ}) — ต้องยกเลิกรายการใดรายการหนึ่งก่อน`
+
+All other transitions (including any transition **to** `ยกเลิก`) are always allowed — the owner must never be trapped in an unfixable state. G3 exists because G1+G2 cannot cover a log edited by hand, restored from a backup written by an older build, or promoted in an order nobody predicted.
+
+**5.9.8 The auditor — whole-log integrity, shown not hidden.** `auditLedger(log)` returns every key holding ≥2 `OCCUPY` claims, each with the full list of offending entries. Surfaces:
+
+- **บันทึกการสลับ:** a loud red banner above the table when any conflict exists — `⚠️ พบการสอนซ้อน {N} จุดในบันทึกนี้ — ต้องแก้ก่อนใช้งาน` — plus a per-row marker on every entry in a conflicting set, so the owner can see *which* rows to choose between. Recomputed on every render; never a stored flag.
+- **ตารางสอน (§6.5) and ฟอร์ม พพ.1-1 (§6.4):** the same banner, because those are the artefacts that leave the screen on paper.
+
+**Second report — คาบที่ลาแล้วยังไม่มีครูสอนแทน (uncovered slots).** *Added to A1 by owner decision, 2026-08-18 — see §5.9.11.* Group log rows by `(me_id, date_absent, per_give)`; a group whose rows are **all** `ยกเลิก` is an uncovered slot: the owner tried to arrange cover and dropped it. A slot with **no** rows at all is NOT reported — that normally just means the owner was not absent that period, and reporting it would bury the real signal in noise. Surfaces, split by actionability:
+
+- **หน้าหลัก reminder strip:** only uncovered slots whose absence date is **today or later** — `⚠️ มี {N} คาบที่ลาแล้วยังไม่มีครูสอนแทน — วัน{วัน} {วันที่ BE} คาบ {คาบ} ({วิชา} ม.{ห้อง})`. These are the ones still fixable, and they are time-critical: the case that produced this requirement was found **two days** before the absence.
+- **บันทึกการสลับ:** all of them, past included, as part of the audit banner — the permanent record should not quietly forget a period that went uncovered.
+
+The auditor is not a nicety. G1–G3 protect the future; the auditor is the only thing that can surface the collisions **already sitting in the owner's live log today**, and the only defence against a hand-edited or restored log.
+
+**5.9.9 The handout must never silently pick a winner.** `ttSwapCell` returns on its first matching log row. Replace with: collect **all** matches for the cell; if exactly one, render as today; if more than one, render a red conflict cell — `⚠️ สอนซ้อน {N} รายการ` — listing each moved-in class, and emit one footnote per match. Rationale (law, added to §9): **a printed artefact may never resolve an ambiguity that the data does not resolve.** Showing the owner a wrong-but-tidy grid is strictly worse than showing them a loud mess.
+
+**5.9.10 Oracle impact: none. New coverage: mandatory.** The frozen fixture (§10) contains no log rows, and the self-test calls `search()` without `opts`, so **every fixture expectation is bit-identical before and after A1** — the engine firewall holds by construction, and this must be *demonstrated* (self-test 21/21, golden top-5 unchanged) not assumed. A1 is not complete until a **new ledger suite** joins the harness as a second, independently-frozen test set. It must cover, at minimum:
+
+- the reported incident, replayed exactly: three swaps into พุธ p1 / 26 ส.ค. 2569 — must be impossible at G1 (offer another week), refused at G2, refused at G3;
+- soft holds: a `เสนอ` row blocks the next search; promoting it to `รออนุมัติ` keeps it blocked; `ยกเลิก` frees it and the same slot becomes offerable again (the round-trip);
+- the asymmetric hole: partner Y already owes a make-up at `dateAbsent`+`per1` → that candidate's give-up end is blocked;
+- stale-page defeat: hold a candidate object, approve a conflicting row, then commit — G2 must refuse;
+- the auditor on a deliberately corrupt log (a real one is available: the owner's 2026-08-17 state) → reports exactly the expected key and rows;
+- handout collision rendering: a double-booked cell renders the conflict cell, never one of the two swaps;
+- non-regression of s25.1 FIX #2 (same give-up slot twice = blocked; different periods same day = still allowed).
+
+**5.9.11 Explicitly NOT in A1 (scope fence).** No change to: scoring, ranking, tie-breaks, walking, consecutive runs, lunch rules, the import contract, `LogEntry` shape, `schemaVersion`, the four canonical statuses, or the frozen fixture. **No group/room dimension is added to the claim key** — both ends of a swap are the same group G by construction (§3.1), so a teacher-keyed claim already catches every collision this model can produce; adding group would be dead weight pretending to be rigour. A1 changes *when and against what* the app checks, and *what it shows when a check fails*. Nothing else.
+
+**One deliberate widening, by owner decision (2026-08-18).** The uncovered-slot report (§5.9.8, formerly parked as F12) is now **in** A1. It was found by the Stage 28a audit of real data — พฤหัสฯ 20 ส.ค. คาบ 4, two cancelled attempts, no replacement, two days out — and the owner ruled it must be emphasised, not parked. Recorded here rather than quietly absorbed, because a scope fence that moves without a signature is not a fence. It qualifies on the fence's own terms: same ledger, same render surfaces, no new stored field, no engine contact.
+
+**5.9.12 Forward compatibility — entry *kind* (F9, parked; recorded here because A1's shape must not block it).** The owner has identified a second real-world arrangement the app cannot express: **สอนแทน** — giving a period away outright, with nothing taken back — as distinct from **แลกคาบ**, the reciprocal swap that is v1's only model (§3.1 Model C).
+
+This is **not a fifth status.** The four canonical statuses (§5.2) say *how far along* an entry is and stay exactly four, forever. What is missing is an orthogonal field — `kind: แลกคาบ | สอนแทน` — saying *what kind of arrangement* it is. Every row has one status **and** one kind; the two axes never merge. Any future session tempted to add "สอนแทน" to the status dropdown is reading this paragraph wrong.
+
+The only thing A1 owes F9 is **not standing in its way**: `buildLedger` must treat "how many claims this entry emits" as a property of the entry, never a hard-coded four. A สอนแทน entry has no give-back end, so it emits **two** claims — #1 `OCCUPY (y_id | date_absent | per_give)` and #3 `RELEASE (me_id | date_absent | per_give)` — while #2 and #4 simply do not exist. Written that way, the invariant, all three gates and the auditor keep working unchanged the day F9 lands; written as "always four", every one of them needs surgery. That is the entire A1 obligation.
+
+Everything else F9 touches is **out of A1** and needs its own design pass: search has no give-back slot to place or score (most of §3.6 goes quiet, and Checks B/C/D are moot), the พพ.1-1 wording differs from a swap request, the handout footnote for the give-up cell reads differently and the partner gets no "ย้ายคาบเข้า" pair, and the dashboard/Log need to show the kind at a glance. Do not smuggle any of that into A1.
 
 ---
 
@@ -306,6 +408,8 @@ Downloads a copy of the app with the **current active semester embedded** (sched
 - **9.3 No AI at runtime; fully deterministic.** No network. No telemetry.
 - **9.4 Dates:** internal ISO 8601; ALL display/print = Buddhist Era (CE+543), Thai month abbreviations (ม.ค. ก.พ. มี.ค. เม.ย. พ.ค. มิ.ย. ก.ค. ส.ค. ก.ย. ต.ค. พ.ย. ธ.ค.), formats "8 มิ.ย. 2569" (UI) / "8 มิ.ย. 69" (form table).
 - **9.5 Thai text safety:** never space-tokenize room strings; match พฤหัสฯ verbatim; keep teacher_id as text everywhere.
+- **9.6 No silent winner (A1 law):** where the data holds an ambiguity or a contradiction, no renderer, exporter or printed artefact may quietly resolve it by picking the first match. Show the conflict loudly and let the human decide. A tidy wrong handout is worse than an ugly correct one, because the owner acts on paper.
+- **9.7 Check at every gate, not the friendliest one (A1 law):** a rule enforced only where results are *generated* is not enforced. Anything that guards data integrity must be re-checked at the moment data is **written** and at the moment it is **promoted**, each time against freshly derived state — never against a snapshot taken earlier in the flow.
 
 ---
 
@@ -314,15 +418,54 @@ Downloads a copy of the app with the **current active semester embedded** (sched
 1. **Frozen fixture** `oracle_fixture.json`, extracted from the s23 workbook in Stage 0, embedded in the app forever. Contents: (a) a **self-contained mini-dataset** (every schedule row the fixture's searches touch — fixture must run with NO semester imported); (b) the golden test (§1.2) with full expected candidate tables (scores, warnings, give-back dates); (c) the s20 end-to-end scenario (0221 absent Mon 2026-06-08: p2 → 5 partners, p3 → 9 partners, block/unblock round-trip); (d) every §8.3 edge case with expected output; (e) ~10 random breadth searches across other teachers/days with expected candidate sets. Expected-difference annotations for D1/D2 baked in.
 2. **Hidden in-app self-test** ("ตรวจสอบระบบ" in ตั้งค่าขั้นสูง): re-runs the entire fixture any time, any machine, any year — independent of the loaded semester — and reports pass/fail per case in plain language. This is the "still healthy in 2580" guarantee.
 3. **Build-time gates:** every engine stage's pass gate is a side-by-side table, xlsx value vs JS value, matching to the integer (tied score groups compared as unordered sets per §3.5).
+4. **Ledger suite** (added by A1, §5.9.10): a second frozen set, independent of the oracle fixture, covering everything the fixture structurally cannot — the occupancy ledger, the three gates, the auditor, and the handout's collision rendering. It exists because the oracle fixture carries **no log rows** and calls `search()` with no `opts`, which is precisely why the double-booking defect shipped undetected. Lesson to keep: *the oracle only proves the parts the oracle exercises* — anything the fixture cannot reach needs its own frozen suite, or it has no coverage at all.
 
 ---
 
 ## 11. SCOPE LEDGER
 
 **IN (v1):** everything above.
+**IN (A1, post-v1 correctness fix — §5.9):** occupancy ledger · soft holds for เสนอ/รออนุมัติ · gates at commit and approve · whole-log auditor · **uncovered-slot report (added by owner decision 2026-08-18, §5.9.11)** · handout collision cell · ledger test suite. Closes the s25.1 "DEFERRED #3" backlog item, which this defect proved was not optional. **Ships via the public `index.html` (s27 → s28), which GitHub Pages serves at `zenithjuno.github.io/schedule-swap-pp/` — that page IS the owner's daily tool** (established 2026-08-18: they use the web link exclusively and have never opened a local copy). Nothing reaches them until it is committed and pushed. The `private/` data-loaded file gets the same patch as the colleague-handout artefact, but it is **not** anyone's working copy.
 **LATE stages (after v1 passes; same governance):** F3 Mode B (specify both slots, find who fits) · F4 full-day before/after grids for both teachers.
 **OUT (cancelled or rejected):** F5 co-teaching refinement · F7 3-way chains · F8 room-availability matrix · full phone-matcher port · server/backend of any kind · IE/legacy browsers · merging logs across users.
-**🔭 HORIZON (parked consciously):** F6 department emergency-fill mode (owner interested; v2 candidate) · พพ.1-1 exact wording variants (OWED: owner supplies a real filled memo, ideally multi-day, at Stage 19) · phone-source data cleaning (separate project) · docx export of the form (post-v1 candidate).
+**🔭 HORIZON (parked consciously):** **F13 off-roster substitute (ผู้สอนแทนนอกระบบ)** — owner-identified 2026-08-18 from a live need; **design and build together with F9**, they are two halves of one gap; key decisions already locked (§11.1) · **F10 per-teacher summary message** · **F11 per-class (รายห้อง) swap view** (sketches for all four in §11.1) · **F9 entry kind แลกคาบ/สอนแทน** (owner-identified 2026-08-17: giving a period away with no give-back is a real arrangement the app cannot express; an orthogonal `kind` field, NOT a fifth status — §5.9.12 keeps A1 compatible with it) · F6 department emergency-fill mode (owner interested; v2 candidate) · พพ.1-1 exact wording variants (OWED: owner supplies a real filled memo, ideally multi-day, at Stage 19) · phone-source data cleaning (separate project) · docx export of the form (post-v1 candidate).
+
+### 11.1 Parked feature sketches (F10, F11) — recorded 2026-08-17 so the thinking is not lost
+
+These are **not approved specs.** They are the owner's stated wants plus the design points that are not obvious, captured while they are fresh. Each still needs its own design pass before any build.
+
+**F10 — ข้อความสรุปการแลกคาบสำหรับครูรายคน (per-teacher summary message).** A short, copyable Thai message about one teacher's swaps, for sending to that teacher (Line/SMS) — the natural completion of the tap-to-call workflow added in s25.1, and the missing lightweight sibling of the printed ตารางสอน handout (§6.5), which is a whole grid when what a colleague usually needs is two sentences.
+- **Write it from the recipient's point of view, not the owner's.** The Log is Me-centric ("ครูคู่สลับคือ…"); a message to ครูเบญญาภา must read as *her* obligations — what she teaches instead, when, which room, whose class — or she has to mentally invert every line. This inversion is the whole substance of the feature; everything else is string assembly.
+- **Self-contained.** BE dates, day name, period, subject, group, room, and the counterpart's name in every line. A message that says "คาบ 1 วันพุธ" and assumes shared context will be read three weeks later out of context.
+- **Say what to DO,** not what the database holds: "วันพุธ 26 ส.ค. 2569 คาบ 1 อาจารย์สอน ค30227 ม.4/7 ห้อง 328 แทน ครูชัชพงษ์" beats any table rendering.
+- Reuse the s25.1 clipboard machinery (`ClipboardItem` + `execCommand` fallback) — plain text flavour is enough here; no HTML table.
+- Open question for the design pass (**OWED: owner's answer**): is the unit *one partner teacher* (message per colleague, the likely reading) or *one leave event* (one message covering all of that day's arrangements)? These produce different groupings and different wording.
+- **Depends on A1.** A summary message leaves the app and lands in another person's phone. Generating one from a log that still permits double-booking would broadcast a wrong promise to a third party and make the error much more expensive to retract than a wrong line on the owner's own screen. Build after §5.9 ships, not before.
+
+**F11 — รายละเอียดรายห้อง (per-class swap view).** For a chosen student group (ม.4/2, …), what actually changes for that class: which dates and periods have a different teacher/subject than the printed timetable, and what it was swapped with.
+- **This is the one stakeholder the app has never modelled.** Everything today is teacher-keyed — dashboard, Log, handout, form. The class is the party that experiences every swap and has no view of its own; the homeroom teacher and หัวหน้าห้อง have no artefact to hold.
+- **The data is already there and needs no new storage.** Both ends of a swap are the same group G by construction (§3.1), and `group_give` is stored on every LogEntry (§5.2), so F11 is a **pivot of the existing log by group** — a presentation feature, not a model change.
+- **It is not a new integrity dimension, and must not be sold as one.** As long as A1's teacher-level invariant holds (§5.9.3), a class can never end up with two teachers in one period; that is exactly why §5.9.11 refuses to add group to the claim key. F11's value is *pedagogical visibility*, not correctness: it answers "ม.4/2 lost maths three times this month and got two of them back in one week" — a question the owner currently cannot ask at all.
+- Natural surfaces: a group picker beside the teacher picker on ตารางสอน (§6.5), reusing the same dated-grid renderer with the class as subject; or a compact per-class change list. Decide in the design pass.
+- **Also depends on A1**, for the same reason as the handout (§5.9.9): a per-class view built on a colliding log would show one tidy wrong class and hide the other.
+
+**F12 — รายงานคาบที่ลาแล้วยังไม่มีคนแทน (uncovered-slot report).** Surfaced by the Stage 28a audit of the owner's real backup on 2026-08-18, which found พฤหัสฯ 20 ส.ค. คาบ 4 (ค31103 ม.4/2 ห้อง 323) with **two** cancelled attempts and no replacement — two days before the absence. Same ledger, same banner surface, near-zero cost: group log rows by `(me_id, date_absent, per_give)` and report any group whose rows are **all** `ยกเลิก`. Distinguish it from "never attempted" (no rows at all), which usually just means the owner was not absent that period — the signal that matters is *tried and dropped*. **DECIDED 2026-08-18: owner ruled this must be emphasised → promoted into A1, built at Stage 28e.** Binding spec now lives in §5.9.8; this entry is kept as the origin record.
+
+**F13 — ผู้สอนแทนนอกระบบ (off-roster substitute).** Owner-identified 2026-08-18 from a live need: the substitute found for that uncovered period is a **นักศึกษาฝึกสอน**, who exists in no imported schedule and has no `teacher_id`. The owner's ask, verbatim in intent: leave the partner blank and let me type the name myself.
+
+- **This is not a text-field request; it is two model gaps at once.** A student teacher has no class of their own to hand back, so the arrangement is a **สอนแทน**, not a **แลกคาบ** — that is F9. And they are not in the roster, so the partner cannot be a `teacher_id` — that is F13. Neither half works alone: F9 without F13 still demands a roster partner; F13 without F9 still demands a give-back that does not exist. **Design them in one pass, build them as one amendment.**
+- **Consequence for the ledger (§5.9.2), stated plainly:** an off-roster สอนแทน entry emits exactly **one** claim — #3 `RELEASE (me_id | date_absent | per_give)`. Claim #1 cannot exist (no `teacher_id` to key it on) and #2/#4 do not exist (no give-back end). So the per-entry claim count across the three arrangement types is **4 / 2 / 1**. This is the second, sharper vindication of §5.9.12: an emitter hard-coded to four would need surgery twice.
+- **Be honest about what cannot be checked.** With no timetable for that person, the app **cannot** verify the substitute is free, is not double-booked, or even exists. Say so in the UI — a muted line such as `ผู้สอนแทนนอกระบบ — โปรแกรมตรวจเวลาซ้อนให้ไม่ได้` — rather than rendering an unverified arrangement identically to a verified one. Silence here would repeat the exact mistake §9.6 was written to outlaw.
+- **Identity — DECIDED 2026-08-18: free text, nothing else.** Owner: *"ไม่ต้องเก็บข้อมูลละเอียด พิมพ์ชื่ออิสระเลย"*. No roster, no ids, no phone, no CRUD page. Autocomplete over previously-typed names is permitted as a **convenience only** and must never become a stored roster. The name is a label on the entry, not an identity — so no claim is ever keyed on it, and the app must not pretend it can track that person across entries.
+- **There is no search to run.** The whole flow today is search → pick candidate → commit; here there is no candidate set, no score, no warnings. The entry needs a **create path that bypasses search** — the natural home is the หน้าหลัก dashboard row for the period that needs cover, beside its existing ค้นหา button (§6.1). `score` stays null; the Log already renders `—` for that.
+- **ฟอร์ม พพ.1-1 — DECIDED 2026-08-18: no new document, no new variant.** Owner: *"จะใส่ชื่อใครก็ได้ จุดสำคัญคือคาบที่ว่างไปมีครูมาสอนแทน"*. The memo's purpose is to record that the vacated period is covered, so an F13 row prints with the typed name in the partner/ตัวบรรจง position and the give-back columns blank. Signature stays blank as always. *(Confirm against a real filled memo when one is supplied — the §11 OWED item — but do not design a second form on speculation.)*
+- **Downstream, no decision needed:** ตารางสอน (§6.5) gains a note on the owner's own grid but can generate **no mirror handout**, because the substitute has no timetable · F10 can produce no message without a typed phone · the four canonical statuses (§5.2) apply unchanged.
+- **Does not change A1's scope.** A1 ships as specified; F9+F13 land afterwards as their own amendment. The only obligation A1 already carries is §5.9.12's per-entry claim emitter — which this request now makes non-negotiable rather than merely prudent.
+
+*Design signal recorded 2026-08-18: the owner's fallback for anything the app cannot yet express is to copy the timetable into Word and finish it by hand — that is how พฤหัสฯ 20 ส.ค. was actually handled. So every output feature (F10, F11, and the F13 form row) must be **paste-into-Word clean**, not merely print-clean; the s25.1 `ClipboardItem` HTML-table path already proved the pattern. The owner's manual Word step is not a workaround to design away — it is the escape hatch that makes the app safe to trust, and it should stay easy.*
+
+*Shared note for F10 and F11: both are read-only derivations of the Log. Neither adds a field, changes `schemaVersion`, or touches the engine — which is why both are cheap once A1 has made the Log trustworthy, and why neither should be started until it has.*
+
 
 ---
 
@@ -335,5 +478,8 @@ Downloads a copy of the app with the **current active semester embedded** (sched
 **UI:** Q4-1 seven tabs + semester strip · Q4-2 click-to-expand inline detail w/ บันทึกลง Log · Q4-3 dashboard per-row ค้นหา buttons · Q4-4 delete only while เสนอ, else ยกเลิก-only · Q4-5 form unit = leave event (date range), pre-checked rows absorb hand-picking, adaptive single/multi-date wording, dynamic paginated table (5-row limit was a template accident) · Q4-6 handout = one dated grid per auto-detected affected week, highlight + footnote · Q4-7 TH Sarabun New embedded · Q4-8 BE everywhere.
 **Governance/ops:** Q5-1 phones in detail panel + Log only, not on the form · Q5-2 Chrome/Edge target, Firefox best-effort · Q5-3 HTML naming convention + fresh cumulative changelog · Q5-4 blueprint sacred again, slug swap-html · Q5-5 backup trio (end-of-semester loud + passive header line + 30-day-AND-new-approvals soft nag) · Q5-6 Stage 0 = fixture extraction from s23.
 **Closing:** L-1 no clear/reset exists; Log append-only; new session = new absence date; date-aware mechanics prevent pollution · L-2 Log default filter (active+upcoming / show-all) + display-only เสร็จสิ้น ✓ tag; canonical 4 statuses unchanged.
+**Amendment A1 (2026-08-17, §5.9):** Q6-1 every non-ยกเลิก status holds its slots; เสนอ/รออนุมัติ block searches exactly as อนุมัติแล้ว does (owner's call — one substitute per slot is already the rule, and ยกเลิก is the one-click escape) · Q6-2 occupancy is a derived ledger recomputed on every use, never stored; LogEntry shape and schemaVersion untouched so real backups stay loadable · Q6-3 correctness is order-independent: the invariant is "≤1 OCCUPY per (teacher, date, period)", createdAt only *describes* a conflict and never resolves one · Q6-4 checked at three gates (search / commit / approve) because each defeats a different failure — blind suggestion, stale results page, hand-edited or restored log · Q6-5 a whole-log auditor is mandatory, not optional: gates protect the future, only the auditor surfaces collisions already in the live log · Q6-6 the app never auto-resolves a collision; a human chooses which row to ยกเลิก · Q6-7 no group/room dimension in the claim key (both ends are the same group by construction) · Q6-8 the occupancy path gets its own frozen test suite; the frozen oracle stays frozen and untouched · **Q6-10** uncovered-slot report promoted INTO A1 (owner, 2026-08-18: "คาบที่ยังไม่มีครูสอนแทนก็ต้องเน้น") — the one deliberate widening of the §5.9.11 fence, signed and dated · **Q6-11** off-roster substitute identity = free text only, no roster, no ids, no phone; autocomplete is convenience, never storage; no claim is ever keyed on a typed name · **Q6-12** พพ.1-1 takes any name — no second form, no new variant; give-back columns blank on a สอนแทน row · Q6-9 แลกคาบ vs สอนแทน is a `kind` field orthogonal to status, parked as F9; A1's only duty is to emit claims per-entry rather than always-four so F9 drops in without touching the invariant, the gates or the auditor (§5.9.12).
 
 *Hard-won POC lessons inherited as law: walking = independent two-ends sum, no same-day dedup · lunch is a property of the student group · logs store static display values · test through the user's real workflow, not simulated values · data is the source of truth over spec counts (9 ซ่อมเสริม rows).*
+
+*Hard-won v1 lessons inherited as law (A1, 2026-08-17): a reservation that only exists once approved is not a reservation · a check that runs only at generation time is not enforced (§9.7) · never let a renderer resolve an ambiguity the data does not resolve (§9.6) · the oracle only proves what the oracle exercises — an untested path is an untested path however green the suite is · a deferral logged with a reason must be re-examined against that reason, not inherited as settled (the s25.1 "would break the frozen oracle" reason was never true).*
