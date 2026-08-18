@@ -4127,7 +4127,14 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     var ids={}; Array.prototype.forEach.call(document.querySelectorAll('.fsw-chk'), function(c){ ids[c.getAttribute('data-id')]=c.checked; });
     return formSwaps().filter(function(e){ return ids[e.id]!==false; });
   }
-  function meName(){
+  /* Renamed from meName() during A1/28e. It was a SECOND top-level declaration
+     of that name in this scope, so it hoisted over the dashboard's meName()
+     (~line 2996) and answered every caller — including the one that stamps
+     me_name onto a Log row. Searching on behalf of another teacher therefore
+     showed, and stored, the OWNER's name against that teacher's id. This one
+     is the form's own preference (first row of the form's range); it must not
+     be reachable from the dashboard or search path. */
+  function formMeName(){
     var rows=formSwaps(); if(rows.length) return rows[0].me_name||rows[0].me_id;
     return (DASH&&DASH.meId)? (function(){var L=teacherList();for(var i=0;i<L.length;i++)if(L[i].id===DASH.meId)return L[i].name;return DASH.meId;})() : '';
   }
@@ -4198,8 +4205,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     document.getElementById('hdrDay').value=t.d;
     document.getElementById('hdrMon').value=TH_MON[t.m-1];
     document.getElementById('hdrYear').value=t.y;
-    document.getElementById('reqName').value=meName();
-    document.getElementById('signName').value=meName();
+    document.getElementById('reqName').value=formMeName();
+    document.getElementById('signName').value=formMeName();
     wireForm();
   }
 
@@ -4256,7 +4263,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     if(nb&&hb){ nb.innerHTML = rows.length? '&#9744;':'&#9746;'; hb.innerHTML = rows.length? '&#9746;':'&#9744;'; }
     // dated PDF filename via document.title:  ใบแลกคาบ_<firstname>_ลา<dates>
     var fn='ใบแลกคาบ';
-    var nm=stripTitle((document.getElementById('reqName')||{}).value||meName());
+    var nm=stripTitle((document.getElementById('reqName')||{}).value||formMeName());
     if(nm) fn+='_'+nm;
     if(d1){ fn+= (d1===d2) ? ('_ลา'+fnTag(d1))
             : (_bd(d1).m===_bd(d2).m ? ('_ลา'+_bd(d1).d+'-'+fnTag(d2)) : ('_ลา'+fnTag(d1)+'-'+fnTag(d2))); }
