@@ -1729,20 +1729,17 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   window.__SWAP_DATES__ = { DAYN:THAI_DAYN, isoWeekday:isoWeekday, weekdayThai:weekdayThai,
     defaultOffsetPlain:defaultOffsetPlain, givebackDateISO:givebackDateISO, formatBE:formatBE };
 
-  // D1 date-aware entries from approved log rows.
-  // Log entry shape: {status, me_id, day_give, per_give, date_absent, y_id, day_back, per_back, date_back}
-  Engine.prototype._occupied = function(){
-    var occ=[], log=this.log||[];
-    for(var i=0;i<log.length;i++){
-      var e=log[i];
-      if(e.status!=='อนุมัติแล้ว') continue;
-      occ.push({tid:e.y_id,  date:e.date_back,   per:String(e.per_back), kind:'consumed'});   // Y give-back
-      occ.push({tid:e.me_id, date:e.date_back,   per:String(e.per_back), kind:'memakeup'});    // Me make-up
-      occ.push({tid:e.y_id,  date:e.date_absent, per:String(e.per_give), kind:'ycover',        // Y covers Me
-                coversMe:e.me_id, coversDay:e.day_give, coversPer:String(e.per_give)});
-    }
-    return occ;
-  };
+  /* A1 / STAGE 28c — the give-up + give-back date checks now read the ledger
+     (§5.9.5) instead of the old _occupied() list. Three defects are closed:
+       1. _occupied() skipped every row that was not อนุมัติแล้ว, so a เสนอ or
+          รออนุมัติ row reserved nothing — that is how three swaps landed on
+          พุธ คาบ 1 / 26 ส.ค. 2569.
+       2. the give-up end matched only the 'ycover' kind, so a partner who
+          already owed a make-up of their own at that slot slipped through.
+       3. nothing modelled "this class period has already been given away",
+          so the same period could be handed to two different swaps.
+     Every non-ยกเลิก status now holds (§5.9.4); hard vs soft only changes the
+     label the week picker shows. ยกเลิก frees the slot instantly, as before. */
 
   // D1/D2 post-pass: per candidate compute available week-offsets, the smart default
   // offset, give-back date (ISO + BE), and the date-dependent warnings. Drop a
@@ -1751,28 +1748,30 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     var dateAbsent=opts.dateAbsent;
     var preference=opts.preference || this.settings.GIVEBACK_PREFERENCE || 'อนาคต';
     var dateProposed=opts.dateProposed || null;
-    var occ=this._occupied(); per1=String(per1);
+    per1=String(per1);
+    var L=buildLedger(this.log||[]);
+    // Claims belonging to THIS give-up slot are ignored: the owner is looking for
+    // a replacement for it, and the s25.1 save guard governs replacing it.
+    var selfSlot = me+'|'+ledDate(dateAbsent)+'|'+per1;
     var out=[];
     for(var i=0;i<passing.length;i++){
       var c=passing[i];
-      // give-up side: Y already covering someone ELSE at the absence date / give-up period
-      var giveUpBlocked=false, j;
-      for(j=0;j<occ.length;j++){
-        var o=occ[j];
-        if(o.kind==='ycover' && o.tid===c.Yid && o.date===dateAbsent && o.per===per1
-           && !(o.coversMe===me && o.coversDay===day1 && o.coversPer===per1)){ giveUpBlocked=true; break; }
-      }
+      // Give-up end: Y must be free to stand in Me's room. Only BUSY blocks —
+      // a HANDOVER on Y means Y gave their own class away and is FREE then.
+      // Checking BUSY (not just the old 'ycover') closes the asymmetry: a
+      // partner who owes a make-up of their own at that slot is committed too.
+      var gu = L.busyAt(c.Yid, dateAbsent, per1, selfSlot);
+      var giveUpBlocked = gu.length>0;
+      var giveUpHold = holdStrength(gu);
+
       var offsets={}, available=[], off;
       for(off=-3; off<=3; off++){
-        var gb=givebackDateISO(c.day2, dateAbsent, off);
-        var blocked=giveUpBlocked;
-        if(!blocked){
-          for(var k=0;k<occ.length;k++){
-            var oo=occ[k];
-            if(oo.date===gb && oo.per===String(c.per2) && (oo.tid===c.Yid || oo.tid===me)){ blocked=true; break; }
-          }
-        }
-        offsets[off]={giveback:gb, blocked:blocked, clash:(gb===dateAbsent)};
+        var gb=givebackDateISO(c.day2, dateAbsent, off), p2=String(c.per2);
+        var hit = giveUpBlocked ? gu : L.at(c.Yid, gb, p2, selfSlot).concat(L.at(me, gb, p2, selfSlot));
+        var blocked = hit.length>0;
+        offsets[off]={giveback:gb, blocked:blocked, clash:(gb===dateAbsent),
+                      hold:(blocked?holdStrength(hit):null),
+                      heldBy:(blocked?hit[0].entry:null)};
         if(!blocked) available.push(off);
       }
       if(available.length===0) continue;     // D1: drop only when every offset is blocked
@@ -1792,12 +1791,13 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 
       var gbISO=offsets[chosen].giveback;
       c.default_offset=chosen; c.giveback_date=gbISO; c.giveback_be=formatBE(gbISO,false);
-      c.available_offsets=available; c.offset_info=offsets;
+      c.available_offsets=available; c.offset_info=offsets; c.giveup_hold=giveUpHold;
       c.warn_retro = (dateProposed && gbISO<dateProposed) ? 1 : 0;
       c.warn_absence_clash = (gbISO===dateAbsent) ? 1 : 0;
-      var selfcol=0, s2;
-      for(s2=0;s2<occ.length;s2++){ var so=occ[s2]; if(so.tid===me && so.date===gbISO && so.per===String(c.per2)){ selfcol=1; break; } }
-      c.warn_self_collision=selfcol;
+      // Me already committed at the chosen give-back slot. With A1 this can only
+      // be non-zero when every offset is held and the fallback picked a held one,
+      // so it is a genuine last-line warning rather than the dead code it was.
+      c.warn_self_collision = L.at(me, gbISO, String(c.per2), selfSlot).length ? 1 : 0;
       out.push(c);
     }
     return out;
@@ -1824,74 +1824,92 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   function ledDate(v){ return String(v==null?'':v).slice(0,10); }
   function ledKey(tid, dateISO, per){ return tid+'|'+ledDate(dateISO)+'|'+String(per); }
 
-  // the four possible claims of one log entry; ยกเลิก emits nothing at all
+  /* Two claim kinds, and the difference is the whole point:
+       BUSY     — this teacher is committed to stand in a room and teach then.
+       HANDOVER — this teacher's OWN class in that slot has been given away on
+                  that date, so it can never be given away a second time.
+     They are independent: a teacher who handed their class over is FREE, and may
+     legitimately be BUSY covering someone else in the very same slot. Modelling
+     only BUSY (as stage 28b did) misses the double-give-away — the real log had
+     ครู 0603 handing the same 26 ส.ค. คาบ 1 period to two different swaps. */
   function claimsOfEntry(e){
     var out=[];
     if(!e || e.status==='ยกเลิก') return out;
     var da=ledDate(e.date_absent), pg=String(e.per_give);
     var db=ledDate(e.date_back),   pb=String(e.per_back);
 
-    // give-up end — present on every arrangement type
-    if(e.me_id && da){
-      out.push({kind:'RELEASE', role:'meaway',  tid:e.me_id, date:da, per:pg, entry:e});
-    }
-    if(e.y_id && da){                       // F13: no y_id -> this claim cannot exist
-      out.push({kind:'OCCUPY',  role:'ycover',  tid:e.y_id,  date:da, per:pg, entry:e});
-    }
-    // give-back end — F9 สอนแทน has none, so both of these are absent
+    // give-up end — every arrangement type has one
+    if(e.me_id && da) out.push({kind:'HANDOVER', role:'megaveup', tid:e.me_id, date:da, per:pg, entry:e});
+    if(e.y_id  && da) out.push({kind:'BUSY',     role:'ycover',   tid:e.y_id,  date:da, per:pg, entry:e});
+
+    // give-back end — a สอนแทน entry (F9/F13) has none, so these do not exist
     if(db && e.per_back!=null && String(e.per_back)!==''){
-      if(e.me_id) out.push({kind:'OCCUPY',  role:'memakeup', tid:e.me_id, date:db, per:pb, entry:e});
-      if(e.y_id)  out.push({kind:'RELEASE', role:'ygave',    tid:e.y_id,  date:db, per:pb, entry:e});
+      if(e.me_id) out.push({kind:'BUSY',     role:'memakeup', tid:e.me_id, date:db, per:pb, entry:e});
+      if(e.y_id)  out.push({kind:'HANDOVER', role:'ygaveback', tid:e.y_id,  date:db, per:pb, entry:e});
     }
     return out;
   }
 
-  // fold a log into the ledger. Derived, never stored — recomputed at every
-  // point of use (§5.9.1), so there is no cache and no staleness bug class.
+  // Derived, never stored — rebuilt at every point of use (§5.9.1).
   function buildLedger(log){
-    var occupy=Object.create(null), release=Object.create(null), claims=[];
+    var busy=Object.create(null), handover=Object.create(null), claims=[];
     log = log || [];
     for(var i=0;i<log.length;i++){
       var cs=claimsOfEntry(log[i]);
       for(var j=0;j<cs.length;j++){
         var c=cs[j], k=ledKey(c.tid, c.date, c.per);
         c.key=k; claims.push(c);
-        var map = (c.kind==='OCCUPY') ? occupy : release;
+        var map = (c.kind==='BUSY') ? busy : handover;
         if(!map[k]) map[k]=[];
         map[k].push(c);
       }
     }
-    return {
-      occupy:occupy, release:release, claims:claims,
-      // every OCCUPY on a slot, optionally ignoring one entry (used by G3)
-      occupiedBy:function(tid, dateISO, per, exceptId){
-        var a=occupy[ledKey(tid,dateISO,per)]||[], out=[];
-        for(var n=0;n<a.length;n++) if(!exceptId || a[n].entry.id!==exceptId) out.push(a[n]);
-        return out;
-      },
-      releasedBy:function(tid, dateISO, per){
-        return release[ledKey(tid,dateISO,per)]||[];
+    function pick(map, tid, dateISO, per, exceptSlot){
+      var a=map[ledKey(tid,dateISO,per)]||[], out=[];
+      for(var n=0;n<a.length;n++){
+        var e=a[n].entry;
+        if(exceptSlot && (e.me_id+'|'+ledDate(e.date_absent)+'|'+String(e.per_give))===exceptSlot) continue;
+        out.push(a[n]);
       }
+      return out;
+    }
+    return {
+      busy:busy, handover:handover, claims:claims,
+      busyAt:    function(t,d,p,x){ return pick(busy,     t,d,p,x); },
+      handoverAt:function(t,d,p,x){ return pick(handover, t,d,p,x); },
+      at:        function(t,d,p,x){ return pick(busy,t,d,p,x).concat(pick(handover,t,d,p,x)); }
     };
   }
 
-  // §5.9.8 report 1 — every key holding two or more OCCUPY claims.
+  // 'hard' if any claim comes from an อนุมัติแล้ว row, else 'soft', else null.
+  // Both block (§5.9.4) — the strength only changes what the label says.
+  function holdStrength(claims){
+    var s=null;
+    for(var i=0;i<claims.length;i++){
+      if(claims[i].entry.status==='อนุมัติแล้ว') return 'hard';
+      s='soft';
+    }
+    return s;
+  }
+
+  // §5.9.8 report 1 — any key holding two claims OF THE SAME KIND.
   function ledgerCollisions(log){
     var L=buildLedger(log), out=[];
-    for(var k in L.occupy){
-      var a=L.occupy[k];
-      if(a.length<2) continue;
-      var p=k.split('|');
-      out.push({key:k, teacher_id:p[0], date:p[1], period:p[2], claims:a,
-                entries:a.map(function(c){ return c.entry; })});
+    function scan(map, kind){
+      for(var k in map){
+        var a=map[k]; if(a.length<2) continue;
+        var p=k.split('|');
+        out.push({key:k, kind:kind, teacher_id:p[0], date:p[1], period:p[2], claims:a,
+                  entries:a.map(function(c){ return c.entry; })});
+      }
     }
-    out.sort(function(a,b){ return a.date<b.date?-1:(a.date>b.date?1:(+a.period)-(+b.period)); });
+    scan(L.busy,'BUSY'); scan(L.handover,'HANDOVER');
+    out.sort(function(a,b){ return a.date<b.date?-1:(a.date>b.date?1:((+a.period)-(+b.period)||(a.kind<b.kind?-1:1))); });
     return out;
   }
 
-  // §5.9.8 report 2 — a give-up slot whose every log row is ยกเลิก: cover was
-  // arranged and then dropped. A slot with NO rows is NOT reported (it normally
-  // just means the teacher was not absent that period).
+  // §5.9.8 report 2 — a give-up slot whose every row is ยกเลิก: cover was
+  // arranged and then dropped. A slot with NO rows is NOT reported.
   function ledgerUncovered(log){
     var by=Object.create(null), order=[];
     log = log || [];
@@ -1916,16 +1934,14 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     return out;
   }
 
-  // one call for both reports
   function auditLedger(log){
     var col=ledgerCollisions(log), unc=ledgerUncovered(log);
     return {collisions:col, uncovered:unc, ok:(col.length===0 && unc.length===0)};
   }
 
   window.__SWAP_LEDGER__ = {
-    key:ledKey, claimsOfEntry:claimsOfEntry, build:buildLedger,
+    key:ledKey, claimsOfEntry:claimsOfEntry, build:buildLedger, holdStrength:holdStrength,
     collisions:ledgerCollisions, uncovered:ledgerUncovered, audit:auditLedger,
-    // convenience for the console: audit the active semester's real log
     auditActive:function(){
       var sem = (typeof STORE!=='undefined' && STORE.activeSemester) ? STORE.activeSemester() : null;
       return auditLedger((sem && sem.log) || []);
@@ -3404,7 +3420,9 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       if(!info) continue;
       var sel=(off===chosenOffset(c))?' selected':'';
       var dis=info.blocked?' disabled':'';
-      var mark=info.blocked?' (ติดคิวแล้ว)':(info.clash?' (ตรงวันลา!)':'');
+      var mark=info.blocked
+        ? (info.hold==='soft' ? ' (จองไว้แล้ว — ยังไม่อนุมัติ)' : ' (ติดคิวแล้ว)')
+        : (info.clash?' (ตรงวันลา!)':'');
       opts+='<option value="'+off+'"'+sel+dis+'>'+esc(weekLabel(off)+mark)+'</option>';
     }
     return '<select class="wk-pick" data-idx="'+c.idx+'">'+opts+'</select>';

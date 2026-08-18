@@ -267,20 +267,21 @@ LATE (post-v1, each needs its own explicit approval):
 
 **Sequencing principle:** diagnose before changing (28b is read-only), then close the future (28c–28d), then make the present visible (28e), then prove it (28f). Each step is independently revertible; no step depends on a later one being finished.
 
-## Stage 28a — Safety net + regression baseline
+## Stage 28a — Safety net + regression baseline  ·  **DONE 2026-08-18** (restore drill still owed)
 🔨 No code. Export a full backup JSON from the owner's live working file (§7.2) and store it outside the app; copy both HTML editions to timestamped baselines; record the current pass numbers (self-test 21/21, golden top-5 104/103/89/87/74, rank-1 = 1202 พฤหัสฯ p6) as the figures every later step must reproduce **unchanged**.
 🧪 Restore the backup into a scratch browser profile and confirm the log comes back intact, including the three conflicting August rows — a backup that has not been restored once is not a backup.
 👁️ Your own log, reappearing in a fresh profile, with the row count you expect.
 ✅ A restorable backup exists and has been proven by restoring it; baseline numbers written down. **No code is touched before this gate passes.**
 
-## Stage 28b — Ledger + auditor (READ-ONLY)
+## Stage 28b — Ledger + auditor (READ-ONLY)  ·  **DONE 2026-08-18**
 🔨 `buildLedger(log)` and `auditLedger(log)` per §5.9.1–5.9.3: claims keyed `teacher_id | ISO date | period`, emitted **per entry** (never hard-coded to four — §5.9.12, so F9 drops in later untouched), `ยกเลิก` emits nothing. Exposed on `window.__SWAP_LEDGER__` for testing. **Nothing calls them yet. No existing behaviour changes.**
 🧪 Unit cases on a synthetic log (clean log → zero conflicts; the incident's three rows → exactly one conflicting key naming all three entries; cancelling one → conflict persists with two; cancelling two → clean). Then run the auditor over the owner's **real** log.
 👁️ A plain-Thai report of what the auditor finds in your actual data — the พุธ p1 / 26 ส.ค. collision named explicitly, plus anything else we did not know about. This is the step that tells us the true size of the problem.
 ✅ Auditor output matches hand-verification on the real log; self-test still 21/21 and golden numbers unchanged (they must be — nothing is wired in yet, and that is the point of checking).
 
-## Stage 28c — Gate G1 (search)
-🔨 `_applyDates` reads the ledger instead of `_occupied`: every non-`ยกเลิก` status holds (§5.9.4), give-up end checks **all** claim kinds not just `ycover` (closing the asymmetry at [index.html:1748]), week-picker labels `(ติดคิวแล้ว)` for hard holds and `(จองไว้แล้ว — ยังไม่อนุมัติ)` for soft. Drop-only-when-all-offsets-blocked is unchanged (§5.8 rule 1).
+## Stage 28c — Gate G1 (search)  ·  **DONE 2026-08-18**
+🔨 `_applyDates` reads the ledger; `_occupied()` deleted. Every non-`ยกเลิก` status holds (§5.9.4); give-up end blocks on `BUSY` (closing the `ycover`-only asymmetry); give-back end blocks on any claim on either teacher; week-picker labels hard vs soft. Drop-only-when-all-offsets-blocked unchanged.
+**Model correction made here:** the 28b ledger had a single checked claim kind and missed *"this class period is already promised"*. Split into `BUSY` / `HANDOVER` (§5.9.2) — on the owner's real pre-cleanup log the corrected model finds **8** collisions where the old one found 4. `warn_self_collision`, dead code since v1, now computes from the ledger.
 🧪 Replay the incident: with the two พฤหัสฯ rows sitting at `เสนอ`, search ศุกร์ p6 → 26 ส.ค. is greyed and labelled as a soft hold, and the default lands elsewhere. `ยกเลิก` one → that week frees immediately. New case: partner Y already owes a make-up at the absence date+period → that candidate's give-up end blocks.
 👁️ The search that caused the incident, re-run on your real data, now refusing to offer the slot — and the week going green again the moment you cancel the row holding it.
 ✅ Incident unreproducible via search; round-trip (hold → free → hold) exact; self-test 21/21 and golden numbers **byte-identical** to the 28a baseline.
