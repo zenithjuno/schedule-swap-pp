@@ -301,6 +301,11 @@ Reported by the owner while exercising the 28d gates: selecting a different teac
 👁️ **The handout for พุธ 26 ส.ค., printed** — before this stage one tidy wrong class, after it the collision. Then the หน้าหลัก strip telling you about an uncovered period **before** you find out two days ahead by accident. Those two are the gate.
 ✅ No conflict can reach paper disguised as an ordinary swap; no dropped arrangement stays invisible while it is still fixable; both banners clear themselves when the data is fixed.
 
+### A1 follow-ups forced by live use (2026-08-18) — **DONE**
+Both came from one real swap request and both are recorded in the BLUEPRINT, not just here.
+- **Give-back window ±3 → ±6** (§5.9.4b). Four periods repaid one per week needed +4; the arrangement could not be logged at all, which would have driven it onto paper and out of the ledger's sight.
+- **"ยกคาบให้เลย" — F9-lite** (§11.1 F9). A period taken outright had to be logged as a swap with an invented give-back. A1 then enforced the invention: it held a slot the owner was free in and printed a phantom class on the handout. The ledger needed no change — the per-entry claim emitter mandated at 28b already handled it — only a way to create such an entry.
+
 ## Stage 28f — Ledger suite + both editions + changelog
 🔨 The ledger suite (§5.9.10) as a second frozen set, independent of the oracle fixture: incident replay, soft-hold round-trip, asymmetric give-up hole, stale-page defeat, auditor on the corrupt real log, uncovered-slot report (all-cancelled group reported, never-attempted group silent, past vs future routing), handout collision rendering, s25.1 FIX #2 non-regression. Apply the identical patch to the private data-loaded edition. Write `CHANGELOG.txt` entry s28 in the house format (WHY / CHANGE n / TESTING), recording A1 and its BLUEPRINT origin.
 🧪 Ledger suite green on clean code; sabotage each gate in turn → the matching cases go red with readable diffs → revert. Full existing harness re-run on **both** editions. Private edition: real data still loads, log intact, semester switcher and self-export unaffected.

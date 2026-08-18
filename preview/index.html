@@ -604,6 +604,12 @@ table.logtab td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-ali
 .backup-stale{color:var(--amber);font-weight:600}
 .btn-archive-export{padding:6px 14px;border:0;border-radius:8px;background:var(--amber);color:#fff;cursor:pointer;font-family:inherit}
 
+/* ---- A1 follow-up: ยกคาบให้เลย (สอนแทน) ---- */
+.d-giveaway{display:block;margin:10px 0 2px;padding:9px 11px;background:#fff7e8;border:1px solid #e6cf9d;border-radius:8px;font-size:14px;cursor:pointer}
+.d-giveaway input{margin-right:6px}
+.d-giveaway-note{display:block;margin-top:3px;font-size:12.5px;opacity:.8;font-weight:400}
+.l-giveaway{display:inline-block;background:#eef3ee;border:1px solid #c8d6c8;border-radius:5px;padding:1px 7px;font-size:12.5px;color:#3c5a3c;white-space:nowrap}
+
 /* ---- A1 / stage 28e: audit surfaces ---- */
 .aud{border-radius:10px;padding:12px 14px;margin:0 0 14px;font-size:14px;line-height:1.55}
 .aud-bad{background:#fdecea;border:1px solid #e6a29b;color:#8a1c12}
@@ -1719,6 +1725,13 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
      preference defaults). D2 smart-week default + D1 date-aware block-list are
      applied as a post-pass over the scored candidates inside search(opts).
      ==================================================================== */
+  /* A1 follow-up 2026-08-18: the give-back window was hard-coded to ±3 weeks.
+     A real request — 4 periods of leave repaid one period per week, because the
+     partner had exactly ONE matching free slot — needed +4 and could not be
+     recorded at all. Widened to ±6. Oracle-neutral: the embedded self-test runs
+     search() with no dates, and defaultOffsetPlain still starts inside ±1, so
+     every fixture expectation (default_offset, giveback_date) is unchanged. */
+  var WEEK_SPAN = 6;
   var THAI_DAYS = ['จันทร์','อังคาร','พุธ','พฤหัสฯ','ศุกร์'];
   var THAI_DAYN = {'จันทร์':1,'อังคาร':2,'พุธ':3,'พฤหัสฯ':4,'ศุกร์':5};
   var THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
@@ -1782,7 +1795,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       var giveUpHold = holdStrength(gu);
 
       var offsets={}, available=[], off;
-      for(off=-3; off<=3; off++){
+      for(off=-WEEK_SPAN; off<=WEEK_SPAN; off++){
         var gb=givebackDateISO(c.day2, dateAbsent, off), p2=String(c.per2);
         var hit = giveUpBlocked ? gu : L.at(c.Yid, gb, p2, selfSlot).concat(L.at(me, gb, p2, selfSlot));
         var blocked = hit.length>0;
@@ -1797,11 +1810,11 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       var dir = (preference==='อดีต') ? -1 : 1;
       var start = defaultOffsetPlain(c.day2, dateAbsent, preference);
       var cand=[], st;
-      for(st=0; st<=6; st++) cand.push(start+dir*st);
-      for(st=1; st<=6; st++) cand.push(start-dir*st);
-      for(st=-3; st<=3; st++) cand.push(st);
+      for(st=0; st<=2*WEEK_SPAN; st++) cand.push(start+dir*st);
+      for(st=1; st<=2*WEEK_SPAN; st++) cand.push(start-dir*st);
+      for(st=-WEEK_SPAN; st<=WEEK_SPAN; st++) cand.push(st);
       var order=[], seen={}, ci;
-      for(ci=0;ci<cand.length;ci++){ var cv=cand[ci]; if(cv>=-3&&cv<=3&&!seen[cv]){ seen[cv]=1; order.push(cv); } }
+      for(ci=0;ci<cand.length;ci++){ var cv=cand[ci]; if(cv>=-WEEK_SPAN&&cv<=WEEK_SPAN&&!seen[cv]){ seen[cv]=1; order.push(cv); } }
       var chosen=null, oi;
       for(oi=0; oi<order.length; oi++){ var ov=order[oi]; if(!offsets[ov].blocked && !offsets[ov].clash){ chosen=ov; break; } }
       if(chosen===null) for(oi=0; oi<order.length; oi++){ var ov2=order[oi]; if(!offsets[ov2].blocked){ chosen=ov2; break; } }
@@ -3376,6 +3389,9 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         '<div><span class="d-lbl">audit_note</span><span class="d-val">'+esc(rawRow.audit_note||'—')+'</span></div></div>'+
       '</div>'+
       // save
+      '<label class="d-giveaway"><input type="checkbox" class="chk-giveaway" data-idx="'+c.idx+'"> '+
+        'ยกคาบให้เลย — ไม่รับคาบคืน (สอนแทน)'+
+        '<span class="d-giveaway-note">ใช้เมื่อครูคู่สลับรับคาบไปเฉย ๆ ไม่มีการสอนคืน — จะบันทึกโดยเว้นฝั่ง “คาบที่รับคืน” ว่างไว้ และไม่คิดคะแนน</span></label>'+
       '<div class="d-actions"><button class="btn btn-primary btn-savelog" data-idx="'+c.idx+'"'+(isReadOnlySemester()?' disabled':'')+'>บันทึกลง Log (สถานะ: เสนอ)</button>'+
         '<span class="save-msg '+(isReadOnlySemester()?'err':'')+'" id="saveMsg-'+c.idx+'">'+(isReadOnlySemester()?esc(readOnlyText()):'')+'</span></div>'+
     '</div>';
@@ -3391,7 +3407,15 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     if(S){ for(var __di=0; __di<sem.log.length; __di++){ var __ex=sem.log[__di];
       if(__ex && __ex.status!=='ยกเลิก' && __ex.me_id===S.me && __ex.date_absent===S.dateAbsent && String(__ex.per_give)===String(S.per)){
         return {ok:false, error:'คาบนี้มีผู้สอนแทนอยู่แล้ว — '+(__ex.y_name||__ex.y_id)+' (สถานะ: '+__ex.status+') หากต้องการเปลี่ยนผู้สอนแทน ให้ยกเลิกรายการเดิมก่อน'}; } } }
-    var off=chosenOffset(c), gbISO=givebackFor(c,off);
+    /* A1 follow-up / F9-lite: "ยกคาบให้เลย". The partner takes the period and
+       nothing comes back. The ledger has handled this since 28b — an entry with
+       no give-back emits 2 claims instead of 4 (§5.9.12) — so all that was
+       missing was a way to CREATE one. Everything give-back-shaped is left
+       empty, and score/warnings are dropped rather than shown: they were
+       computed for a swap and would be a lie on a สอนแทน row. */
+    var __ga=document.querySelector('.chk-giveaway[data-idx="'+c.idx+'"]');
+    var giveAway = !!(__ga && __ga.checked);
+    var off=giveAway?null:chosenOffset(c), gbISO=giveAway?'':givebackFor(c,off);
     var ph=phoneFor(c.Yid)||'';
     var src=S.source||{};
     var entry={
@@ -3400,10 +3424,14 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       me_id:S.me, me_name:S.meName, day_give:S.day, per_give:String(S.per),
       subject_give:src.subject||'', group_give:S.G||'', room_give:c.R1||'',
       date_absent:S.dateAbsent,
-      y_id:c.Yid, y_name:c.Yname, y_phone:ph, day_back:c.day2, per_back:String(c.per2),
-      y_sub:c.Ysub||'', y_room:c.Yroom||'', room_back:c.Yroom||'', date_back:gbISO, week_offset:off,
-      score:c.SCORE, impact_tag:(compactItems(c).slice(0,1)[0]||'—'),
-      warnings:compactItems(c)
+      kind: giveAway ? 'สอนแทน' : 'แลกคาบ',
+      y_id:c.Yid, y_name:c.Yname, y_phone:ph,
+      day_back: giveAway?'':c.day2, per_back: giveAway?'':String(c.per2),
+      y_sub: giveAway?'':(c.Ysub||''), y_room: giveAway?'':(c.Yroom||''),
+      room_back: giveAway?'':(c.Yroom||''), date_back:gbISO, week_offset:off,
+      score: giveAway?null:c.SCORE,
+      impact_tag: giveAway?'ยกคาบให้ (ไม่รับคืน)':(compactItems(c).slice(0,1)[0]||'—'),
+      warnings: giveAway?[]:compactItems(c)
     };
     /* A1 G2 (§5.9.6): re-derive the ledger NOW and re-check. The candidate's
        offset_info is a snapshot from search time; this is not. Nothing is
@@ -3437,7 +3465,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         '<p class="r-more">ลองปรับ: พิจารณาคาบอื่นในวันเดียวกัน  •  หรือตรวจสอบวันที่เสนอสลับและวันที่ลา</p></div>';
       return;
     }
-    var note='<p class="res-note">คอลัมน์ “สัปดาห์”: ค่าเริ่มต้น = สัปดาห์ที่ระบบแนะนำ • เลือกเพื่อเลื่อนได้ ±3 สัปดาห์ (สัปดาห์ที่ติดคิวจะเลือกไม่ได้) • วันก่อน “วันที่เสนอสลับ” จะขึ้น ⚠️ ย้อนหลัง แต่ยังบันทึกได้</p>';
+    var note='<p class="res-note">คอลัมน์ “สัปดาห์”: ค่าเริ่มต้น = สัปดาห์ที่ระบบแนะนำ • เลือกเพื่อเลื่อนได้ ±6 สัปดาห์ (สัปดาห์ที่ติดคิวจะเลือกไม่ได้) • วันก่อน “วันที่เสนอสลับ” จะขึ้น ⚠️ ย้อนหลัง แต่ยังบันทึกได้</p>';
     var GMIN=+STORE.data.settings.SCORE_COLOR_GREEN_MIN, YMIN=+STORE.data.settings.SCORE_COLOR_YELLOW_MIN;
     var rows='';
     for(var i=0;i<cs.length;i++){
@@ -3467,7 +3495,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 
   function offsetSelectHTML(c){
     var opts='';
-    for(var off=-3; off<=3; off++){
+    for(var off=-WEEK_SPAN; off<=WEEK_SPAN; off++){
       var info=c.offset_info && c.offset_info[off];
       if(!info) continue;
       var sel=(off===chosenOffset(c))?' selected':'';
@@ -3626,7 +3654,10 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     return d.getFullYear()+'-'+m+'-'+day;
   }
   function beShort(iso){ if(!iso) return '—'; return __SWAP_DATES__.formatBE(String(iso).slice(0,10), false); }
-  function isFinished(e){ return e.status==='อนุมัติแล้ว' && String(e.date_back).slice(0,10) < todayISO(); }
+  // A สอนแทน row has no give-back, so its life ends on the absence date.
+  function entryEndDate(e){ return String(e.date_back||e.date_absent||'').slice(0,10); }
+  function isSubOnly(e){ return e.kind==='สอนแทน' || !e.date_back; }
+  function isFinished(e){ return e.status==='อนุมัติแล้ว' && entryEndDate(e) < todayISO(); }
   function logRowClass(st){
     return st==='อนุมัติแล้ว'?'log-done':st==='รออนุมัติ'?'log-wait':st==='ยกเลิก'?'log-cancel':'log-proposed';
   }
@@ -3650,7 +3681,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     var t=todayISO();
     return logEntries().filter(function(e){
       if(LOG_FILTER==='all') return true;
-      return e.status!=='อนุมัติแล้ว' || String(e.date_back).slice(0,10)>=t;  // active + upcoming
+      return e.status!=='อนุมัติแล้ว' || entryEndDate(e)>=t;  // active + upcoming
     });
   }
 
@@ -3697,8 +3728,10 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         '<td class="l-slot">วัน'+esc(e.day_give)+' คาบ '+esc(e.per_give)+'<div class="l-sub">'+esc((e.subject_give||'')+' / '+(e.group_give||'')+' · ห้อง '+(e.room_give||'—'))+'</div></td>'+
         '<td class="l-date">'+esc(beShort(e.date_absent))+'</td>'+
         '<td>'+esc(e.y_name||e.y_id)+'<div class="l-sub">'+esc(e.y_id)+'</div>'+(e.y_phone?'<a class="l-phone" href="tel:'+esc(String(e.y_phone).replace(/[^0-9+]/g,''))+'">📞 '+esc(phTxt)+'</a>':'<div class="l-sub muted">'+esc(phTxt)+'</div>')+'</td>'+
-        '<td class="l-slot">วัน'+esc(e.day_back)+' คาบ '+esc(e.per_back)+'<div class="l-sub">'+esc(e.y_sub||'')+'</div></td>'+
-        '<td class="l-date">'+esc(beShort(e.date_back))+fin+__mark+'</td>'+
+        '<td class="l-slot">'+(isSubOnly(e)
+            ? '<span class="l-giveaway">ยกคาบให้ (ไม่รับคืน)</span>'
+            : 'วัน'+esc(e.day_back)+' คาบ '+esc(e.per_back)+'<div class="l-sub">'+esc(e.y_sub||'')+'</div>')+'</td>'+
+        '<td class="l-date">'+(isSubOnly(e)?'<span class="muted">—</span>':esc(beShort(e.date_back)))+fin+__mark+'</td>'+
         '<td class="l-score">'+esc(String(e.score!=null?e.score:'—'))+'</td>'+
         '<td class="l-warn">'+esc(e.impact_tag||'—')+'</td>'+
         '<td class="l-status"><select class="log-status" data-id="'+esc(e.id)+'"'+(readOnly?' disabled':'')+'>'+statusOptions(e.status)+'</select></td>'+
@@ -3764,8 +3797,9 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     for(var i=0;i<col.claims.length;i++){
       var e=col.claims[i].entry;
       li+='<li>'+_aPair(e)+' — ยกให้ วัน'+esc(e.day_give)+' คาบ '+esc(e.per_give)+
-          ' (ลา '+esc(beShort(e.date_absent))+') · สอนคืน วัน'+esc(e.day_back)+' คาบ '+esc(e.per_back)+
-          ' ('+esc(beShort(e.date_back))+')</li>';
+          ' (ลา '+esc(beShort(e.date_absent))+') · '+
+          (isSubOnly(e) ? 'ยกคาบให้ (ไม่รับคืน)'
+                        : 'สอนคืน วัน'+esc(e.day_back)+' คาบ '+esc(e.per_back)+' ('+esc(beShort(e.date_back))+')')+'</li>';
     }
     return '<div class="aud-item"><b>'+esc(head)+'</b><ul>'+li+'</ul></div>';
   }
@@ -3949,7 +3983,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     for(var i=0;i<rows.length;i++){
       var e=rows[i], touches=(e.me_id===tid || e.y_id===tid);
       if(!touches) continue;
-      var wa=ttWeekStart(e.date_absent), wb=ttWeekStart(e.date_back);
+      var wa=ttWeekStart(e.date_absent), wb=e.date_back?ttWeekStart(e.date_back):'';
       if(wa) set[wa]=1;
       if(wb) set[wb]=1;
     }
@@ -4356,7 +4390,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     if(!rows.length){ host.innerHTML='<p class="fsw-empty">— ไม่มีรายการสลับที่อนุมัติแล้วในช่วงวันที่นี้ —</p>'; return; }
     host.innerHTML='<p class="fsw-h">เลือกรายการที่จะใส่ในแบบฟอร์ม (ติ๊กออกเพื่อไม่รวม):</p>'+rows.map(function(e){
       return '<label class="fsw-item"><input type="checkbox" class="fsw-chk" data-id="'+esc(e.id)+'" checked> '+
-        esc(beShort2(e.date_absent)+' คาบ '+e.per_give+' ('+e.subject_give+'/'+e.group_give+') ↔ '+stripTitle(e.y_name)+' '+beShort2(e.date_back)+' คาบ '+e.per_back)+'</label>';
+        esc(beShort2(e.date_absent)+' คาบ '+e.per_give+' ('+e.subject_give+'/'+e.group_give+') ↔ '+stripTitle(e.y_name)+
+            (isSubOnly(e) ? ' (ยกคาบให้ ไม่รับคืน)' : ' '+beShort2(e.date_back)+' คาบ '+e.per_back))+'</label>';
     }).join('');
     Array.prototype.forEach.call(host.querySelectorAll('.fsw-chk'), function(c){ c.addEventListener('change', refreshFormTable); });
   }
@@ -4370,7 +4405,9 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       if(e){
         html+='<tr><td class="c-num">'+(i+1)+'.</td>'+
           '<td>'+esc(beShort2(e.date_absent))+'</td><td>'+esc(e.per_give)+'</td><td>'+esc(groupToClass(e.group_give))+'</td><td>'+esc(e.subject_give||'')+'</td><td>'+esc(e.room_give||'')+'</td>'+
-          '<td>'+esc(beShort2(e.date_back))+'</td><td>'+esc(e.per_back)+'</td><td>'+esc(e.y_sub||'')+'</td><td>'+esc(e.room_back||e.y_room||'')+'</td>'+
+          (isSubOnly(e)
+            ? '<td></td><td></td><td></td><td></td>'
+            : '<td>'+esc(beShort2(e.date_back))+'</td><td>'+esc(e.per_back)+'</td><td>'+esc(e.y_sub||'')+'</td><td>'+esc(e.room_back||e.y_room||'')+'</td>')+
           '<td>'+esc(stripTitle(e.y_name))+'</td><td></td></tr>';
       } else {
         html+='<tr><td class="c-num">'+(i+1)+'.</td>'+Array(11).join('<td></td>')+'<td></td></tr>';
