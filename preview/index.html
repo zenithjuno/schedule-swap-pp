@@ -603,6 +603,23 @@ table.logtab td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-ali
 .rmd-soft{background:var(--amber-wash);border:1px solid var(--amber);color:var(--ink)}
 .backup-stale{color:var(--amber);font-weight:600}
 .btn-archive-export{padding:6px 14px;border:0;border-radius:8px;background:var(--amber);color:#fff;cursor:pointer;font-family:inherit}
+
+/* ---- A1 / stage 28e: audit surfaces ---- */
+.aud{border-radius:10px;padding:12px 14px;margin:0 0 14px;font-size:14px;line-height:1.55}
+.aud-bad{background:#fdecea;border:1px solid #e6a29b;color:#8a1c12}
+.aud-warn{background:#fff6e0;border:1px solid #e3c377;color:#7a5600}
+.aud-h{font-weight:700;font-size:15px;margin-bottom:6px}
+.aud-item{margin:8px 0 0;padding:8px 10px;background:rgba(255,255,255,.6);border-radius:7px}
+.aud-item ul{margin:5px 0 0 18px;padding:0}
+.aud-item li{margin:2px 0}
+.aud-dim{opacity:.75}
+.aud-foot{margin-top:9px;font-size:13px;opacity:.85}
+.aud-tag{display:inline-block;background:#c0392b;color:#fff;border-radius:4px;padding:1px 6px;font-size:11px;white-space:nowrap}
+tr.log-clash > td{box-shadow:inset 0 0 0 9999px rgba(192,57,43,.07)}
+.rmd-sub{margin:4px 0 0 14px;font-weight:400;opacity:.92}
+td.tt-clash{background:#f7c9c5}
+td.tt-clash .tt-mark{background:#c0392b;color:#fff;border-radius:4px;padding:1px 6px;display:inline-block;font-weight:700}
+@media print{ td.tt-clash{background:#f7c9c5 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact} }
 </style>
 </head>
 <body>
@@ -3655,12 +3672,18 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         :'กำลังแสดง: ทั้งหมด')+'</span>';
 
     if(!all.length){
-      host.innerHTML=summary+'<div class="placeholder" style="margin-top:12px"><p style="margin:0">ยังไม่มีรายการสลับในภาคเรียนนี้ — ไปที่ <b>หน้าหลัก</b> กดค้นหาคู่สลับ แล้วกด “บันทึกลง Log”</p></div>';
+      host.innerHTML=auditBannerHTML()+summary+'<div class="placeholder" style="margin-top:12px"><p style="margin:0">ยังไม่มีรายการสลับในภาคเรียนนี้ — ไปที่ <b>หน้าหลัก</b> กดค้นหาคู่สลับ แล้วกด “บันทึกลง Log”</p></div>';
       return;
+    }
+    var __aud=auditActiveLog(), __bad={};
+    for(var __ci=0;__ci<__aud.collisions.length;__ci++){
+      var __es=__aud.collisions[__ci].entries;
+      for(var __ei=0;__ei<__es.length;__ei++) __bad[__es[__ei].id]=1;
     }
     var body='';
     for(var i=0;i<rows.length;i++){
       var e=rows[i];
+      var __mark = __bad[e.id] ? ' <span class="aud-tag">⚠️ สอนซ้อน</span>' : '';
       var phTxt = e.y_phone ? (window.__SWAP_PHONE__?window.__SWAP_PHONE__.displayPhone(e.y_phone):e.y_phone) : 'ไม่มีข้อมูลเบอร์ติดต่อ';
       var fin = isFinished(e) ? ' <span class="fin-tag">เสร็จสิ้น ✓</span>' : '';
       var delBtn = readOnly
@@ -3668,14 +3691,14 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         : (e.status==='เสนอ')
         ? '<button class="btn-del" data-id="'+esc(e.id)+'">ลบ</button>'
         : '<span class="muted">—</span>';
-      body+='<tr class="'+logRowClass(e.status)+'">'+
+      body+='<tr class="'+logRowClass(e.status)+(__bad[e.id]?' log-clash':'')+'">'+
         '<td class="l-date">'+esc(beShort(e.date_proposed||e.created_at))+'</td>'+
         '<td>'+esc(e.me_name||e.me_id)+'<div class="l-sub">'+esc(e.me_id)+'</div></td>'+
         '<td class="l-slot">วัน'+esc(e.day_give)+' คาบ '+esc(e.per_give)+'<div class="l-sub">'+esc((e.subject_give||'')+' / '+(e.group_give||'')+' · ห้อง '+(e.room_give||'—'))+'</div></td>'+
         '<td class="l-date">'+esc(beShort(e.date_absent))+'</td>'+
         '<td>'+esc(e.y_name||e.y_id)+'<div class="l-sub">'+esc(e.y_id)+'</div>'+(e.y_phone?'<a class="l-phone" href="tel:'+esc(String(e.y_phone).replace(/[^0-9+]/g,''))+'">📞 '+esc(phTxt)+'</a>':'<div class="l-sub muted">'+esc(phTxt)+'</div>')+'</td>'+
         '<td class="l-slot">วัน'+esc(e.day_back)+' คาบ '+esc(e.per_back)+'<div class="l-sub">'+esc(e.y_sub||'')+'</div></td>'+
-        '<td class="l-date">'+esc(beShort(e.date_back))+fin+'</td>'+
+        '<td class="l-date">'+esc(beShort(e.date_back))+fin+__mark+'</td>'+
         '<td class="l-score">'+esc(String(e.score!=null?e.score:'—'))+'</td>'+
         '<td class="l-warn">'+esc(e.impact_tag||'—')+'</td>'+
         '<td class="l-status"><select class="log-status" data-id="'+esc(e.id)+'"'+(readOnly?' disabled':'')+'>'+statusOptions(e.status)+'</select></td>'+
@@ -3685,7 +3708,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     if(!rows.length){
       body='<tr><td colspan="11" class="l-empty">ไม่มีรายการตามตัวกรองนี้ — กด “แสดงทั้งหมด” เพื่อดูรายการที่ผ่านไปแล้ว</td></tr>';
     }
-    host.innerHTML=summary+
+    host.innerHTML=auditBannerHTML()+summary+
       (readOnly?'<div class="readonly-note">'+esc(readOnlyText())+'</div>':'')+
       '<div class="log-bar">'+filterBtn+filterNote+'</div>'+
       '<div class="card log-card"><table class="logtab"><thead><tr>'+
@@ -3718,6 +3741,58 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   }
 
   function bumpApprovalIfNeeded(oldS,newS){ if(newS==='อนุมัติแล้ว' && oldS!=='อนุมัติแล้ว'){ STORE.data.approvedSinceBackup=(STORE.data.approvedSinceBackup||0)+1; } }
+  /* A1 / STAGE 28e — the ledger's two reports, rendered wherever the owner can
+     act on them or is about to put them on paper (§5.9.8). Recomputed on every
+     render; never a stored flag. */
+  function auditActiveLog(){
+    var sem=STORE.activeSemester();
+    return auditLedger((sem && sem.log) || []);
+  }
+  function _aSlot(x){ return 'วัน'+weekdayThai(x.date)+' คาบ '+x.period+' · '+formatBE(x.date,false); }
+  function _aWho(cl){
+    var e=cl.entry, tid=cl.tid;
+    return esc(tid===e.me_id ? (e.me_name||e.me_id) : (e.y_name||e.y_id));
+  }
+  function _aPair(e){ return esc((e.me_name||e.me_id)+' ↔ '+(e.y_name||e.y_id))+' (สถานะ: '+esc(e.status)+')'; }
+
+  // one collision block: who, when, and every row fighting over it
+  function collisionHTML(col){
+    var head = (col.kind==='BUSY')
+      ? _aWho(col.claims[0])+' ถูกจองให้สอน '+_aSlot(col)+' พร้อมกัน '+col.claims.length+' รายการ'
+      : _aWho(col.claims[0])+' ยกคาบ '+_aSlot(col)+' ให้คนอื่น '+col.claims.length+' ครั้ง';
+    var li='';
+    for(var i=0;i<col.claims.length;i++){
+      var e=col.claims[i].entry;
+      li+='<li>'+_aPair(e)+' — ยกให้ วัน'+esc(e.day_give)+' คาบ '+esc(e.per_give)+
+          ' (ลา '+esc(beShort(e.date_absent))+') · สอนคืน วัน'+esc(e.day_back)+' คาบ '+esc(e.per_back)+
+          ' ('+esc(beShort(e.date_back))+')</li>';
+    }
+    return '<div class="aud-item"><b>'+esc(head)+'</b><ul>'+li+'</ul></div>';
+  }
+  function uncoveredHTML(u){
+    return '<div class="aud-item"><b>'+esc('วัน'+u.day+' คาบ '+u.period+' · '+formatBE(u.date,false))+'</b> — '+
+      esc((u.subject||'')+' ม.'+String(u.group||'').replace('.','/')+(u.room?' ห้อง '+u.room:''))+
+      ' <span class="aud-dim">(ยกเลิกไป '+u.cancelled+' รายการ ยังไม่มีตัวแทน)</span></div>';
+  }
+  // full banner for the Log / form / handout pages
+  function auditBannerHTML(){
+    var a=auditActiveLog(), out='';
+    if(a.collisions.length){
+      var c='';
+      for(var i=0;i<a.collisions.length;i++) c+=collisionHTML(a.collisions[i]);
+      out+='<div class="aud aud-bad"><div class="aud-h">⚠️ พบการสอนซ้อน '+a.collisions.length+
+           ' จุดในบันทึกนี้ — ต้องแก้ก่อนใช้งาน</div>'+c+
+           '<div class="aud-foot">เลือกยกเลิกรายการใดรายการหนึ่งในแต่ละจุด แล้วค้นหาคู่สลับใหม่</div></div>';
+    }
+    if(a.uncovered.length){
+      var u='';
+      for(var j=0;j<a.uncovered.length;j++) u+=uncoveredHTML(a.uncovered[j]);
+      out+='<div class="aud aud-warn"><div class="aud-h">⚠️ มี '+a.uncovered.length+
+           ' คาบที่ลาแล้วยังไม่มีครูสอนแทน</div>'+u+'</div>';
+    }
+    return out;
+  }
+
   function renderReminders(){
     var host=document.getElementById('reminderArea'); if(!host) return;
     var out=''; var sem=STORE.activeSemester();
@@ -3727,6 +3802,24 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       if(today>end){ out+='<div class="rmd rmd-loud">ภาคเรียน '+esc(sem.meta.label)+' สิ้นสุดแล้ว — สำรองข้อมูลแล้วเริ่มภาคเรียนใหม่ได้เลย</div>'; }
       else if(dleft<=14){ out+='<div class="rmd rmd-loud">ใกล้สิ้นภาคเรียน '+esc(sem.meta.label)+' (สิ้นสุด '+phoneDateBE(end)+') — อย่าลืมสำรองข้อมูลก่อนปิดเทอม และเตรียมนำเข้าตารางของภาคเรียนถัดไป</div>'; }
     }
+    /* A1 (§5.9.8): uncovered slots that can still be fixed go at the TOP of the
+       strip, because they are time-critical — the case that created this rule
+       was found two days before the absence. Past ones stay in the Log banner
+       only; nagging about a period that already happened helps nobody. */
+    var __a=auditActiveLog(), __t=todayISO(), __soon=[];
+    for(var __i=0;__i<__a.uncovered.length;__i++) if(__a.uncovered[__i].date>=__t) __soon.push(__a.uncovered[__i]);
+    if(__a.collisions.length){
+      out='<div class="rmd rmd-loud">⚠️ พบการสอนซ้อน '+__a.collisions.length+' จุดในบันทึกการสลับ — '+
+          'เปิดแท็บ “บันทึกการสลับ” เพื่อดูว่าชนกันตรงไหน แล้วยกเลิกรายการใดรายการหนึ่ง</div>'+out;
+    }
+    if(__soon.length){
+      var __l='';
+      for(var __j=0;__j<__soon.length;__j++){ var __u=__soon[__j];
+        __l+='<div class="rmd-sub">วัน'+esc(__u.day)+' คาบ '+esc(__u.period)+' · '+esc(formatBE(__u.date,false))+
+             ' — '+esc((__u.subject||'')+' ม.'+String(__u.group||'').replace('.','/'))+'</div>'; }
+      out='<div class="rmd rmd-loud">⚠️ มี '+__soon.length+' คาบที่ลาแล้วยังไม่มีครูสอนแทน'+__l+'</div>'+out;
+    }
+
     var appr=STORE.data.approvedSinceBackup||0; var dsince=daysSince(STORE.data.lastBackupAt);
     if(appr>0 && (dsince===null || dsince>30)){
       out+='<div class="rmd rmd-soft">คุณอนุมัติการสลับ '+appr+' รายการตั้งแต่สำรองข้อมูลครั้งล่าสุด — แนะนำให้สำรองข้อมูลไว้กันพลาด</div>';
@@ -3970,7 +4063,40 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     }
     return null;
   }
+  /* A1 / STAGE 28e (§5.9.9, law §9.6): ttSwapCell returns the FIRST matching
+     log row. If a slot has more than one, printing one of them is the most
+     dangerous thing this program can do — the owner carries that sheet into a
+     classroom. Count the matches first; more than one renders as a conflict. */
+  function ttMatchCount(tid, weekStart, day, per){
+    var dateISO=ttDateForDay(weekStart, day), rows=ttApprovedSwaps(), n=0, p=String(per);
+    for(var i=0;i<rows.length;i++){
+      var e=rows[i];
+      if(e.me_id===tid && ttDate(e.date_absent)===dateISO && String(e.per_give)===p) n++;
+      else if(e.y_id===tid && ttDate(e.date_absent)===dateISO && String(e.per_give)===p) n++;
+      else if(e.y_id===tid && ttDate(e.date_back)===dateISO && String(e.per_back)===p) n++;
+      else if(e.me_id===tid && ttDate(e.date_back)===dateISO && String(e.per_back)===p) n++;
+    }
+    return n;
+  }
   function ttCell(eng, tid, weekStart, day, per, notes){
+    var n=ttMatchCount(tid, weekStart, day, per);
+    if(n>1){
+      var all=[], dateISO=ttDateForDay(weekStart, day), rows=ttApprovedSwaps(), p=String(per);
+      for(var i=0;i<rows.length;i++){
+        var e=rows[i], hit=false, what='';
+        if(e.me_id===tid && ttDate(e.date_absent)===dateISO && String(e.per_give)===p){ hit=true; what='ยกคาบออก ('+(e.subject_give||'')+' ม.'+String(e.group_give||'').replace('.','/')+')'; }
+        else if(e.y_id===tid && ttDate(e.date_absent)===dateISO && String(e.per_give)===p){ hit=true; what='สอนแทน '+(e.me_name||e.me_id)+' ('+(e.subject_give||'')+')'; }
+        else if(e.y_id===tid && ttDate(e.date_back)===dateISO && String(e.per_back)===p){ hit=true; what='ยกคาบให้ '+(e.me_name||e.me_id)+' ('+(e.y_sub||'')+')'; }
+        else if(e.me_id===tid && ttDate(e.date_back)===dateISO && String(e.per_back)===p){ hit=true; what='สอนคืน '+(e.subject_give||'')+' ม.'+String(e.group_give||'').replace('.','/'); }
+        if(hit){ all.push(what+' — คู่กับ '+(e.y_id===tid?(e.me_name||e.me_id):(e.y_name||e.y_id))); }
+      }
+      notes.push('คาบ '+p+' วัน'+day+': ⚠️ มี '+n+' รายการซ้อนกันในคาบเดียว — ' + all.join(' / ') + ' — ต้องแก้บันทึกการสลับก่อนใช้ตารางนี้');
+      return '<td class="tt-clash"><div class="tt-cell">'+
+        '<div class="tt-mark">⚠️ สอนซ้อน '+n+' รายการ</div>'+
+        '<div class="tt-sub">'+esc(all.join(' · '))+'</div>'+
+        '<div class="tt-by">ตารางนี้ยังใช้ไม่ได้จนกว่าจะแก้</div>'+
+      '</div></td>';
+    }
     var swap=ttSwapCell(tid, weekStart, day, per, notes);
     var cell=swap || ttBaseCell(eng, tid, day, per);
     return '<td class="'+(cell.cls||'')+'">'+cell.html+'</td>';
@@ -4025,7 +4151,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     }).join('') : '<span class="tt-note">ครูคนนี้ยังไม่มีสัปดาห์ที่มีรายการอนุมัติแล้ว</span>';
     var output=selected.length ? selected.map(function(w){ return ttRenderWeek(TT_STATE.teacherId,w); }).join('')
       : '<div class="card tt-empty">เลือกอย่างน้อยหนึ่งสัปดาห์เพื่อสร้างตารางสอน</div>';
-    host.innerHTML='<div class="tt-controls no-print">'+
+    host.innerHTML='<div class="no-print">'+auditBannerHTML()+'</div>'+
+                   '<div class="tt-controls no-print">'+
       '<div class="tt-row"><span class="tt-lab">ครู</span><select class="tt-select" id="ttTeacher">'+ttTeacherOptions(TT_STATE.teacherId)+'</select>'+
         '<span class="tt-note">ค่าเริ่มต้นเรียงจากครูที่มีรายการอนุมัติแล้ว</span></div>'+
       '<div class="tt-row"><span class="tt-lab">สัปดาห์</span><div class="tt-weeks">'+weekControls+'</div></div>'+
@@ -4158,6 +4285,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 
   function buildFormScaffold(host){
     host.innerHTML=
+    '<div class="no-print">'+auditBannerHTML()+'</div>'+
     '<div class="form-controls no-print">'+
       '<div class="fc-row"><label class="fc-lab">ช่วงวันที่ลา</label>'+
         'ตั้งแต่ <input type="date" id="formFrom"> ถึง <input type="date" id="formTo">'+
