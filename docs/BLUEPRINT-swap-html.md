@@ -482,6 +482,14 @@ Still outstanding for full F9: a create path that does not start from a swap sea
 - **Downstream, no decision needed:** ตารางสอน (§6.5) gains a note on the owner's own grid but can generate **no mirror handout**, because the substitute has no timetable · F10 can produce no message without a typed phone · the four canonical statuses (§5.2) apply unchanged.
 - **Does not change A1's scope.** A1 ships as specified; F9+F13 land afterwards as their own amendment. The only obligation A1 already carries is §5.9.12's per-entry claim emitter — which this request now makes non-negotiable rather than merely prudent.
 
+**F13 — DECISIONS LOCKED 2026-08-20 (build as Amendment A2).** Owner's answers, to stop them being re-litigated:
+- **Free text plus one short optional note** (e.g. "นักศึกษาฝึกสอน"). The note is IN — it is what makes the พพ.1-1 memo and the handout read sensibly. Still no phone, no id, no roster, no CRUD page.
+- **Entry point always visible** on every swappable dashboard row, beside ค้นหา, rendered quieter than it — swapping with a colleague stays the default because it is the path the app can actually verify. The §8.2 empty-results diagnostic points back to that same button rather than growing a second implementation.
+- **No duplicate-name warning.** Explicitly rejected, and the reasoning is the point: such a check is only as good as the owner typing the same string twice, and a check that is right half the time is worse than an absent one, because people come to rely on it. The app says plainly `ผู้สอนแทนนอกระบบ — โปรแกรมตรวจเวลาซ้อนให้ไม่ได้` and leaves it there.
+- **Do warn when the typed name matches a teacher in the roster** and offer to pick that teacher instead — it steers the owner back onto the verifiable path at the exact moment they are leaving it.
+- **`y_id === ''` IS the definition of off-roster.** No new flag. The two axes stay orthogonal: *has a give-back?* (แลกคาบ / สอนแทน) and *has a teacher_id?* (in roster / outside).
+- Still enforced for these rows: source-slot validation (§8.1), one substitute per give-up slot (the `HANDOVER` claim), gates G2/G3, and the uncovered report closing. Unverifiable and declared as such: whether the person is free, double-booked, or exists.
+
 **F14 — บันทึกการลา (explicit leave record) + รอบการลา.** Owner-identified 2026-08-20, from two separate symptoms that share one root.
 
 - **The root: the app never records that anyone is on leave.** Absence is *inferred* from the existence of swap rows. So a period with no row is indistinguishable from a period the teacher was never away for — which is why the ศุกร์ ค.6 slot vanished silently when its rows were deleted (§5.9.8's uncovered report can only see slots whose rows were **cancelled**), and why a period covered outside the app reports as uncovered forever.

@@ -1,6 +1,65 @@
 CHANGELOG — schedule_swap_HTML  (append to cumulative changelog)
 ================================================================================
 
+Revision: s29   Date: 2026-08-23
+Base:     index.html s28
+Author:   Claude, spec discussed and locked with ครูชัชพงษ์ before building
+Type:     Amendment A2 / F13 — ผู้สอนแทนนอกระบบ (off-roster substitute).
+
+WHY
+  A period was covered by a นักศึกษาฝึกสอน. That person is in no imported
+  schedule, so no candidate exists and the search flow cannot reach them — the
+  arrangement could not be recorded at all, and the period went on reporting as
+  "ลาแล้วยังไม่มีครูสอนแทน" with no way for the owner to clear it. A1 made this
+  urgent rather than cosmetic: once the ledger is trusted, anything it cannot be
+  told is something the app is actively wrong about.
+
+CHANGE 1 — a create path that does not start from a search
+  Every swappable dashboard row gains a second, deliberately quieter button
+  "ให้คนนอกสอนแทน" beside ค้นหา. Swapping with a colleague stays the default,
+  because it is the path the app can verify. The dialog asks two things — a free
+  text name (required) and one short optional note such as "นักศึกษาฝึกสอน" —
+  and nothing else. No phone, no id, no roster, no CRUD page.
+
+CHANGE 2 — the ledger needed no change, again
+  y_id === '' IS the definition of off-roster; no new flag was added. Such an
+  entry emits exactly ONE claim, HANDOVER on the give-up slot: no teacher_id
+  means no BUSY claim can be keyed, and no give-back means no give-back pair.
+  That single claim still does real work — it is what refuses a second
+  substitute for the same period. Claim counts across the three arrangement
+  types are now 4 / 2 / 1, the shape §5.9.12 was written to keep possible.
+
+CHANGE 3 — two deliberate judgement calls, recorded so they are not re-argued
+  NO duplicate-name warning. Rejected on purpose: such a check is only as good
+    as the owner typing an identical string twice, and a check that is right
+    half the time is worse than an absent one because people rely on it. The UI
+    states plainly "โปรแกรมตรวจเวลาซ้อนให้ไม่ได้" and stops there.
+  DO warn when the typed name matches a roster teacher, offering to pick that
+    teacher instead — it steers the owner back to the verifiable path at the
+    exact moment they are leaving it.
+
+CHANGE 4 — surfaces
+  Log: name plus a "นอกระบบ" tag and the note; the "ไม่มีข้อมูลเบอร์ติดต่อ" line
+    is suppressed for these rows (it was noise, not information).
+  ตารางสอน: the owner's own grid shows "มีคนสอนแทน" with the name and note in
+    the footnote. An off-roster person can never appear in the teacher picker
+    and no mirror handout is generated — they have no timetable.
+  ฟอร์ม พพ.1-1: the name prints in the partner column, give-back columns blank.
+  หน้าหลัก: the period stops reporting as uncovered.
+
+TESTING
+  Oracle firewall unchanged: self-test 21/21 (1455 fields); golden top-5
+  104/103/89/87/74; rank-1 1202 พฤหัสฯ p6. Ledger suite 18/18 in-app (L17/L18
+  added for the off-roster shape) and 43/43 at build time, on both editions.
+  End to end through the real UI: empty name refused; typing a roster name
+  raises the nudge and clears when it stops matching; a genuine outsider saves
+  with y_id empty and score null; a second substitute for the same period is
+  refused by the s25.1 guard; the uncovered report closes on approval and
+  reopens on ยกเลิก; the outsider is absent from the handout picker (111
+  entries, none of them the outsider); Log tag, handout footnote and form all
+  render. Zero console errors.
+================================================================================
+
 Revision: s28   Date: 2026-08-20
 Base:     index.html s27 (public edition) + private/…ข้อมูลจริง (s26 lineage)
 Author:   Claude, with ครูชัชพงษ์ testing on live data throughout

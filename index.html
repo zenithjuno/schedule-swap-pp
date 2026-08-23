@@ -604,6 +604,25 @@ table.logtab td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-ali
 .backup-stale{color:var(--amber);font-weight:600}
 .btn-archive-export{padding:6px 14px;border:0;border-radius:8px;background:var(--amber);color:#fff;cursor:pointer;font-family:inherit}
 
+/* ---- F13: ผู้สอนแทนนอกระบบ ---- */
+.btn-ext{margin-left:6px;background:#fff;border:1px solid #cfc6b4;color:#6b6152;font-weight:500}
+.btn-ext:hover{background:#f6f2e9}
+.ext-back{position:fixed;inset:0;background:rgba(30,28,24,.45);display:flex;align-items:center;justify-content:center;z-index:99998;padding:16px}
+.ext-back:empty{display:none}
+.ext-box{background:#fff;border-radius:12px;padding:20px 22px;max-width:460px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.3);max-height:90vh;overflow:auto}
+.ext-h{margin:0 0 6px;font-size:18px}
+.ext-slot{margin:0 0 14px;font-size:14px;line-height:1.55;color:#5a5245;background:#f6f2e9;padding:8px 10px;border-radius:7px}
+.ext-lab{display:block;font-size:13.5px;font-weight:600;margin:10px 0 4px}
+.ext-req{color:#c0392b}
+.ext-in{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #cfc6b4;border-radius:7px;font:inherit;font-size:15px}
+.ext-hint{font-size:13px;line-height:1.5;margin-top:5px;color:#7a5600}
+.ext-hint:empty{display:none}
+.ext-warn{margin:14px 0 0;font-size:13px;line-height:1.5;background:#fff6e0;border:1px solid #e3c377;color:#7a5600;padding:8px 10px;border-radius:7px}
+.ext-act{display:flex;gap:8px;align-items:center;margin-top:16px;flex-wrap:wrap}
+.ext-msg{font-size:13px}
+.ext-msg.err{color:#9C0006}
+.l-ext{display:inline-block;background:#efe7f3;border:1px solid #cbb8d6;border-radius:5px;padding:0 6px;font-size:11.5px;color:#5b3f6b}
+
 /* ---- A1 follow-up: ยกคาบให้เลย (สอนแทน) ---- */
 .d-giveaway{display:block;margin:10px 0 2px;padding:9px 11px;background:#fff7e8;border:1px solid #e6cf9d;border-radius:8px;font-size:14px;cursor:pointer}
 .d-giveaway input{margin-right:6px}
@@ -2155,6 +2174,14 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     t('L16','กุญแจผูกกับวันที่จริง ไม่ใช่วันในสัปดาห์', function(){
       return L.audit([E({}),E({date_back:'2026-09-02',y_id:'Y2',per_give:'1'})]).collisions.length===0; });
 
+    t('L17','คนนอกระบบกันคนที่สองในคาบเดียวกันได้', function(){
+      var ext=E({kind:'สอนแทน',y_id:'',y_name:'คนนอก ก',day_back:'',per_back:'',date_back:''});
+      return L.conflicts([ext],E({kind:'สอนแทน',y_id:'',y_name:'คนนอก ข',day_back:'',per_back:'',date_back:''})).length>0; });
+    t('L18','คนนอกระบบไม่ไปจองเวลาของใครที่อื่น', function(){
+      var ext=E({kind:'สอนแทน',y_id:'',y_name:'คนนอก ก',day_back:'',per_back:'',date_back:''});
+      var g=L.build([ext]);
+      return g.busyAt('M1','2026-08-20','4').length===0 && g.handoverAt('M1','2026-08-20','4').length===1; });
+
     var passed=0; for(var i=0;i<cases.length;i++) if(cases[i].ok) passed++;
     return {ok:true, cases:cases, passed:passed, total:cases.length, allGreen:passed===cases.length};
   }
@@ -3273,7 +3300,10 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         '<td>'+esc(r.subjGroup)+'</td>'+
         '<td class="c-room">'+esc(r.room||'')+'</td>'+
         '<td class="c-stat">'+esc(r.status)+(r.impact&&r.impact!=='—'?'<div class="c-warn">'+esc(r.impact)+'</div>':'')+'</td>'+
-        '<td class="c-act">'+(r.swappable?'<button class="btn btn-small btn-find" data-per="'+r.period+'">ค้นหา</button>':'')+'</td>'+
+        '<td class="c-act">'+(r.swappable
+            ? '<button class="btn btn-small btn-find" data-per="'+r.period+'">ค้นหา</button>'+
+              '<button class="btn btn-small btn-ext" data-per="'+r.period+'" title="บันทึกผู้สอนแทนที่ไม่มีในระบบ เช่น นักศึกษาฝึกสอน">ให้คนนอกสอนแทน</button>'
+            : '')+'</td>'+
       '</tr>';
     }
     html+='</tbody></table>';
@@ -3282,7 +3312,128 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     Array.prototype.forEach.call(btns, function(b){
       b.addEventListener('click', function(){ runSearchFor(b.getAttribute('data-per')); });
     });
+    Array.prototype.forEach.call(body.querySelectorAll('.btn-ext'), function(b){
+      b.addEventListener('click', function(){ openExternalSub(b.getAttribute('data-per')); });
+    });
   }
+
+  /* ====================================================================
+     F13 — ผู้สอนแทนนอกระบบ (off-roster substitute)      [Amendment A2]
+     A นักศึกษาฝึกสอน or any outsider covers a period. They are in no imported
+     schedule, so no candidate exists and the search flow cannot reach them —
+     hence a create path that starts from the dashboard row instead.
+     The ledger already handles the shape: no teacher_id means no BUSY claim
+     can be keyed, and no give-back means no give-back pair, so such an entry
+     emits exactly ONE claim, HANDOVER on the give-up slot (§5.9.2). That one
+     claim still does real work: it is what stops a second substitute being
+     booked for the same period.
+     `y_id === ''` IS the definition of off-roster — deliberately no new flag.
+     ==================================================================== */
+  function extTypedNames(){
+    var sem=STORE.activeSemester(), log=(sem&&sem.log)||[], seen={}, out=[];
+    for(var i=0;i<log.length;i++){
+      var e=log[i];
+      if(e.y_id==='' && e.y_name && !seen[e.y_name]){ seen[e.y_name]=1; out.push(e.y_name); }
+    }
+    return out.sort();
+  }
+  // A typed name that matches a real teacher means the owner is leaving the
+  // verifiable path by accident — steer them back (owner decision 2026-08-20).
+  function extRosterMatch(name){
+    var n=_s(name).toLowerCase(); if(!n) return null;
+    var L=teacherList();
+    for(var i=0;i<L.length;i++){
+      var t=L[i], tn=_s(t.name).toLowerCase();
+      if(tn===n || (n.length>=6 && tn.indexOf(n)>=0)) return t;
+    }
+    return null;
+  }
+
+  function openExternalSub(per){
+    if(isReadOnlySemester()){ alert(readOnlyText()); return; }
+    var eng=engineForActive(); if(!eng) return;
+    var v=eng.validateSource(DASH.meId, DASH.day, String(per));
+    if(v.valid!=='VALID'){ alert(v.message||'คาบนี้สลับไม่ได้'); return; }
+    var src=v.source;
+    var host=document.getElementById('extDlg');
+    if(!host){ host=document.createElement('div'); host.id='extDlg'; document.body.appendChild(host); }
+    host.className='ext-back';
+    host.innerHTML=
+      '<div class="ext-box" role="dialog" aria-modal="true">'+
+        '<h3 class="ext-h">ให้คนนอกสอนแทน</h3>'+
+        '<p class="ext-slot">'+esc('วัน'+DASH.day+' คาบ '+per+' · '+(src.subject||'')+' ม.'+
+            String(src.group||'').replace('.','/')+(src.room?' ห้อง '+src.room:''))+
+          '<br>วันที่ลา '+esc(thaiDate(DASH.dateAbsent))+'</p>'+
+        '<label class="ext-lab">ชื่อผู้สอนแทน <span class="ext-req">*</span></label>'+
+        '<input id="extName" class="ext-in" list="extNames" autocomplete="off" placeholder="เช่น นายสมชาย ใจดี">'+
+        '<datalist id="extNames">'+extTypedNames().map(function(n){return '<option value="'+esc(n)+'">';}).join('')+'</datalist>'+
+        '<div id="extHint" class="ext-hint"></div>'+
+        '<label class="ext-lab">หมายเหตุ (ไม่บังคับ)</label>'+
+        '<input id="extNote" class="ext-in" autocomplete="off" placeholder="เช่น นักศึกษาฝึกสอน">'+
+        '<p class="ext-warn">⚠️ ผู้สอนแทนนอกระบบ — โปรแกรมตรวจเวลาซ้อนให้ไม่ได้ '+
+          'เพราะไม่มีตารางสอนของคนนี้ในระบบ</p>'+
+        '<div class="ext-act">'+
+          '<button class="btn" id="extCancel">ยกเลิก</button>'+
+          '<button class="btn btn-primary" id="extSave">บันทึกลง Log (สถานะ: เสนอ)</button>'+
+          '<span class="ext-msg" id="extMsg"></span>'+
+        '</div>'+
+      '</div>';
+    function close(){ host.className=''; host.innerHTML=''; }
+    document.getElementById('extCancel').addEventListener('click', close);
+    host.addEventListener('click', function(e){ if(e.target===host) close(); });
+    var nameEl=document.getElementById('extName');
+    nameEl.addEventListener('input', function(){
+      var t=extRosterMatch(nameEl.value), h=document.getElementById('extHint');
+      h.innerHTML = t
+        ? 'ℹ️ ชื่อนี้ตรงกับ <b>'+esc(t.id+' — '+t.name)+'</b> ซึ่งอยู่ในระบบ — '+
+          '<a href="#" id="extGoSearch">เลือกจากรายชื่อครูแทนดีกว่า</a> (โปรแกรมจะตรวจเวลาซ้อนให้ได้)'
+        : '';
+      var g=document.getElementById('extGoSearch');
+      if(g) g.addEventListener('click', function(ev){ ev.preventDefault(); close(); runSearchFor(String(per)); });
+    });
+    nameEl.focus();
+    document.getElementById('extSave').addEventListener('click', function(){
+      var msg=document.getElementById('extMsg');
+      var nm=_s(nameEl.value);
+      if(!nm){ msg.textContent='กรุณากรอกชื่อผู้สอนแทน'; msg.className='ext-msg err'; nameEl.focus(); return; }
+      var r=saveExternalSub(String(per), nm, _s(document.getElementById('extNote').value));
+      if(r.ok){ close(); refreshHome(); if(typeof renderLog==='function') renderLog(); }
+      else { msg.textContent='✗ '+(r.error||'บันทึกไม่สำเร็จ'); msg.className='ext-msg err'; }
+    });
+  }
+
+  function saveExternalSub(per, name, note){
+    var sem=STORE.activeSemester(); if(!sem) return {ok:false, error:'ยังไม่มีภาคเรียน'};
+    if(isReadOnlySemester()) return {ok:false, error:readOnlyText()};
+    if(!sem.log) sem.log=[];
+    var eng=engineForActive();
+    var v=eng.validateSource(DASH.meId, DASH.day, String(per));
+    if(v.valid!=='VALID') return {ok:false, error:v.message||'คาบนี้สลับไม่ได้'};
+    var src=v.source;
+    // s25.1 guard, verbatim: one substitute per give-up slot
+    for(var i=0;i<sem.log.length;i++){ var ex=sem.log[i];
+      if(ex && ex.status!=='ยกเลิก' && ex.me_id===DASH.meId && ex.date_absent===DASH.dateAbsent
+         && String(ex.per_give)===String(per)){
+        return {ok:false, error:'คาบนี้มีผู้สอนแทนอยู่แล้ว — '+(ex.y_name||ex.y_id)+' (สถานะ: '+ex.status+
+                ') หากต้องการเปลี่ยนผู้สอนแทน ให้ยกเลิกรายการเดิมก่อน'}; } }
+    var entry={
+      id:'log_'+Date.now()+'_x', created_at:new Date().toISOString(),
+      date_proposed:DASH.dateProposed||'', status:'เสนอ',
+      me_id:DASH.meId, me_name:meName(), day_give:DASH.day, per_give:String(per),
+      subject_give:src.subject||'', group_give:src.group||'', room_give:src.room||'',
+      date_absent:DASH.dateAbsent,
+      kind:'สอนแทน',
+      y_id:'', y_name:name, y_note:note||'', y_phone:'',
+      day_back:'', per_back:'', y_sub:'', y_room:'', room_back:'', date_back:'', week_offset:null,
+      score:null, impact_tag:'ผู้สอนแทนนอกระบบ', warnings:[]
+    };
+    var cf=ledgerConflicts(sem.log, entry);          // G2 applies here too
+    if(cf.length) return {ok:false, error:'ชนกับรายการที่มีอยู่ — '+ledgerConflictText(cf[0])};
+    sem.log.push(entry);
+    var r=STORE.save();
+    return r.ok ? {ok:true, id:entry.id} : {ok:false, error:r.error};
+  }
+  function isExternalSub(e){ return !!e && e.kind==='สอนแทน' && !e.y_id; }
 
   /* ---- results bridge (minimal; full table is Stage 17) ---- */
   /* ====================================================================
@@ -3793,7 +3944,12 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         '<td>'+esc(e.me_name||e.me_id)+'<div class="l-sub">'+esc(e.me_id)+'</div></td>'+
         '<td class="l-slot">วัน'+esc(e.day_give)+' คาบ '+esc(e.per_give)+'<div class="l-sub">'+esc((e.subject_give||'')+' / '+(e.group_give||'')+' · ห้อง '+(e.room_give||'—'))+'</div></td>'+
         '<td class="l-date">'+esc(beShort(e.date_absent))+'</td>'+
-        '<td>'+esc(e.y_name||e.y_id)+'<div class="l-sub">'+esc(e.y_id)+'</div>'+(e.y_phone?'<a class="l-phone" href="tel:'+esc(String(e.y_phone).replace(/[^0-9+]/g,''))+'">📞 '+esc(phTxt)+'</a>':'<div class="l-sub muted">'+esc(phTxt)+'</div>')+'</td>'+
+        '<td>'+esc(e.y_name||e.y_id)+
+          (isExternalSub(e)
+            ? '<div class="l-sub"><span class="l-ext">นอกระบบ</span>'+(e.y_note?' '+esc(e.y_note):'')+'</div>'
+            : '<div class="l-sub">'+esc(e.y_id)+'</div>'+
+              (e.y_phone?'<a class="l-phone" href="tel:'+esc(String(e.y_phone).replace(/[^0-9+]/g,''))+'">📞 '+esc(phTxt)+'</a>'
+                        :'<div class="l-sub muted">'+esc(phTxt)+'</div>'))+'</td>'+
         '<td class="l-slot">'+(isSubOnly(e)
             ? '<span class="l-giveaway">ยกคาบให้ (ไม่รับคืน)</span>'
             : 'วัน'+esc(e.day_back)+' คาบ '+esc(e.per_back)+'<div class="l-sub">'+esc(e.y_sub||'')+'</div>')+'</td>'+
@@ -4024,7 +4180,10 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     var t=ttTeacherById(tid);
     return t ? (t.id+' — '+t.name) : tid;
   }
+  // F13: an off-roster substitute has no timetable, so they can neither be
+  // picked in the handout nor have a mirror grid generated for them.
   function ttTouch(map, id, name){
+    if(!id) return;
     if(!id) return;
     if(!map[id]) map[id]={id:id, name:name||'', count:0};
     if(name && !map[id].name) map[id].name=name;
@@ -4123,6 +4282,17 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       var yRoom=e.y_room || e.room_back || '';
       var yClass=ttParts(e.y_sub, e.group_give, yRoom);
       if(e.me_id===tid && ttDate(e.date_absent)===dateISO && String(e.per_give)===p){
+        if(isSubOnly(e)){
+          var who=esc(e.y_name||e.y_id)+(isExternalSub(e)?' (นอกระบบ'+(e.y_note?' · '+esc(e.y_note):'')+')':'');
+          notes.push('คาบ '+p+' วัน'+day+': มีผู้มาสอนแทน — '+(e.y_name||e.y_id)+
+            (isExternalSub(e)?' (นอกระบบ'+(e.y_note?' · '+e.y_note:'')+')':'')+
+            '; ไม่มีการสอนคืน ตามบันทึกลงวันที่ '+ttLogStamp(e));
+          return {cls:'tt-out', html:'<div class="tt-cell">'+
+            '<div class="tt-mark">มีคนสอนแทน</div>'+
+            '<div class="tt-sub">คาบของครูคนนี้: '+esc(meClass)+'</div>'+
+            '<div class="tt-by">ผู้สอนแทน: '+who+'</div>'+
+          '</div>'};
+        }
         notes.push('คาบ '+p+' วัน'+day+': คาบของครูคนนี้ถูก '+ttMovedTo(e.day_back,e.per_back)+' — '+meClass+'; คู่สลับใช้เวลานี้สอนคาบของตนเอง '+yClass+' ตามบันทึกลงวันที่ '+ttLogStamp(e));
         return {cls:'tt-out', html:'<div class="tt-cell">'+
           '<div class="tt-mark">ย้ายคาบออก</div>'+
