@@ -76,6 +76,10 @@ LATE (post-v1, each needs its own explicit approval):
   F9  kind แลกคาบ/สอนแทน  ─┐              F10 per-teacher summary message
   F13 ผู้สอนแทนนอกระบบ    ─┴ one design pass, one build — see BLUEPRINT §11.1
   F11 per-class (รายห้อง) swap view       (F12 uncovered-slot → promoted into s28e)
+  F14 explicit leave record + รอบการลา — the root cause behind "uncovered vs
+      never-absent", half-day leave, and the handout printing finished weeks.
+      Its handout half (don't pre-select past weeks) can ship alone.
+  NEXT AFTER A1: F13, then F14 — both confirmed by real use on 20 ส.ค.
   F10/F11 are read-only derivations of the Log and are cheap — but both must
   wait for s28: a summary sent to a colleague, or a class view, built on a
   log that still double-books would push the error to other people.
@@ -263,7 +267,7 @@ LATE (post-v1, each needs its own explicit approval):
 
 **Where this ships (corrected 2026-08-18, BLUEPRINT §5.9.0).** The owner's daily tool is the **published page** at `zenithjuno.github.io/schedule-swap-pp/`, served from committed `index.html`. They have never opened a local copy. So **the deliverable of this phase is a push, not a file** — and their real data lives in `localStorage` under that web origin, which no local or `localhost` copy can see. The `private/` data-loaded file receives the identical patch (the code region is byte-identical, verified by diff) but is a handout artefact, not anyone's working copy. Earlier drafts of this plan had that backwards; do not re-derive the old assumption.
 
-**Build target during the amendment: `preview/index.html`, published at `zenithjuno.github.io/schedule-swap-pp/preview/`.** The site root keeps serving committed v1 (s27) untouched for the whole phase, so the owner's daily tool and any colleague using it are never exposed to a half-finished build. Because Pages serves the same origin, the preview sees the owner's **real** `localStorage` data with no import or restore — that is the point of choosing this route (owner's decision, 2026-08-18). The preview build carries a red `#a1PreviewBar` banner that exists **only** there; Stage 28f promotes the file to the root, strips the banner, and deletes `preview/`. Root `index.html` is deliberately left at HEAD until then — do not "helpfully" patch it early.
+**(Historical — the preview path was removed at 28f when the build was promoted to the root.)** Build target during the amendment: `preview/index.html`, published at `zenithjuno.github.io/schedule-swap-pp/preview/`.** The site root keeps serving committed v1 (s27) untouched for the whole phase, so the owner's daily tool and any colleague using it are never exposed to a half-finished build. Because Pages serves the same origin, the preview sees the owner's **real** `localStorage` data with no import or restore — that is the point of choosing this route (owner's decision, 2026-08-18). The preview build carries a red `#a1PreviewBar` banner that exists **only** there; Stage 28f promotes the file to the root, strips the banner, and deletes `preview/`. Root `index.html` is deliberately left at HEAD until then — do not "helpfully" patch it early.
 
 **Sequencing principle:** diagnose before changing (28b is read-only), then close the future (28c–28d), then make the present visible (28e), then prove it (28f). Each step is independently revertible; no step depends on a later one being finished.
 
@@ -306,7 +310,7 @@ Both came from one real swap request and both are recorded in the BLUEPRINT, not
 - **Give-back window ±3 → ±6** (§5.9.4b). Four periods repaid one per week needed +4; the arrangement could not be logged at all, which would have driven it onto paper and out of the ledger's sight.
 - **"ยกคาบให้เลย" — F9-lite** (§11.1 F9). A period taken outright had to be logged as a swap with an invented give-back. A1 then enforced the invention: it held a slot the owner was free in and printed a phantom class on the handout. The ledger needed no change — the per-entry claim emitter mandated at 28b already handled it — only a way to create such an entry.
 
-## Stage 28f — Ledger suite + both editions + changelog
+## Stage 28f — Ledger suite + both editions + changelog  ·  **DONE 2026-08-20 — A1 SHIPPED**
 🔨 The ledger suite (§5.9.10) as a second frozen set, independent of the oracle fixture: incident replay, soft-hold round-trip, asymmetric give-up hole, stale-page defeat, auditor on the corrupt real log, uncovered-slot report (all-cancelled group reported, never-attempted group silent, past vs future routing), handout collision rendering, s25.1 FIX #2 non-regression. Apply the identical patch to the private data-loaded edition. Write `CHANGELOG.txt` entry s28 in the house format (WHY / CHANGE n / TESTING), recording A1 and its BLUEPRINT origin.
 🧪 Ledger suite green on clean code; sabotage each gate in turn → the matching cases go red with readable diffs → revert. Full existing harness re-run on **both** editions. Private edition: real data still loads, log intact, semester switcher and self-export unaffected.
 👁️ The green ledger board, then the sabotaged red board proving the tests actually test — the same proof pattern as s15. Then your own file, opened normally, with your data where you left it.

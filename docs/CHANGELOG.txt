@@ -1,6 +1,116 @@
 CHANGELOG — schedule_swap_HTML  (append to cumulative changelog)
 ================================================================================
 
+Revision: s28   Date: 2026-08-20
+Base:     index.html s27 (public edition) + private/…ข้อมูลจริง (s26 lineage)
+Author:   Claude, with ครูชัชพงษ์ testing on live data throughout
+Type:     BLUEPRINT Amendment A1 — occupancy ledger. A correctness fix, not a
+          feature. Shipped to the site root; the /preview/ path used during the
+          build is removed.
+
+WHY
+  On 17 ส.ค. 2569 live use produced three อนุมัติแล้ว rows all giving back at
+  พุธ คาบ 1 / 26 ส.ค.: the owner stood committed to two groups in two rooms in
+  one period, and nothing in the app said so. Root cause in three layers:
+    1. _occupied() counted ONLY อนุมัติแล้ว rows, so a เสนอ or รออนุมัติ row
+       reserved nothing. Each of the three searches ran while the others were
+       still เสนอ and was correctly-but-blindly offered the same free slot.
+    2. the block list was consulted only while GENERATING candidates. saveToLog
+       guarded the give-up side alone; the status dropdown validated nothing;
+       and each candidate's offset_info is a snapshot frozen at search time.
+    3. nothing looked at the log as a whole, and ttSwapCell returned the FIRST
+       matching row — so a triple-booked cell printed as one ordinary swap on
+       the one document the owner physically carries.
+  Logged at s25.1 as "DEFERRED #3 — would break the frozen-oracle guarantee".
+  That reason was false: the fixture holds no log rows and the self-test calls
+  search() with no dates, so the occupancy path had never been tested at all.
+
+CHANGE 1 — occupancy ledger (BLUEPRINT §5.9)
+  Derived, never stored; rebuilt at every point of use. Key is absolute:
+  teacher_id | ISO date | period. Two claim kinds, and keeping them apart is the
+  whole point:
+      BUSY     — this teacher must stand in a room and teach then.
+      HANDOVER — this teacher's own class in that slot is already given away.
+  They are independent: a teacher who handed a class over is FREE and may
+  legitimately be BUSY covering someone else in that same slot. Invariant: at
+  most one claim of EACH kind per key. Order-independent by construction —
+  created_at only describes a conflict, it never resolves one.
+  LogEntry shape and schemaVersion are untouched, so every existing backup and
+  archived semester still loads.
+
+  Modelling note, kept as a lesson: stage 28b shipped this with ONE checked kind
+  and was wrong. Replayed against the owner's real pre-cleanup log the corrected
+  model finds 8 collisions where the single-kind model found 4 — the four it
+  missed are all "the same class period given away twice", including ครู 0603
+  handing one 26 ส.ค. คาบ 1 period to two different swaps.
+
+CHANGE 2 — three gates, one shared check
+  G1 search — every non-ยกเลิก status now holds; the give-up end blocks on BUSY
+     (closing an asymmetry where only the 'ycover' kind was consulted, so a
+     partner owing a make-up of their own slipped through); week-picker labels
+     distinguish "(ติดคิวแล้ว)" from "(จองไว้แล้ว — ยังไม่อนุมัติ)".
+  G2 commit — saveToLog rebuilds the ledger AT WRITE TIME. Verified against the
+     defect it exists for: a results page opened while a slot was free, a rival
+     approved meanwhile, then save clicked — refused, nothing written.
+  G3 status — re-validates against a ledger built without that row, and reverts
+     the dropdown. Widened from "promotion to อนุมัติแล้ว" to every transition to
+     a non-ยกเลิก status, because un-cancelling re-emits the same claims.
+     ยกเลิก is always allowed: the escape hatch must never close.
+  Refusal messages name who holds the slot, when, and in what state.
+
+CHANGE 3 — the findings reach the screen and the paper
+  บันทึกการสลับ: red banner per collision + a tag and tint on every row involved.
+  หน้าหลัก: uncovered slots dated today or later at the TOP of the reminder strip
+     (the case that created this rule was found two days before the absence);
+     past ones stay in the Log banner only.
+  ตารางสอน: ttCell counts matches first. More than one prints
+     "⚠️ สอนซ้อน N รายการ" naming every class and partner, with a footnote and a
+     print-safe fill. Law added as §9.6: a printed artefact may never resolve an
+     ambiguity the data does not resolve.
+
+CHANGE 4 — two follow-ups forced by live use, same day
+  "ยกคาบให้เลย" (F9-lite): a colleague had taken a period outright, but the app
+     could only express a swap, so the row carried a give-back that does not
+     exist — and A1 then enforced the fiction, holding a slot the owner was free
+     in and printing a phantom class. A checkbox now writes kind:'สอนแทน' with
+     the give-back fields empty and no score. THE LEDGER NEEDED NO CHANGE: the
+     per-entry claim emitter mandated at 28b already emits 2 claims instead of 4.
+  Give-back window ±3 → ±6 weeks: four periods of leave repaid one per week
+     needed offset +4 and could not be recorded at all. An arrangement the log
+     cannot hold ends up on paper, invisible to every gate.
+
+CHANGE 5 — defect found in passing (v1, not A1)
+  Two top-level `function meName()` declarations shared one scope; the later
+  hoisted over the dashboard's and answered every caller, including the one that
+  stamps me_name onto a Log row. Searching on behalf of a colleague stored the
+  WRONG NAME, and Log rows keep commit-time display values (§5.2), so it would
+  have printed on the พพ.1-1 memo and the handout. Renamed to formMeName().
+  A scan of all 163 top-level declarations found no other duplicate.
+
+TESTING
+  Oracle firewall — self-test 21/21 (1455 fields, 2234 rows); golden top-5
+  104/103/89/87/74 and rank-1 1202 พฤหัสฯ p6 ญ30213; p2/p3 partner counts 5/9.
+  Identical before and after, on both editions.
+  Ledger suite — NEW, embedded and runnable forever from ตรวจสอบระบบ (16 cases),
+  plus 43 build-time cases in private/test_ledger_suite.js which reads the ledger
+  code out of the shipped .html so it can never test a stale copy.
+  Green→red→green: reverting the ledger to the single-kind model turns L01 and
+  L06 ("ยกคาบเดียวกันสองครั้ง") red while the oracle self-test stays 21/21 —
+  demonstrating directly why the second suite had to exist.
+  Live data — the owner's real semester was driven end to end through the real
+  UI: three arrangements re-dated, one converted to สอนแทน, four created for a
+  colleague's leave; audit clean afterwards, and the produced file re-loaded and
+  compared row by row against what the app itself generated.
+  Zero console errors throughout.
+
+NOTES
+  Both editions carry byte-identical engine code (202,907 chars).
+  Known and recorded, not fixed here: the app still infers absence from the
+  existence of swap rows, so "not yet arranged" and "not absent" are
+  indistinguishable, half-day leave cannot be expressed, and the handout
+  pre-selects finished weeks. Parked as F14; off-roster substitutes as F13.
+================================================================================
+
 Revision: s27   Date: 2026-07-25
 Base:     schedule_swap_HTML_s26_2026-06-17.html
 Author:   Claude (house sweep for public release)

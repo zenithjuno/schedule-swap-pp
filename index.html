@@ -603,9 +603,33 @@ table.logtab td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-ali
 .rmd-soft{background:var(--amber-wash);border:1px solid var(--amber);color:var(--ink)}
 .backup-stale{color:var(--amber);font-weight:600}
 .btn-archive-export{padding:6px 14px;border:0;border-radius:8px;background:var(--amber);color:#fff;cursor:pointer;font-family:inherit}
+
+/* ---- A1 follow-up: ยกคาบให้เลย (สอนแทน) ---- */
+.d-giveaway{display:block;margin:10px 0 2px;padding:9px 11px;background:#fff7e8;border:1px solid #e6cf9d;border-radius:8px;font-size:14px;cursor:pointer}
+.d-giveaway input{margin-right:6px}
+.d-giveaway-note{display:block;margin-top:3px;font-size:12.5px;opacity:.8;font-weight:400}
+.l-giveaway{display:inline-block;background:#eef3ee;border:1px solid #c8d6c8;border-radius:5px;padding:1px 7px;font-size:12.5px;color:#3c5a3c;white-space:nowrap}
+
+/* ---- A1 / stage 28e: audit surfaces ---- */
+.aud{border-radius:10px;padding:12px 14px;margin:0 0 14px;font-size:14px;line-height:1.55}
+.aud-bad{background:#fdecea;border:1px solid #e6a29b;color:#8a1c12}
+.aud-warn{background:#fff6e0;border:1px solid #e3c377;color:#7a5600}
+.aud-h{font-weight:700;font-size:15px;margin-bottom:6px}
+.aud-item{margin:8px 0 0;padding:8px 10px;background:rgba(255,255,255,.6);border-radius:7px}
+.aud-item ul{margin:5px 0 0 18px;padding:0}
+.aud-item li{margin:2px 0}
+.aud-dim{opacity:.75}
+.aud-foot{margin-top:9px;font-size:13px;opacity:.85}
+.aud-tag{display:inline-block;background:#c0392b;color:#fff;border-radius:4px;padding:1px 6px;font-size:11px;white-space:nowrap}
+tr.log-clash > td{box-shadow:inset 0 0 0 9999px rgba(192,57,43,.07)}
+.rmd-sub{margin:4px 0 0 14px;font-weight:400;opacity:.92}
+td.tt-clash{background:#f7c9c5}
+td.tt-clash .tt-mark{background:#c0392b;color:#fff;border-radius:4px;padding:1px 6px;display:inline-block;font-weight:700}
+@media print{ td.tt-clash{background:#f7c9c5 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact} }
 </style>
 </head>
 <body>
+
 
 <!-- embedded-data island: empty in the master; filled only by self-export (Stage 23) -->
 <script type="application/json" id="embedded-data"></script>
@@ -1691,6 +1715,13 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
      preference defaults). D2 smart-week default + D1 date-aware block-list are
      applied as a post-pass over the scored candidates inside search(opts).
      ==================================================================== */
+  /* A1 follow-up 2026-08-18: the give-back window was hard-coded to ±3 weeks.
+     A real request — 4 periods of leave repaid one period per week, because the
+     partner had exactly ONE matching free slot — needed +4 and could not be
+     recorded at all. Widened to ±6. Oracle-neutral: the embedded self-test runs
+     search() with no dates, and defaultOffsetPlain still starts inside ±1, so
+     every fixture expectation (default_offset, giveback_date) is unchanged. */
+  var WEEK_SPAN = 6;
   var THAI_DAYS = ['จันทร์','อังคาร','พุธ','พฤหัสฯ','ศุกร์'];
   var THAI_DAYN = {'จันทร์':1,'อังคาร':2,'พุธ':3,'พฤหัสฯ':4,'ศุกร์':5};
   var THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
@@ -1718,20 +1749,17 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   window.__SWAP_DATES__ = { DAYN:THAI_DAYN, isoWeekday:isoWeekday, weekdayThai:weekdayThai,
     defaultOffsetPlain:defaultOffsetPlain, givebackDateISO:givebackDateISO, formatBE:formatBE };
 
-  // D1 date-aware entries from approved log rows.
-  // Log entry shape: {status, me_id, day_give, per_give, date_absent, y_id, day_back, per_back, date_back}
-  Engine.prototype._occupied = function(){
-    var occ=[], log=this.log||[];
-    for(var i=0;i<log.length;i++){
-      var e=log[i];
-      if(e.status!=='อนุมัติแล้ว') continue;
-      occ.push({tid:e.y_id,  date:e.date_back,   per:String(e.per_back), kind:'consumed'});   // Y give-back
-      occ.push({tid:e.me_id, date:e.date_back,   per:String(e.per_back), kind:'memakeup'});    // Me make-up
-      occ.push({tid:e.y_id,  date:e.date_absent, per:String(e.per_give), kind:'ycover',        // Y covers Me
-                coversMe:e.me_id, coversDay:e.day_give, coversPer:String(e.per_give)});
-    }
-    return occ;
-  };
+  /* A1 / STAGE 28c — the give-up + give-back date checks now read the ledger
+     (§5.9.5) instead of the old _occupied() list. Three defects are closed:
+       1. _occupied() skipped every row that was not อนุมัติแล้ว, so a เสนอ or
+          รออนุมัติ row reserved nothing — that is how three swaps landed on
+          พุธ คาบ 1 / 26 ส.ค. 2569.
+       2. the give-up end matched only the 'ycover' kind, so a partner who
+          already owed a make-up of their own at that slot slipped through.
+       3. nothing modelled "this class period has already been given away",
+          so the same period could be handed to two different swaps.
+     Every non-ยกเลิก status now holds (§5.9.4); hard vs soft only changes the
+     label the week picker shows. ยกเลิก frees the slot instantly, as before. */
 
   // D1/D2 post-pass: per candidate compute available week-offsets, the smart default
   // offset, give-back date (ISO + BE), and the date-dependent warnings. Drop a
@@ -1740,28 +1768,30 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     var dateAbsent=opts.dateAbsent;
     var preference=opts.preference || this.settings.GIVEBACK_PREFERENCE || 'อนาคต';
     var dateProposed=opts.dateProposed || null;
-    var occ=this._occupied(); per1=String(per1);
+    per1=String(per1);
+    var L=buildLedger(this.log||[]);
+    // Claims belonging to THIS give-up slot are ignored: the owner is looking for
+    // a replacement for it, and the s25.1 save guard governs replacing it.
+    var selfSlot = me+'|'+ledDate(dateAbsent)+'|'+per1;
     var out=[];
     for(var i=0;i<passing.length;i++){
       var c=passing[i];
-      // give-up side: Y already covering someone ELSE at the absence date / give-up period
-      var giveUpBlocked=false, j;
-      for(j=0;j<occ.length;j++){
-        var o=occ[j];
-        if(o.kind==='ycover' && o.tid===c.Yid && o.date===dateAbsent && o.per===per1
-           && !(o.coversMe===me && o.coversDay===day1 && o.coversPer===per1)){ giveUpBlocked=true; break; }
-      }
+      // Give-up end: Y must be free to stand in Me's room. Only BUSY blocks —
+      // a HANDOVER on Y means Y gave their own class away and is FREE then.
+      // Checking BUSY (not just the old 'ycover') closes the asymmetry: a
+      // partner who owes a make-up of their own at that slot is committed too.
+      var gu = L.busyAt(c.Yid, dateAbsent, per1, selfSlot);
+      var giveUpBlocked = gu.length>0;
+      var giveUpHold = holdStrength(gu);
+
       var offsets={}, available=[], off;
-      for(off=-3; off<=3; off++){
-        var gb=givebackDateISO(c.day2, dateAbsent, off);
-        var blocked=giveUpBlocked;
-        if(!blocked){
-          for(var k=0;k<occ.length;k++){
-            var oo=occ[k];
-            if(oo.date===gb && oo.per===String(c.per2) && (oo.tid===c.Yid || oo.tid===me)){ blocked=true; break; }
-          }
-        }
-        offsets[off]={giveback:gb, blocked:blocked, clash:(gb===dateAbsent)};
+      for(off=-WEEK_SPAN; off<=WEEK_SPAN; off++){
+        var gb=givebackDateISO(c.day2, dateAbsent, off), p2=String(c.per2);
+        var hit = giveUpBlocked ? gu : L.at(c.Yid, gb, p2, selfSlot).concat(L.at(me, gb, p2, selfSlot));
+        var blocked = hit.length>0;
+        offsets[off]={giveback:gb, blocked:blocked, clash:(gb===dateAbsent),
+                      hold:(blocked?holdStrength(hit):null),
+                      heldBy:(blocked?hit[0].entry:null)};
         if(!blocked) available.push(off);
       }
       if(available.length===0) continue;     // D1: drop only when every offset is blocked
@@ -1770,26 +1800,201 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       var dir = (preference==='อดีต') ? -1 : 1;
       var start = defaultOffsetPlain(c.day2, dateAbsent, preference);
       var cand=[], st;
-      for(st=0; st<=6; st++) cand.push(start+dir*st);
-      for(st=1; st<=6; st++) cand.push(start-dir*st);
-      for(st=-3; st<=3; st++) cand.push(st);
+      for(st=0; st<=2*WEEK_SPAN; st++) cand.push(start+dir*st);
+      for(st=1; st<=2*WEEK_SPAN; st++) cand.push(start-dir*st);
+      for(st=-WEEK_SPAN; st<=WEEK_SPAN; st++) cand.push(st);
       var order=[], seen={}, ci;
-      for(ci=0;ci<cand.length;ci++){ var cv=cand[ci]; if(cv>=-3&&cv<=3&&!seen[cv]){ seen[cv]=1; order.push(cv); } }
+      for(ci=0;ci<cand.length;ci++){ var cv=cand[ci]; if(cv>=-WEEK_SPAN&&cv<=WEEK_SPAN&&!seen[cv]){ seen[cv]=1; order.push(cv); } }
       var chosen=null, oi;
       for(oi=0; oi<order.length; oi++){ var ov=order[oi]; if(!offsets[ov].blocked && !offsets[ov].clash){ chosen=ov; break; } }
       if(chosen===null) for(oi=0; oi<order.length; oi++){ var ov2=order[oi]; if(!offsets[ov2].blocked){ chosen=ov2; break; } }
 
       var gbISO=offsets[chosen].giveback;
       c.default_offset=chosen; c.giveback_date=gbISO; c.giveback_be=formatBE(gbISO,false);
-      c.available_offsets=available; c.offset_info=offsets;
+      c.available_offsets=available; c.offset_info=offsets; c.giveup_hold=giveUpHold;
       c.warn_retro = (dateProposed && gbISO<dateProposed) ? 1 : 0;
       c.warn_absence_clash = (gbISO===dateAbsent) ? 1 : 0;
-      var selfcol=0, s2;
-      for(s2=0;s2<occ.length;s2++){ var so=occ[s2]; if(so.tid===me && so.date===gbISO && so.per===String(c.per2)){ selfcol=1; break; } }
-      c.warn_self_collision=selfcol;
+      // Me already committed at the chosen give-back slot. With A1 this can only
+      // be non-zero when every offset is held and the fallback picked a held one,
+      // so it is a genuine last-line warning rather than the dead code it was.
+      c.warn_self_collision = L.at(me, gbISO, String(c.per2), selfSlot).length ? 1 : 0;
       out.push(c);
     }
     return out;
+  };
+
+
+
+  /* ====================================================================
+     A1 / STAGE 28b — OCCUPANCY LEDGER + AUDITOR   (BLUEPRINT §5.9)
+     ------------------------------------------------------------------
+     READ-ONLY in this stage: nothing in the app calls these yet. They are
+     pure functions over a log array — no DOM, no STORE, no side effects —
+     so the gates (28c/28d) and the surfaces (28e) can all read ONE truth.
+
+     Key is absolute: teacher_id | ISO date | period   (never a weekday).
+     Invariant (§5.9.3): at most ONE OCCUPY per key. Order-independent by
+     design — created_at only DESCRIBES a conflict, it never resolves one.
+
+     Claims are emitted PER ENTRY, never a hard-coded four (§5.9.12): a
+     แลกคาบ row emits 4, a สอนแทน row (F9, no give-back end) emits 2, and a
+     สอนแทน by an off-roster person (F13, no teacher_id) emits 1. That falls
+     out of the two guards below — do not "simplify" them away.
+     ==================================================================== */
+  function ledDate(v){ return String(v==null?'':v).slice(0,10); }
+  function ledKey(tid, dateISO, per){ return tid+'|'+ledDate(dateISO)+'|'+String(per); }
+
+  /* Two claim kinds, and the difference is the whole point:
+       BUSY     — this teacher is committed to stand in a room and teach then.
+       HANDOVER — this teacher's OWN class in that slot has been given away on
+                  that date, so it can never be given away a second time.
+     They are independent: a teacher who handed their class over is FREE, and may
+     legitimately be BUSY covering someone else in the very same slot. Modelling
+     only BUSY (as stage 28b did) misses the double-give-away — the real log had
+     ครู 0603 handing the same 26 ส.ค. คาบ 1 period to two different swaps. */
+  function claimsOfEntry(e){
+    var out=[];
+    if(!e || e.status==='ยกเลิก') return out;
+    var da=ledDate(e.date_absent), pg=String(e.per_give);
+    var db=ledDate(e.date_back),   pb=String(e.per_back);
+
+    // give-up end — every arrangement type has one
+    if(e.me_id && da) out.push({kind:'HANDOVER', role:'megaveup', tid:e.me_id, date:da, per:pg, entry:e});
+    if(e.y_id  && da) out.push({kind:'BUSY',     role:'ycover',   tid:e.y_id,  date:da, per:pg, entry:e});
+
+    // give-back end — a สอนแทน entry (F9/F13) has none, so these do not exist
+    if(db && e.per_back!=null && String(e.per_back)!==''){
+      if(e.me_id) out.push({kind:'BUSY',     role:'memakeup', tid:e.me_id, date:db, per:pb, entry:e});
+      if(e.y_id)  out.push({kind:'HANDOVER', role:'ygaveback', tid:e.y_id,  date:db, per:pb, entry:e});
+    }
+    return out;
+  }
+
+  // Derived, never stored — rebuilt at every point of use (§5.9.1).
+  function buildLedger(log){
+    var busy=Object.create(null), handover=Object.create(null), claims=[];
+    log = log || [];
+    for(var i=0;i<log.length;i++){
+      var cs=claimsOfEntry(log[i]);
+      for(var j=0;j<cs.length;j++){
+        var c=cs[j], k=ledKey(c.tid, c.date, c.per);
+        c.key=k; claims.push(c);
+        var map = (c.kind==='BUSY') ? busy : handover;
+        if(!map[k]) map[k]=[];
+        map[k].push(c);
+      }
+    }
+    function pick(map, tid, dateISO, per, exceptSlot){
+      var a=map[ledKey(tid,dateISO,per)]||[], out=[];
+      for(var n=0;n<a.length;n++){
+        var e=a[n].entry;
+        if(exceptSlot && (e.me_id+'|'+ledDate(e.date_absent)+'|'+String(e.per_give))===exceptSlot) continue;
+        out.push(a[n]);
+      }
+      return out;
+    }
+    return {
+      busy:busy, handover:handover, claims:claims,
+      busyAt:    function(t,d,p,x){ return pick(busy,     t,d,p,x); },
+      handoverAt:function(t,d,p,x){ return pick(handover, t,d,p,x); },
+      at:        function(t,d,p,x){ return pick(busy,t,d,p,x).concat(pick(handover,t,d,p,x)); }
+    };
+  }
+
+  // 'hard' if any claim comes from an อนุมัติแล้ว row, else 'soft', else null.
+  // Both block (§5.9.4) — the strength only changes what the label says.
+  function holdStrength(claims){
+    var s=null;
+    for(var i=0;i<claims.length;i++){
+      if(claims[i].entry.status==='อนุมัติแล้ว') return 'hard';
+      s='soft';
+    }
+    return s;
+  }
+
+  // §5.9.8 report 1 — any key holding two claims OF THE SAME KIND.
+  function ledgerCollisions(log){
+    var L=buildLedger(log), out=[];
+    function scan(map, kind){
+      for(var k in map){
+        var a=map[k]; if(a.length<2) continue;
+        var p=k.split('|');
+        out.push({key:k, kind:kind, teacher_id:p[0], date:p[1], period:p[2], claims:a,
+                  entries:a.map(function(c){ return c.entry; })});
+      }
+    }
+    scan(L.busy,'BUSY'); scan(L.handover,'HANDOVER');
+    out.sort(function(a,b){ return a.date<b.date?-1:(a.date>b.date?1:((+a.period)-(+b.period)||(a.kind<b.kind?-1:1))); });
+    return out;
+  }
+
+  // §5.9.8 report 2 — a give-up slot whose every row is ยกเลิก: cover was
+  // arranged and then dropped. A slot with NO rows is NOT reported.
+  function ledgerUncovered(log){
+    var by=Object.create(null), order=[];
+    log = log || [];
+    for(var i=0;i<log.length;i++){
+      var e=log[i];
+      if(!e || !e.me_id || !e.date_absent) continue;
+      var k=ledKey(e.me_id, e.date_absent, e.per_give);
+      if(!by[k]){ by[k]=[]; order.push(k); }
+      by[k].push(e);
+    }
+    var out=[];
+    for(var n=0;n<order.length;n++){
+      var key=order[n], rows=by[key], live=false;
+      for(var r=0;r<rows.length;r++) if(rows[r].status!=='ยกเลิก'){ live=true; break; }
+      if(live) continue;
+      var p=key.split('|'), f=rows[0];
+      out.push({key:key, teacher_id:p[0], date:p[1], period:p[2],
+                day:f.day_give, subject:f.subject_give, group:f.group_give,
+                room:f.room_give, cancelled:rows.length, entries:rows});
+    }
+    out.sort(function(a,b){ return a.date<b.date?-1:(a.date>b.date?1:(+a.period)-(+b.period)); });
+    return out;
+  }
+
+  function auditLedger(log){
+    var col=ledgerCollisions(log), unc=ledgerUncovered(log);
+    return {collisions:col, uncovered:unc, ok:(col.length===0 && unc.length===0)};
+  }
+
+  /* A1 / STAGE 28d — the one function both write-gates call (§5.9.6, §5.9.7).
+     Returns the conflicts a candidate entry WOULD create against an existing
+     log. excludeId ignores a row already in the log (G3 re-validates a row in
+     place). Rebuilt from the log every call — that is what defeats a results
+     page left open for an hour: offset_info may be stale, the ledger never is. */
+  function ledgerConflicts(log, entry, excludeId){
+    var rest=[], i, all=log||[];
+    for(i=0;i<all.length;i++) if(!excludeId || all[i].id!==excludeId) rest.push(all[i]);
+    var L=buildLedger(rest), mine=claimsOfEntry(entry), out=[];
+    for(i=0;i<mine.length;i++){
+      var c=mine[i];
+      var hit = (c.kind==='BUSY') ? L.busyAt(c.tid,c.date,c.per) : L.handoverAt(c.tid,c.date,c.per);
+      if(hit.length) out.push({claim:c, against:hit});
+    }
+    return out;
+  }
+
+  // Plain-Thai sentence naming WHO holds the slot, WHEN, and in what state.
+  function ledgerConflictText(conf){
+    var c=conf.claim, o=conf.against[0], e=o.entry;
+    var who = (o.tid===e.me_id) ? (e.me_name||e.me_id) : (e.y_name||e.y_id);
+    var when = 'วัน'+weekdayThai(c.date)+' คาบ '+c.per+' วันที่ '+formatBE(c.date,false);
+    var what = (c.kind==='BUSY')
+      ? who+' ต้องสอน '+when+' อยู่แล้ว'
+      : who+' ยกคาบ '+when+' ให้คนอื่นไปแล้ว';
+    return what+' — รายการ: '+(e.me_name||e.me_id)+' ↔ '+(e.y_name||e.y_id)+' (สถานะ: '+e.status+')';
+  }
+
+  window.__SWAP_LEDGER__ = {
+    key:ledKey, claimsOfEntry:claimsOfEntry, build:buildLedger, holdStrength:holdStrength,
+    collisions:ledgerCollisions, uncovered:ledgerUncovered, audit:auditLedger,
+    conflicts:ledgerConflicts, conflictText:ledgerConflictText,
+    auditActive:function(){
+      var sem = (typeof STORE!=='undefined' && STORE.activeSemester) ? STORE.activeSemester() : null;
+      return auditLedger((sem && sem.log) || []);
+    }
   };
 
 
@@ -1886,6 +2091,74 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   }
   window.__SWAP_SELFTEST__ = { run:runSelfTest, loadFixture:loadEmbeddedFixture };
 
+
+
+  /* ====================================================================
+     A1 / STAGE 28f — LEDGER SUITE (the harness's second frozen set, §10.4)
+     The oracle fixture carries NO log rows and the oracle self-test calls
+     search() with no dates, so it cannot reach the occupancy path at all —
+     which is exactly how the double-booking defect shipped. These cases are
+     pure and synthetic; they need no semester and no fixture, so they stay
+     runnable on any machine in any year, same as the oracle self-test.
+     ==================================================================== */
+  function runLedgerTests(){
+    var cases=[], L=window.__SWAP_LEDGER__;
+    function t(id,label,fn){
+      var ok=false, detail='';
+      try{ var r=fn(); ok=(r===true); if(!ok) detail=String(r); }
+      catch(e){ detail='exception: '+e.message; }
+      cases.push({id:id,label:label,ok:ok,detail:detail});
+    }
+    function E(o){ var b={id:'e'+cases.length+'_'+Math.random().toString(36).slice(2,7),
+      status:'อนุมัติแล้ว',me_id:'M1',me_name:'ครูเอ',y_id:'Y1',y_name:'ครูบี',
+      day_give:'พฤหัสฯ',per_give:'4',date_absent:'2026-08-20',
+      day_back:'พุธ',per_back:'1',date_back:'2026-08-26'};
+      for(var k in o) b[k]=o[k]; return b; }
+
+    t('L01','แลกคาบ ปล่อย 4 claim', function(){
+      return L.claimsOfEntry(E({})).length===4 || 'got '+L.claimsOfEntry(E({})).length; });
+    t('L02','สอนแทน (ไม่มีคาบคืน) ปล่อย 2 claim', function(){
+      return L.claimsOfEntry(E({kind:'สอนแทน',day_back:'',per_back:'',date_back:''})).length===2; });
+    t('L03','สอนแทนคนนอกระบบ ปล่อย 1 claim', function(){
+      var c=L.claimsOfEntry(E({kind:'สอนแทน',y_id:'',day_back:'',per_back:'',date_back:''}));
+      return (c.length===1 && c[0].kind==='HANDOVER') || 'got '+c.length; });
+    t('L04','ยกเลิก ไม่ปล่อย claim', function(){
+      return L.claimsOfEntry(E({status:'ยกเลิก'})).length===0; });
+    t('L05','สอนคืนซ้อนกัน = ตรวจพบ (เคสจริง 26 ส.ค.)', function(){
+      var a=L.audit([E({}),E({y_id:'Y2',per_give:'1'})]);
+      return (a.collisions.length===1 && a.collisions[0].kind==='BUSY') || JSON.stringify(a.collisions.length); });
+    t('L06','ยกคาบเดียวกันสองครั้ง = ตรวจพบ', function(){
+      var a=L.audit([E({}),E({me_id:'M2',per_give:'2',date_absent:'2026-08-21'})]);
+      return a.collisions.some(function(c){return c.kind==='HANDOVER';}) || 'missed'; });
+    t('L07','ยกคาบให้แล้วไปสอนแทนคนอื่นคาบเดียวกัน = อนุญาต', function(){
+      return L.conflicts([E({})],E({me_id:'M3',y_id:'Y1',day_give:'พุธ',per_give:'1',
+        date_absent:'2026-08-26',day_back:'ศุกร์',per_back:'3',date_back:'2026-09-04'})).length===0; });
+    t('L08','แถวสถานะ เสนอ ก็จองช่อง (soft hold)', function(){
+      return L.conflicts([E({status:'เสนอ'})],E({y_id:'Y2',per_give:'1'})).length>0; });
+    t('L09','แถวยกเลิก ไม่จองอะไร', function(){
+      return L.conflicts([E({status:'ยกเลิก'})],E({y_id:'Y2',per_give:'1'})).length===0; });
+    t('L10','ความแรงของการจอง: อนุมัติแล้ว=hard, เสนอ=soft', function(){
+      return L.holdStrength(L.claimsOfEntry(E({})))==='hard' &&
+             L.holdStrength(L.claimsOfEntry(E({status:'เสนอ'})))==='soft'; });
+    t('L11','แถวไม่ชนกับตัวเอง (excludeId)', function(){
+      var e=E({}); return L.conflicts([e],e,e.id).length===0 && L.conflicts([e],e).length>0; });
+    t('L12','ผลไม่ขึ้นกับลำดับข้อมูล', function(){
+      var a=E({}),b=E({y_id:'Y2',per_give:'1'});
+      return JSON.stringify(L.audit([a,b]).collisions.map(function(c){return c.key;}).sort())===
+             JSON.stringify(L.audit([b,a]).collisions.map(function(c){return c.key;}).sort()); });
+    t('L13','คาบที่ยกเลิกหมด = รายงานว่ายังไม่มีคนแทน', function(){
+      return L.audit([E({status:'ยกเลิก'}),E({status:'ยกเลิก',y_id:'Y2'})]).uncovered.length===1; });
+    t('L14','คาบที่ยกเลิกแล้วจัดใหม่ = ไม่รายงาน', function(){
+      return L.audit([E({status:'ยกเลิก'}),E({status:'เสนอ',y_id:'Y2'})]).uncovered.length===0; });
+    t('L15','log ว่าง = สะอาด', function(){
+      var a=L.audit([]); return a.collisions.length===0 && a.uncovered.length===0 && a.ok===true; });
+    t('L16','กุญแจผูกกับวันที่จริง ไม่ใช่วันในสัปดาห์', function(){
+      return L.audit([E({}),E({date_back:'2026-09-02',y_id:'Y2',per_give:'1'})]).collisions.length===0; });
+
+    var passed=0; for(var i=0;i<cases.length;i++) if(cases[i].ok) passed++;
+    return {ok:true, cases:cases, passed:passed, total:cases.length, allGreen:passed===cases.length};
+  }
+  window.__SWAP_LEDGERTEST__ = { run:runLedgerTests };
 
   /* ====================================================================
      STAGE 04 — SEMESTER STORE + BACKUP / RESTORE
@@ -2703,7 +2976,15 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
             ' <span class="s-help">('+esc(c.label)+')</span>'+
             (c.ok?'':' <span style="color:#9C0006">— '+esc(c.detail)+'</span>')+'</div>';
         }).join('');
-        box.innerHTML=head+list;
+        var lt=runLedgerTests();
+        var lhead='<p style="font-weight:600;margin-top:14px;color:'+(lt.allGreen?'#006100':'#9C0006')+'">'+
+          (lt.allGreen?'✅ ผ่านทั้งหมด':'❌ พบข้อผิดพลาด')+' — ชุดตรวจการจองคาบ (A1) '+lt.passed+'/'+lt.total+' กรณี</p>';
+        var llist=lt.cases.map(function(c){
+          return '<div style="padding:2px 0">'+(c.ok?'✅':'❌')+' '+esc(c.id)+
+            ' <span class="s-help">('+esc(c.label)+')</span>'+
+            (c.ok?'':' <span style="color:#9C0006">— '+esc(c.detail)+'</span>')+'</div>';
+        }).join('');
+        box.innerHTML=head+list+lhead+llist;
       }, 20);
     });
   }
@@ -3174,6 +3455,9 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         '<div><span class="d-lbl">audit_note</span><span class="d-val">'+esc(rawRow.audit_note||'—')+'</span></div></div>'+
       '</div>'+
       // save
+      '<label class="d-giveaway"><input type="checkbox" class="chk-giveaway" data-idx="'+c.idx+'"> '+
+        'ยกคาบให้เลย — ไม่รับคาบคืน (สอนแทน)'+
+        '<span class="d-giveaway-note">ใช้เมื่อครูคู่สลับรับคาบไปเฉย ๆ ไม่มีการสอนคืน — จะบันทึกโดยเว้นฝั่ง “คาบที่รับคืน” ว่างไว้ และไม่คิดคะแนน</span></label>'+
       '<div class="d-actions"><button class="btn btn-primary btn-savelog" data-idx="'+c.idx+'"'+(isReadOnlySemester()?' disabled':'')+'>บันทึกลง Log (สถานะ: เสนอ)</button>'+
         '<span class="save-msg '+(isReadOnlySemester()?'err':'')+'" id="saveMsg-'+c.idx+'">'+(isReadOnlySemester()?esc(readOnlyText()):'')+'</span></div>'+
     '</div>';
@@ -3189,7 +3473,15 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     if(S){ for(var __di=0; __di<sem.log.length; __di++){ var __ex=sem.log[__di];
       if(__ex && __ex.status!=='ยกเลิก' && __ex.me_id===S.me && __ex.date_absent===S.dateAbsent && String(__ex.per_give)===String(S.per)){
         return {ok:false, error:'คาบนี้มีผู้สอนแทนอยู่แล้ว — '+(__ex.y_name||__ex.y_id)+' (สถานะ: '+__ex.status+') หากต้องการเปลี่ยนผู้สอนแทน ให้ยกเลิกรายการเดิมก่อน'}; } } }
-    var off=chosenOffset(c), gbISO=givebackFor(c,off);
+    /* A1 follow-up / F9-lite: "ยกคาบให้เลย". The partner takes the period and
+       nothing comes back. The ledger has handled this since 28b — an entry with
+       no give-back emits 2 claims instead of 4 (§5.9.12) — so all that was
+       missing was a way to CREATE one. Everything give-back-shaped is left
+       empty, and score/warnings are dropped rather than shown: they were
+       computed for a swap and would be a lie on a สอนแทน row. */
+    var __ga=document.querySelector('.chk-giveaway[data-idx="'+c.idx+'"]');
+    var giveAway = !!(__ga && __ga.checked);
+    var off=giveAway?null:chosenOffset(c), gbISO=giveAway?'':givebackFor(c,off);
     var ph=phoneFor(c.Yid)||'';
     var src=S.source||{};
     var entry={
@@ -3198,11 +3490,21 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       me_id:S.me, me_name:S.meName, day_give:S.day, per_give:String(S.per),
       subject_give:src.subject||'', group_give:S.G||'', room_give:c.R1||'',
       date_absent:S.dateAbsent,
-      y_id:c.Yid, y_name:c.Yname, y_phone:ph, day_back:c.day2, per_back:String(c.per2),
-      y_sub:c.Ysub||'', y_room:c.Yroom||'', room_back:c.Yroom||'', date_back:gbISO, week_offset:off,
-      score:c.SCORE, impact_tag:(compactItems(c).slice(0,1)[0]||'—'),
-      warnings:compactItems(c)
+      kind: giveAway ? 'สอนแทน' : 'แลกคาบ',
+      y_id:c.Yid, y_name:c.Yname, y_phone:ph,
+      day_back: giveAway?'':c.day2, per_back: giveAway?'':String(c.per2),
+      y_sub: giveAway?'':(c.Ysub||''), y_room: giveAway?'':(c.Yroom||''),
+      room_back: giveAway?'':(c.Yroom||''), date_back:gbISO, week_offset:off,
+      score: giveAway?null:c.SCORE,
+      impact_tag: giveAway?'ยกคาบให้ (ไม่รับคืน)':(compactItems(c).slice(0,1)[0]||'—'),
+      warnings: giveAway?[]:compactItems(c)
     };
+    /* A1 G2 (§5.9.6): re-derive the ledger NOW and re-check. The candidate's
+       offset_info is a snapshot from search time; this is not. Nothing is
+       written when it refuses. */
+    var __cf=ledgerConflicts(sem.log, entry);
+    if(__cf.length) return {ok:false, error:'ชนกับรายการที่มีอยู่ — '+ledgerConflictText(__cf[0])+' — เลือกสัปดาห์อื่น หรือยกเลิกรายการเดิมก่อน'};
+
     sem.log.push(entry);
     var r=STORE.save();
     return r.ok ? {ok:true} : {ok:false, error:r.error};
@@ -3229,7 +3531,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         '<p class="r-more">ลองปรับ: พิจารณาคาบอื่นในวันเดียวกัน  •  หรือตรวจสอบวันที่เสนอสลับและวันที่ลา</p></div>';
       return;
     }
-    var note='<p class="res-note">คอลัมน์ “สัปดาห์”: ค่าเริ่มต้น = สัปดาห์ที่ระบบแนะนำ • เลือกเพื่อเลื่อนได้ ±3 สัปดาห์ (สัปดาห์ที่ติดคิวจะเลือกไม่ได้) • วันก่อน “วันที่เสนอสลับ” จะขึ้น ⚠️ ย้อนหลัง แต่ยังบันทึกได้</p>';
+    var note='<p class="res-note">คอลัมน์ “สัปดาห์”: ค่าเริ่มต้น = สัปดาห์ที่ระบบแนะนำ • เลือกเพื่อเลื่อนได้ ±6 สัปดาห์ (สัปดาห์ที่ติดคิวจะเลือกไม่ได้) • วันก่อน “วันที่เสนอสลับ” จะขึ้น ⚠️ ย้อนหลัง แต่ยังบันทึกได้</p>';
     var GMIN=+STORE.data.settings.SCORE_COLOR_GREEN_MIN, YMIN=+STORE.data.settings.SCORE_COLOR_YELLOW_MIN;
     var rows='';
     for(var i=0;i<cs.length;i++){
@@ -3259,12 +3561,14 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 
   function offsetSelectHTML(c){
     var opts='';
-    for(var off=-3; off<=3; off++){
+    for(var off=-WEEK_SPAN; off<=WEEK_SPAN; off++){
       var info=c.offset_info && c.offset_info[off];
       if(!info) continue;
       var sel=(off===chosenOffset(c))?' selected':'';
       var dis=info.blocked?' disabled':'';
-      var mark=info.blocked?' (ติดคิวแล้ว)':(info.clash?' (ตรงวันลา!)':'');
+      var mark=info.blocked
+        ? (info.hold==='soft' ? ' (จองไว้แล้ว — ยังไม่อนุมัติ)' : ' (ติดคิวแล้ว)')
+        : (info.clash?' (ตรงวันลา!)':'');
       opts+='<option value="'+off+'"'+sel+dis+'>'+esc(weekLabel(off)+mark)+'</option>';
     }
     return '<select class="wk-pick" data-idx="'+c.idx+'">'+opts+'</select>';
@@ -3416,7 +3720,10 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     return d.getFullYear()+'-'+m+'-'+day;
   }
   function beShort(iso){ if(!iso) return '—'; return __SWAP_DATES__.formatBE(String(iso).slice(0,10), false); }
-  function isFinished(e){ return e.status==='อนุมัติแล้ว' && String(e.date_back).slice(0,10) < todayISO(); }
+  // A สอนแทน row has no give-back, so its life ends on the absence date.
+  function entryEndDate(e){ return String(e.date_back||e.date_absent||'').slice(0,10); }
+  function isSubOnly(e){ return e.kind==='สอนแทน' || !e.date_back; }
+  function isFinished(e){ return e.status==='อนุมัติแล้ว' && entryEndDate(e) < todayISO(); }
   function logRowClass(st){
     return st==='อนุมัติแล้ว'?'log-done':st==='รออนุมัติ'?'log-wait':st==='ยกเลิก'?'log-cancel':'log-proposed';
   }
@@ -3440,7 +3747,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     var t=todayISO();
     return logEntries().filter(function(e){
       if(LOG_FILTER==='all') return true;
-      return e.status!=='อนุมัติแล้ว' || String(e.date_back).slice(0,10)>=t;  // active + upcoming
+      return e.status!=='อนุมัติแล้ว' || entryEndDate(e)>=t;  // active + upcoming
     });
   }
 
@@ -3462,12 +3769,18 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         :'กำลังแสดง: ทั้งหมด')+'</span>';
 
     if(!all.length){
-      host.innerHTML=summary+'<div class="placeholder" style="margin-top:12px"><p style="margin:0">ยังไม่มีรายการสลับในภาคเรียนนี้ — ไปที่ <b>หน้าหลัก</b> กดค้นหาคู่สลับ แล้วกด “บันทึกลง Log”</p></div>';
+      host.innerHTML=auditBannerHTML()+summary+'<div class="placeholder" style="margin-top:12px"><p style="margin:0">ยังไม่มีรายการสลับในภาคเรียนนี้ — ไปที่ <b>หน้าหลัก</b> กดค้นหาคู่สลับ แล้วกด “บันทึกลง Log”</p></div>';
       return;
+    }
+    var __aud=auditActiveLog(), __bad={};
+    for(var __ci=0;__ci<__aud.collisions.length;__ci++){
+      var __es=__aud.collisions[__ci].entries;
+      for(var __ei=0;__ei<__es.length;__ei++) __bad[__es[__ei].id]=1;
     }
     var body='';
     for(var i=0;i<rows.length;i++){
       var e=rows[i];
+      var __mark = __bad[e.id] ? ' <span class="aud-tag">⚠️ สอนซ้อน</span>' : '';
       var phTxt = e.y_phone ? (window.__SWAP_PHONE__?window.__SWAP_PHONE__.displayPhone(e.y_phone):e.y_phone) : 'ไม่มีข้อมูลเบอร์ติดต่อ';
       var fin = isFinished(e) ? ' <span class="fin-tag">เสร็จสิ้น ✓</span>' : '';
       var delBtn = readOnly
@@ -3475,14 +3788,16 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         : (e.status==='เสนอ')
         ? '<button class="btn-del" data-id="'+esc(e.id)+'">ลบ</button>'
         : '<span class="muted">—</span>';
-      body+='<tr class="'+logRowClass(e.status)+'">'+
+      body+='<tr class="'+logRowClass(e.status)+(__bad[e.id]?' log-clash':'')+'">'+
         '<td class="l-date">'+esc(beShort(e.date_proposed||e.created_at))+'</td>'+
         '<td>'+esc(e.me_name||e.me_id)+'<div class="l-sub">'+esc(e.me_id)+'</div></td>'+
         '<td class="l-slot">วัน'+esc(e.day_give)+' คาบ '+esc(e.per_give)+'<div class="l-sub">'+esc((e.subject_give||'')+' / '+(e.group_give||'')+' · ห้อง '+(e.room_give||'—'))+'</div></td>'+
         '<td class="l-date">'+esc(beShort(e.date_absent))+'</td>'+
         '<td>'+esc(e.y_name||e.y_id)+'<div class="l-sub">'+esc(e.y_id)+'</div>'+(e.y_phone?'<a class="l-phone" href="tel:'+esc(String(e.y_phone).replace(/[^0-9+]/g,''))+'">📞 '+esc(phTxt)+'</a>':'<div class="l-sub muted">'+esc(phTxt)+'</div>')+'</td>'+
-        '<td class="l-slot">วัน'+esc(e.day_back)+' คาบ '+esc(e.per_back)+'<div class="l-sub">'+esc(e.y_sub||'')+'</div></td>'+
-        '<td class="l-date">'+esc(beShort(e.date_back))+fin+'</td>'+
+        '<td class="l-slot">'+(isSubOnly(e)
+            ? '<span class="l-giveaway">ยกคาบให้ (ไม่รับคืน)</span>'
+            : 'วัน'+esc(e.day_back)+' คาบ '+esc(e.per_back)+'<div class="l-sub">'+esc(e.y_sub||'')+'</div>')+'</td>'+
+        '<td class="l-date">'+(isSubOnly(e)?'<span class="muted">—</span>':esc(beShort(e.date_back)))+fin+__mark+'</td>'+
         '<td class="l-score">'+esc(String(e.score!=null?e.score:'—'))+'</td>'+
         '<td class="l-warn">'+esc(e.impact_tag||'—')+'</td>'+
         '<td class="l-status"><select class="log-status" data-id="'+esc(e.id)+'"'+(readOnly?' disabled':'')+'>'+statusOptions(e.status)+'</select></td>'+
@@ -3492,7 +3807,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     if(!rows.length){
       body='<tr><td colspan="11" class="l-empty">ไม่มีรายการตามตัวกรองนี้ — กด “แสดงทั้งหมด” เพื่อดูรายการที่ผ่านไปแล้ว</td></tr>';
     }
-    host.innerHTML=summary+
+    host.innerHTML=auditBannerHTML()+summary+
       (readOnly?'<div class="readonly-note">'+esc(readOnlyText())+'</div>':'')+
       '<div class="log-bar">'+filterBtn+filterNote+'</div>'+
       '<div class="card log-card"><table class="logtab"><thead><tr>'+
@@ -3510,7 +3825,74 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     return null;
   }
 
+  /* A1 G3 (§5.9.7): a row may always be ยกเลิก'd — the escape hatch must never
+     close. Any other target status re-emits this row's claims, so re-validate
+     against a ledger built WITHOUT this row. Covers promotion to อนุมัติแล้ว and
+     the un-cancelling of a ยกเลิก row, which carries the same risk. */
+  function statusChangeBlocked(f, newStatus){
+    if(newStatus==='ยกเลิก' || newStatus===f.e.status) return '';
+    var sem=STORE.activeSemester(); if(!sem || !sem.log) return '';
+    var probe={}; for(var k in f.e) probe[k]=f.e[k]; probe.status=newStatus;
+    var cf=ledgerConflicts(sem.log, probe, f.e.id);
+    if(!cf.length) return '';
+    return 'ไม่สามารถเปลี่ยนสถานะเป็น “'+newStatus+'” ได้\n\n'+ledgerConflictText(cf[0])+
+           '\n\nต้องยกเลิกรายการใดรายการหนึ่งก่อน';
+  }
+
   function bumpApprovalIfNeeded(oldS,newS){ if(newS==='อนุมัติแล้ว' && oldS!=='อนุมัติแล้ว'){ STORE.data.approvedSinceBackup=(STORE.data.approvedSinceBackup||0)+1; } }
+  /* A1 / STAGE 28e — the ledger's two reports, rendered wherever the owner can
+     act on them or is about to put them on paper (§5.9.8). Recomputed on every
+     render; never a stored flag. */
+  function auditActiveLog(){
+    var sem=STORE.activeSemester();
+    return auditLedger((sem && sem.log) || []);
+  }
+  function _aSlot(x){ return 'วัน'+weekdayThai(x.date)+' คาบ '+x.period+' · '+formatBE(x.date,false); }
+  function _aWho(cl){
+    var e=cl.entry, tid=cl.tid;
+    return esc(tid===e.me_id ? (e.me_name||e.me_id) : (e.y_name||e.y_id));
+  }
+  function _aPair(e){ return esc((e.me_name||e.me_id)+' ↔ '+(e.y_name||e.y_id))+' (สถานะ: '+esc(e.status)+')'; }
+
+  // one collision block: who, when, and every row fighting over it
+  function collisionHTML(col){
+    var head = (col.kind==='BUSY')
+      ? _aWho(col.claims[0])+' ถูกจองให้สอน '+_aSlot(col)+' พร้อมกัน '+col.claims.length+' รายการ'
+      : _aWho(col.claims[0])+' ยกคาบ '+_aSlot(col)+' ให้คนอื่น '+col.claims.length+' ครั้ง';
+    var li='';
+    for(var i=0;i<col.claims.length;i++){
+      var e=col.claims[i].entry;
+      li+='<li>'+_aPair(e)+' — ยกให้ วัน'+esc(e.day_give)+' คาบ '+esc(e.per_give)+
+          ' (ลา '+esc(beShort(e.date_absent))+') · '+
+          (isSubOnly(e) ? 'ยกคาบให้ (ไม่รับคืน)'
+                        : 'สอนคืน วัน'+esc(e.day_back)+' คาบ '+esc(e.per_back)+' ('+esc(beShort(e.date_back))+')')+'</li>';
+    }
+    return '<div class="aud-item"><b>'+esc(head)+'</b><ul>'+li+'</ul></div>';
+  }
+  function uncoveredHTML(u){
+    return '<div class="aud-item"><b>'+esc('วัน'+u.day+' คาบ '+u.period+' · '+formatBE(u.date,false))+'</b> — '+
+      esc((u.subject||'')+' ม.'+String(u.group||'').replace('.','/')+(u.room?' ห้อง '+u.room:''))+
+      ' <span class="aud-dim">(ยกเลิกไป '+u.cancelled+' รายการ ยังไม่มีตัวแทน)</span></div>';
+  }
+  // full banner for the Log / form / handout pages
+  function auditBannerHTML(){
+    var a=auditActiveLog(), out='';
+    if(a.collisions.length){
+      var c='';
+      for(var i=0;i<a.collisions.length;i++) c+=collisionHTML(a.collisions[i]);
+      out+='<div class="aud aud-bad"><div class="aud-h">⚠️ พบการสอนซ้อน '+a.collisions.length+
+           ' จุดในบันทึกนี้ — ต้องแก้ก่อนใช้งาน</div>'+c+
+           '<div class="aud-foot">เลือกยกเลิกรายการใดรายการหนึ่งในแต่ละจุด แล้วค้นหาคู่สลับใหม่</div></div>';
+    }
+    if(a.uncovered.length){
+      var u='';
+      for(var j=0;j<a.uncovered.length;j++) u+=uncoveredHTML(a.uncovered[j]);
+      out+='<div class="aud aud-warn"><div class="aud-h">⚠️ มี '+a.uncovered.length+
+           ' คาบที่ลาแล้วยังไม่มีครูสอนแทน</div>'+u+'</div>';
+    }
+    return out;
+  }
+
   function renderReminders(){
     var host=document.getElementById('reminderArea'); if(!host) return;
     var out=''; var sem=STORE.activeSemester();
@@ -3520,6 +3902,24 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       if(today>end){ out+='<div class="rmd rmd-loud">ภาคเรียน '+esc(sem.meta.label)+' สิ้นสุดแล้ว — สำรองข้อมูลแล้วเริ่มภาคเรียนใหม่ได้เลย</div>'; }
       else if(dleft<=14){ out+='<div class="rmd rmd-loud">ใกล้สิ้นภาคเรียน '+esc(sem.meta.label)+' (สิ้นสุด '+phoneDateBE(end)+') — อย่าลืมสำรองข้อมูลก่อนปิดเทอม และเตรียมนำเข้าตารางของภาคเรียนถัดไป</div>'; }
     }
+    /* A1 (§5.9.8): uncovered slots that can still be fixed go at the TOP of the
+       strip, because they are time-critical — the case that created this rule
+       was found two days before the absence. Past ones stay in the Log banner
+       only; nagging about a period that already happened helps nobody. */
+    var __a=auditActiveLog(), __t=todayISO(), __soon=[];
+    for(var __i=0;__i<__a.uncovered.length;__i++) if(__a.uncovered[__i].date>=__t) __soon.push(__a.uncovered[__i]);
+    if(__a.collisions.length){
+      out='<div class="rmd rmd-loud">⚠️ พบการสอนซ้อน '+__a.collisions.length+' จุดในบันทึกการสลับ — '+
+          'เปิดแท็บ “บันทึกการสลับ” เพื่อดูว่าชนกันตรงไหน แล้วยกเลิกรายการใดรายการหนึ่ง</div>'+out;
+    }
+    if(__soon.length){
+      var __l='';
+      for(var __j=0;__j<__soon.length;__j++){ var __u=__soon[__j];
+        __l+='<div class="rmd-sub">วัน'+esc(__u.day)+' คาบ '+esc(__u.period)+' · '+esc(formatBE(__u.date,false))+
+             ' — '+esc((__u.subject||'')+' ม.'+String(__u.group||'').replace('.','/'))+'</div>'; }
+      out='<div class="rmd rmd-loud">⚠️ มี '+__soon.length+' คาบที่ลาแล้วยังไม่มีครูสอนแทน'+__l+'</div>'+out;
+    }
+
     var appr=STORE.data.approvedSinceBackup||0; var dsince=daysSince(STORE.data.lastBackupAt);
     if(appr>0 && (dsince===null || dsince>30)){
       out+='<div class="rmd rmd-soft">คุณอนุมัติการสลับ '+appr+' รายการตั้งแต่สำรองข้อมูลครั้งล่าสุด — แนะนำให้สำรองข้อมูลไว้กันพลาด</div>';
@@ -3537,6 +3937,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       sel.addEventListener('change', function(){
         if(isReadOnlySemester()){ renderLog(); return; }
         var f=findLogEntry(sel.getAttribute('data-id')); if(!f) return;
+        var __blk=statusChangeBlocked(f, sel.value);
+        if(__blk){ alert(__blk); renderLog(); return; }        // A1 G3: dropdown reverts
         var __old=f.e.status; f.e.status=sel.value; bumpApprovalIfNeeded(__old, sel.value); STORE.save();
         renderLog();                                  // re-tint + re-filter
         if(typeof refreshHome==='function') refreshHome();   // dashboard reflects new status
@@ -3560,9 +3962,14 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     render:renderLog,
     all:function(){ return logEntries(); },
     filtered:function(){ return logFiltered(); },
-    setStatus:function(id,st){ if(isReadOnlySemester()) return false; var f=findLogEntry(id); if(f){ var __o=f.e.status; f.e.status=st; bumpApprovalIfNeeded(__o,st); STORE.save(); renderLog(); if(typeof refreshHome==='function') refreshHome(); } return !!f; },
+    setStatus:function(id,st){ if(isReadOnlySemester()) return false; var f=findLogEntry(id);
+      if(f && statusChangeBlocked(f, st)) return false;
+      if(f){ var __o=f.e.status; f.e.status=st; bumpApprovalIfNeeded(__o,st); STORE.save(); renderLog(); if(typeof refreshHome==='function') refreshHome(); } return !!f; },
     del:function(id){ if(isReadOnlySemester()) return false; var f=findLogEntry(id); if(f&&f.e.status==='เสนอ'){ f.log.splice(f.i,1); STORE.save(); renderLog(); return true; } return false; },
     setFilter:function(m){ LOG_FILTER=m; renderLog(); },
+    // A1: the reason a status change would be refused ('' = allowed). Test hook
+    // for the ledger suite; the UI path shows this same string in an alert.
+    statusBlockReason:function(id,st){ var f=findLogEntry(id); return f ? statusChangeBlocked(f,st) : ''; },
     state:function(){ return {filter:LOG_FILTER, today:todayISO()}; },
     isFinished:isFinished
   };
@@ -3642,7 +4049,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     for(var i=0;i<rows.length;i++){
       var e=rows[i], touches=(e.me_id===tid || e.y_id===tid);
       if(!touches) continue;
-      var wa=ttWeekStart(e.date_absent), wb=ttWeekStart(e.date_back);
+      var wa=ttWeekStart(e.date_absent), wb=e.date_back?ttWeekStart(e.date_back):'';
       if(wa) set[wa]=1;
       if(wb) set[wb]=1;
     }
@@ -3756,7 +4163,40 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     }
     return null;
   }
+  /* A1 / STAGE 28e (§5.9.9, law §9.6): ttSwapCell returns the FIRST matching
+     log row. If a slot has more than one, printing one of them is the most
+     dangerous thing this program can do — the owner carries that sheet into a
+     classroom. Count the matches first; more than one renders as a conflict. */
+  function ttMatchCount(tid, weekStart, day, per){
+    var dateISO=ttDateForDay(weekStart, day), rows=ttApprovedSwaps(), n=0, p=String(per);
+    for(var i=0;i<rows.length;i++){
+      var e=rows[i];
+      if(e.me_id===tid && ttDate(e.date_absent)===dateISO && String(e.per_give)===p) n++;
+      else if(e.y_id===tid && ttDate(e.date_absent)===dateISO && String(e.per_give)===p) n++;
+      else if(e.y_id===tid && ttDate(e.date_back)===dateISO && String(e.per_back)===p) n++;
+      else if(e.me_id===tid && ttDate(e.date_back)===dateISO && String(e.per_back)===p) n++;
+    }
+    return n;
+  }
   function ttCell(eng, tid, weekStart, day, per, notes){
+    var n=ttMatchCount(tid, weekStart, day, per);
+    if(n>1){
+      var all=[], dateISO=ttDateForDay(weekStart, day), rows=ttApprovedSwaps(), p=String(per);
+      for(var i=0;i<rows.length;i++){
+        var e=rows[i], hit=false, what='';
+        if(e.me_id===tid && ttDate(e.date_absent)===dateISO && String(e.per_give)===p){ hit=true; what='ยกคาบออก ('+(e.subject_give||'')+' ม.'+String(e.group_give||'').replace('.','/')+')'; }
+        else if(e.y_id===tid && ttDate(e.date_absent)===dateISO && String(e.per_give)===p){ hit=true; what='สอนแทน '+(e.me_name||e.me_id)+' ('+(e.subject_give||'')+')'; }
+        else if(e.y_id===tid && ttDate(e.date_back)===dateISO && String(e.per_back)===p){ hit=true; what='ยกคาบให้ '+(e.me_name||e.me_id)+' ('+(e.y_sub||'')+')'; }
+        else if(e.me_id===tid && ttDate(e.date_back)===dateISO && String(e.per_back)===p){ hit=true; what='สอนคืน '+(e.subject_give||'')+' ม.'+String(e.group_give||'').replace('.','/'); }
+        if(hit){ all.push(what+' — คู่กับ '+(e.y_id===tid?(e.me_name||e.me_id):(e.y_name||e.y_id))); }
+      }
+      notes.push('คาบ '+p+' วัน'+day+': ⚠️ มี '+n+' รายการซ้อนกันในคาบเดียว — ' + all.join(' / ') + ' — ต้องแก้บันทึกการสลับก่อนใช้ตารางนี้');
+      return '<td class="tt-clash"><div class="tt-cell">'+
+        '<div class="tt-mark">⚠️ สอนซ้อน '+n+' รายการ</div>'+
+        '<div class="tt-sub">'+esc(all.join(' · '))+'</div>'+
+        '<div class="tt-by">ตารางนี้ยังใช้ไม่ได้จนกว่าจะแก้</div>'+
+      '</div></td>';
+    }
     var swap=ttSwapCell(tid, weekStart, day, per, notes);
     var cell=swap || ttBaseCell(eng, tid, day, per);
     return '<td class="'+(cell.cls||'')+'">'+cell.html+'</td>';
@@ -3811,7 +4251,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     }).join('') : '<span class="tt-note">ครูคนนี้ยังไม่มีสัปดาห์ที่มีรายการอนุมัติแล้ว</span>';
     var output=selected.length ? selected.map(function(w){ return ttRenderWeek(TT_STATE.teacherId,w); }).join('')
       : '<div class="card tt-empty">เลือกอย่างน้อยหนึ่งสัปดาห์เพื่อสร้างตารางสอน</div>';
-    host.innerHTML='<div class="tt-controls no-print">'+
+    host.innerHTML='<div class="no-print">'+auditBannerHTML()+'</div>'+
+                   '<div class="tt-controls no-print">'+
       '<div class="tt-row"><span class="tt-lab">ครู</span><select class="tt-select" id="ttTeacher">'+ttTeacherOptions(TT_STATE.teacherId)+'</select>'+
         '<span class="tt-note">ค่าเริ่มต้นเรียงจากครูที่มีรายการอนุมัติแล้ว</span></div>'+
       '<div class="tt-row"><span class="tt-lab">สัปดาห์</span><div class="tt-weeks">'+weekControls+'</div></div>'+
@@ -3913,7 +4354,14 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     var ids={}; Array.prototype.forEach.call(document.querySelectorAll('.fsw-chk'), function(c){ ids[c.getAttribute('data-id')]=c.checked; });
     return formSwaps().filter(function(e){ return ids[e.id]!==false; });
   }
-  function meName(){
+  /* Renamed from meName() during A1/28e. It was a SECOND top-level declaration
+     of that name in this scope, so it hoisted over the dashboard's meName()
+     (~line 2996) and answered every caller — including the one that stamps
+     me_name onto a Log row. Searching on behalf of another teacher therefore
+     showed, and stored, the OWNER's name against that teacher's id. This one
+     is the form's own preference (first row of the form's range); it must not
+     be reachable from the dashboard or search path. */
+  function formMeName(){
     var rows=formSwaps(); if(rows.length) return rows[0].me_name||rows[0].me_id;
     return (DASH&&DASH.meId)? (function(){var L=teacherList();for(var i=0;i<L.length;i++)if(L[i].id===DASH.meId)return L[i].name;return DASH.meId;})() : '';
   }
@@ -3937,6 +4385,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 
   function buildFormScaffold(host){
     host.innerHTML=
+    '<div class="no-print">'+auditBannerHTML()+'</div>'+
     '<div class="form-controls no-print">'+
       '<div class="fc-row"><label class="fc-lab">ช่วงวันที่ลา</label>'+
         'ตั้งแต่ <input type="date" id="formFrom"> ถึง <input type="date" id="formTo">'+
@@ -3984,8 +4433,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     document.getElementById('hdrDay').value=t.d;
     document.getElementById('hdrMon').value=TH_MON[t.m-1];
     document.getElementById('hdrYear').value=t.y;
-    document.getElementById('reqName').value=meName();
-    document.getElementById('signName').value=meName();
+    document.getElementById('reqName').value=formMeName();
+    document.getElementById('signName').value=formMeName();
     wireForm();
   }
 
@@ -4007,7 +4456,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     if(!rows.length){ host.innerHTML='<p class="fsw-empty">— ไม่มีรายการสลับที่อนุมัติแล้วในช่วงวันที่นี้ —</p>'; return; }
     host.innerHTML='<p class="fsw-h">เลือกรายการที่จะใส่ในแบบฟอร์ม (ติ๊กออกเพื่อไม่รวม):</p>'+rows.map(function(e){
       return '<label class="fsw-item"><input type="checkbox" class="fsw-chk" data-id="'+esc(e.id)+'" checked> '+
-        esc(beShort2(e.date_absent)+' คาบ '+e.per_give+' ('+e.subject_give+'/'+e.group_give+') ↔ '+stripTitle(e.y_name)+' '+beShort2(e.date_back)+' คาบ '+e.per_back)+'</label>';
+        esc(beShort2(e.date_absent)+' คาบ '+e.per_give+' ('+e.subject_give+'/'+e.group_give+') ↔ '+stripTitle(e.y_name)+
+            (isSubOnly(e) ? ' (ยกคาบให้ ไม่รับคืน)' : ' '+beShort2(e.date_back)+' คาบ '+e.per_back))+'</label>';
     }).join('');
     Array.prototype.forEach.call(host.querySelectorAll('.fsw-chk'), function(c){ c.addEventListener('change', refreshFormTable); });
   }
@@ -4021,7 +4471,9 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       if(e){
         html+='<tr><td class="c-num">'+(i+1)+'.</td>'+
           '<td>'+esc(beShort2(e.date_absent))+'</td><td>'+esc(e.per_give)+'</td><td>'+esc(groupToClass(e.group_give))+'</td><td>'+esc(e.subject_give||'')+'</td><td>'+esc(e.room_give||'')+'</td>'+
-          '<td>'+esc(beShort2(e.date_back))+'</td><td>'+esc(e.per_back)+'</td><td>'+esc(e.y_sub||'')+'</td><td>'+esc(e.room_back||e.y_room||'')+'</td>'+
+          (isSubOnly(e)
+            ? '<td></td><td></td><td></td><td></td>'
+            : '<td>'+esc(beShort2(e.date_back))+'</td><td>'+esc(e.per_back)+'</td><td>'+esc(e.y_sub||'')+'</td><td>'+esc(e.room_back||e.y_room||'')+'</td>')+
           '<td>'+esc(stripTitle(e.y_name))+'</td><td></td></tr>';
       } else {
         html+='<tr><td class="c-num">'+(i+1)+'.</td>'+Array(11).join('<td></td>')+'<td></td></tr>';
@@ -4042,7 +4494,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     if(nb&&hb){ nb.innerHTML = rows.length? '&#9744;':'&#9746;'; hb.innerHTML = rows.length? '&#9746;':'&#9744;'; }
     // dated PDF filename via document.title:  ใบแลกคาบ_<firstname>_ลา<dates>
     var fn='ใบแลกคาบ';
-    var nm=stripTitle((document.getElementById('reqName')||{}).value||meName());
+    var nm=stripTitle((document.getElementById('reqName')||{}).value||formMeName());
     if(nm) fn+='_'+nm;
     if(d1){ fn+= (d1===d2) ? ('_ลา'+fnTag(d1))
             : (_bd(d1).m===_bd(d2).m ? ('_ลา'+_bd(d1).d+'-'+fnTag(d2)) : ('_ลา'+fnTag(d1)+'-'+fnTag(d2))); }
