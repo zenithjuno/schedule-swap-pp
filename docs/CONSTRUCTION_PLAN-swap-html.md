@@ -318,6 +318,29 @@ Both came from one real swap request and both are recorded in the BLUEPRINT, not
 
 ---
 
+---
+
+# PHASE 6 — F14 รอบการลา (leave round)   ·   prototype on /preview/
+
+**Why a preview again (owner's call, 2026-08-23):** F14 touches the busiest page and may move a lot of UI. The site root keeps serving the working v1+A1+F13 build as a guaranteed fallback until the owner says the prototype behaves. Same origin, so the preview sees real data with no import.
+
+**Storage safety, checked before starting:** `leaves` is a new array inside each semester. `STORE.save()` serialises the whole store and `leanReplacer` only strips the schedule's derived flags, so leave rounds created in the preview survive a round trip through the live page untouched.
+
+**FALLBACK RULE (non-negotiable):** a date with no leave round behaves exactly as it did before F14. Nothing is mandatory, no back-filling is ever required, and `leavePeriodsFor()` returns `null` — not `[]` — to keep "no record" distinguishable from "recorded as no periods".
+
+## Stage 30a — model + round editor  ·  **DONE 2026-08-23**
+🔨 `LeaveRound {id, teacherId, note, createdAt, days:[{date, mode, periods[]}]}` in `semester.leaves`, defaulted by `_migrate` (additive; schemaVersion unchanged). Round strip on หน้าหลัก showing the round covering the chosen absence date, and an editor: date range → one row per teaching day → ทั้งวัน / ครึ่งเช้า / ครึ่งบ่าย / บางคาบ → optional note. Preset modes EXPAND TO A STORED PERIOD LIST at save time rather than being recomputed later (same law as §5.2). Weekends and days with no classes are skipped. A date may belong to only one round.
+🧪 Presets over the fixture timetable (0221 จันทร์ teaches p2,p3 → ทั้งวัน "2,3", ครึ่งเช้า "2,3", ครึ่งบ่าย ""); range 5–9 มิ.ย. skips the weekend; round saves with the right modes and expanded periods; a second round claiming a used date is refused by message; manually setting periods flips a preset day to บางคาบ; edit keeps the id and prefills the note; delete restores the "ยังไม่ได้ระบุ" strip; a date outside every round returns null.
+👁️ The editor with a real multi-day range, and the amber strip when a day is marked บางคาบ but no periods are ticked yet.
+✅ All of the above; self-test 21/21 and ledger suite 18/18 unchanged.
+
+## Stage 30b — tick column on the dashboard, pre-filled from the day's mode
+## Stage 30c — uncovered report + reminder strip read from rounds (fallback when none)
+## Stage 30d — handout picks weeks by round, and stops pre-selecting finished ones
+   *(ฟอร์ม พพ.1-1 deliberately untouched — the owner has not detailed that document yet.)*
+
+---
+
 ## WHAT I NEED FROM YOU DURING THE BUILD
 - A verdict at every 👁️ gate; the build never stacks onto an unverified stage.
 - Extra patience at the three flagged stages: **s09** (candidate generator), **s14** (dates/D1/D2), **s23** (self-export) — these get slowed-down, extra-detailed gates.
