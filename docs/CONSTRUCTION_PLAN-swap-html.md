@@ -334,9 +334,12 @@ Both came from one real swap request and both are recorded in the BLUEPRINT, not
 👁️ The editor with a real multi-day range, and the amber strip when a day is marked บางคาบ but no periods are ticked yet.
 ✅ All of the above; self-test 21/21 and ledger suite 18/18 unchanged.
 
-## Stage 30b — tick column on the dashboard, pre-filled from the day's mode
-## Stage 30c — uncovered report + reminder strip read from rounds (fallback when none)
-## Stage 30d — handout picks weeks by round, and stops pre-selecting finished ones
+## Stage 30b — tick column on the dashboard, pre-filled from the day's mode  ·  **DONE 2026-08-23**
+🔨 A ลา checkbox column appears on the dashboard ONLY when the shown day is in a round; ticks pre-filled from the day's mode; unticking flips the day to บางคาบ and persists; an amber hint bar when a บางคาบ day has nothing ticked yet. No round → no column, dashboard unchanged.
+## Stage 30c — uncovered report + reminder strip read from rounds (fallback when none)  ·  **DONE 2026-08-23**
+🔨 `ledgerUncovered(log, leaves, meta)` — a declared-leave period with no live coverage is uncovered, catching DELETED and never-created rows the log-only rule could not see; subject/group filled by a meta resolver. Dates with no round keep the original all-cancelled fallback exactly. Home strip surfaces future ones; L19–L22 added.
+## Stage 30d — handout picks weeks by round, and stops pre-selecting finished ones  ·  **DONE 2026-08-23**
+🔨 Default week pre-selection is now current-week-onward (finished weeks available but unticked). A รอบการลา selector on the print page ticks exactly the weeks that round touches (its absence weeks + the make-up weeks of the swaps under it).
    *(ฟอร์ม พพ.1-1 deliberately untouched — the owner has not detailed that document yet.)*
 
 ---
