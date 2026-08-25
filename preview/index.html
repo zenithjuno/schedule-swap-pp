@@ -4527,7 +4527,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
      swaps are applied. The same log row renders as a mirror change for both
      the absent teacher and the partner teacher.
      ==================================================================== */
-  var TT_STATE={teacherId:'', lastTeacherId:'', weeks:null};
+  var TT_STATE={teacherId:'', lastTeacherId:'', weeks:null, roundId:'', lastScope:null};
 
   function ttDate(iso){ return String(iso||'').slice(0,10); }
   function ttParseISO(iso){
@@ -4628,19 +4628,6 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     return weeks.filter(function(w){ return !!TT_STATE.weeks[w]; });
   }
   function ttCurrentWeekStart(){ return ttWeekStart(todayISO()); }
-  function ttCleanSelectedWeeks(weeks){
-    var next=Object.create(null);
-    if(!TT_STATE.weeks){
-      // F14 30d: default to the current week and later — finished weeks stay
-      // available but unticked, so old closed leaves no longer print as noise.
-      var cur=ttCurrentWeekStart();
-      weeks.forEach(function(w){ next[w]=(w>=cur); });
-      TT_STATE.weeks=next;
-      return;
-    }
-    weeks.forEach(function(w){ next[w]=!!TT_STATE.weeks[w]; });
-    TT_STATE.weeks=next;
-  }
   // every week a leave round touches: its absence weeks + the make-up weeks of
   // the live swaps arranged under it.
   function ttWeeksForRound(tid, round){
@@ -4803,16 +4790,42 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     html+='</section>';
     return html;
   }
+  function ttRoundById(tid, id){
+    var L=leavesOf(); for(var i=0;i<L.length;i++) if(L[i].id===id && L[i].teacherId===tid) return L[i];
+    return null;
+  }
+  // the weeks the picker shows: everything, or — when a round is chosen — only
+  // that round's weeks (its absence weeks + the make-up weeks under it).
+  function ttVisibleWeeks(){
+    var all=TT_STATE.teacherId ? ttWeeksForTeacher(TT_STATE.teacherId) : [];
+    if(TT_STATE.roundId){
+      var r=ttRoundById(TT_STATE.teacherId, TT_STATE.roundId);
+      if(r){ var want=ttWeeksForRound(TT_STATE.teacherId, r);
+        return all.filter(function(w){ return !!want[w]; }); }
+    }
+    return all;
+  }
+  function ttScopeKey(){ return TT_STATE.teacherId+'|'+(TT_STATE.roundId||''); }
+  // reset ticks whenever the scope (teacher or round) changes: a round shows all
+  // its weeks ticked; no round defaults to current-week-onward.
+  function ttSyncScope(visible){
+    if(TT_STATE.lastScope===ttScopeKey() && TT_STATE.weeks) return;
+    TT_STATE.weeks=Object.create(null);
+    if(TT_STATE.roundId){ visible.forEach(function(w){ TT_STATE.weeks[w]=true; }); }
+    else { var cur=ttCurrentWeekStart(); visible.forEach(function(w){ TT_STATE.weeks[w]=(w>=cur); }); }
+    TT_STATE.lastScope=ttScopeKey();
+  }
+
   function ttRoundRowHTML(){
     var L=leavesOf(), mine=[];
     for(var i=0;i<L.length;i++) if(L[i].teacherId===TT_STATE.teacherId) mine.push(L[i]);
     if(!mine.length) return '';
     mine.sort(function(a,b){ var da=(a.days||[]).map(function(d){return d.date;}).sort()[0]||'';
       var db=(b.days||[]).map(function(d){return d.date;}).sort()[0]||''; return da<db?-1:1; });
-    var opts=mine.map(function(r){ return '<option value="'+esc(r.id)+'">'+esc(leaveRoundLabel(r))+'</option>'; }).join('');
+    var opts=mine.map(function(r){ return '<option value="'+esc(r.id)+'"'+(r.id===TT_STATE.roundId?' selected':'')+'>'+esc(leaveRoundLabel(r))+'</option>'; }).join('');
     return '<div class="tt-row"><span class="tt-lab">รอบการลา</span>'+
-      '<select class="tt-select" id="ttRound"><option value="">— เลือกเพื่อพิมพ์เฉพาะสัปดาห์ของรอบนั้น —</option>'+opts+'</select>'+
-      '<span class="tt-note">ทางลัด: ติ๊กสัปดาห์ของรอบการลาที่เลือกให้อัตโนมัติ</span></div>';
+      '<select class="tt-select" id="ttRound"><option value=""'+(TT_STATE.roundId?'':' selected')+'>— แสดงทุกสัปดาห์ —</option>'+opts+'</select>'+
+      '<span class="tt-note">กรองให้เหลือเฉพาะสัปดาห์ของรอบการลาที่เลือก</span></div>';
   }
     function renderTimetable(){
     var host=document.getElementById('timetableArea'); if(!host) return;
@@ -4828,16 +4841,16 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     if(TT_STATE.teacherId && !ttTeacherById(TT_STATE.teacherId)){
       TT_STATE.teacherId=(touched[0]&&touched[0].id) || (teachers[0]&&teachers[0].id) || '';
     }
-    var weeks=TT_STATE.teacherId ? ttWeeksForTeacher(TT_STATE.teacherId) : [];
     if(TT_STATE.lastTeacherId!==TT_STATE.teacherId){
-      TT_STATE.weeks=null;
+      TT_STATE.roundId='';                     // a new teacher starts unfiltered
       TT_STATE.lastTeacherId=TT_STATE.teacherId;
     }
-    ttCleanSelectedWeeks(weeks);
+    var weeks=ttVisibleWeeks();
+    ttSyncScope(weeks);
     var selected=ttSelectedWeeks(weeks);
     var weekControls=weeks.length ? weeks.map(function(w){
       return '<label class="tt-week-check"><input type="checkbox" data-week="'+esc(w)+'" '+(TT_STATE.weeks[w]?'checked':'')+'> '+esc(ttWeekLabel(w))+'</label>';
-    }).join('') : '<span class="tt-note">ครูคนนี้ยังไม่มีสัปดาห์ที่มีรายการอนุมัติแล้ว</span>';
+    }).join('') : '<span class="tt-note">'+(TT_STATE.roundId?'รอบการลานี้ยังไม่มีสัปดาห์ที่มีการเปลี่ยนแปลง':'ครูคนนี้ยังไม่มีสัปดาห์ที่มีรายการอนุมัติแล้ว')+'</span>';
     var output=selected.length ? selected.map(function(w){ return ttRenderWeek(TT_STATE.teacherId,w); }).join('')
       : '<div class="card tt-empty">เลือกอย่างน้อยหนึ่งสัปดาห์เพื่อสร้างตารางสอน</div>';
     host.innerHTML='<div class="no-print">'+auditBannerHTML()+'</div>'+
@@ -4857,15 +4870,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     var sel=document.getElementById('ttTeacher');
     if(sel) sel.addEventListener('change', function(){ TT_STATE.teacherId=sel.value; renderTimetable(); });
     var rsel=document.getElementById('ttRound');
-    if(rsel) rsel.addEventListener('change', function(){
-      var id=rsel.value; if(!id) return;
-      var L=leavesOf(), r=null; for(var i=0;i<L.length;i++) if(L[i].id===id) r=L[i];
-      if(!r) return;
-      var want=ttWeeksForRound(TT_STATE.teacherId, r);
-      TT_STATE.weeks=Object.create(null);
-      ttWeeksForTeacher(TT_STATE.teacherId).forEach(function(w){ TT_STATE.weeks[w]=!!want[w]; });
-      renderTimetable();
-    });
+    if(rsel) rsel.addEventListener('change', function(){ TT_STATE.roundId=rsel.value; renderTimetable(); });
     Array.prototype.forEach.call(document.querySelectorAll('#timetableArea input[data-week]'), function(chk){
       chk.addEventListener('change', function(){
         if(!TT_STATE.weeks) TT_STATE.weeks=Object.create(null);
@@ -4875,21 +4880,21 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     });
     var all=document.getElementById('ttAllWeeks');
     if(all) all.addEventListener('click', function(){
-      TT_STATE.weeks=Object.create(null);
-      ttWeeksForTeacher(TT_STATE.teacherId).forEach(function(w){ TT_STATE.weeks[w]=true; });
+      if(!TT_STATE.weeks) TT_STATE.weeks=Object.create(null);
+      ttVisibleWeeks().forEach(function(w){ TT_STATE.weeks[w]=true; });
       renderTimetable();
     });
     var none=document.getElementById('ttNoWeeks');
     if(none) none.addEventListener('click', function(){
-      TT_STATE.weeks=Object.create(null);
-      ttWeeksForTeacher(TT_STATE.teacherId).forEach(function(w){ TT_STATE.weeks[w]=false; });
+      if(!TT_STATE.weeks) TT_STATE.weeks=Object.create(null);
+      ttVisibleWeeks().forEach(function(w){ TT_STATE.weeks[w]=false; });
       renderTimetable();
     });
     var pr=document.getElementById('ttPrint');
     if(pr) pr.addEventListener('click', printTimetable);
   }
   function printTimetable(){
-    var weeks=ttSelectedWeeks(ttWeeksForTeacher(TT_STATE.teacherId));
+    var weeks=ttSelectedWeeks(ttVisibleWeeks());
     if(!TT_STATE.teacherId || !weeks.length){ alert('ยังไม่มีตารางสอนสำหรับพิมพ์'); return; }
     var oldTitle=document.title, done=false;
     document.body.classList.add('print-timetable');
