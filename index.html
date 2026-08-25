@@ -300,7 +300,7 @@ table.dash td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-alig
 table.dash .c-per{width:42px;text-align:center;font-weight:700;color:var(--ink-soft)}
 table.dash .c-room{width:72px;color:var(--ink-soft)}
 table.dash .c-stat{width:30%}
-table.dash .c-act{width:78px;text-align:right}
+table.dash .c-act{width:150px;text-align:right;white-space:nowrap}
 /* status bands (full row tint) */
 tr.band-done   td{background:var(--green-wash)}
 tr.band-done   .c-stat{color:var(--green);font-weight:700}
@@ -604,8 +604,38 @@ table.logtab td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-ali
 .backup-stale{color:var(--amber);font-weight:600}
 .btn-archive-export{padding:6px 14px;border:0;border-radius:8px;background:var(--amber);color:#fff;cursor:pointer;font-family:inherit}
 
+/* ---- F14 30b: leave tick column ---- */
+table.dash .c-leave{width:44px;text-align:center}
+.lv-tick{width:18px;height:18px;cursor:pointer}
+.dash-leavebar{margin:0 0 8px;padding:8px 12px;border-radius:7px;font-size:13.5px;line-height:1.5;background:#eef5ee;border:1px solid #c3d8c3;color:#31523a}
+.dash-leavebar.need{background:#fff6e0;border-color:#e3c377;color:#7a5600;font-weight:600}
+
+/* ---- F14: รอบการลา ---- */
+.lv-strip{margin-top:12px;font-size:14px}
+.lv-pickrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.lv-pick{flex:1;min-width:220px;padding:7px 9px;border:1px solid #cfc6b4;border-radius:7px;font:inherit;font-size:14px;background:#fff}
+.lv-detail{margin-top:8px;padding:8px 11px;border-radius:7px;line-height:1.5;border:1px solid transparent}
+.lv-none{background:#f6f2e9;border-color:#e0d8c8;color:#6b6152}
+.lv-ok{background:#eef5ee;border-color:#c3d8c3;color:#31523a}
+.lv-warn{background:#fff6e0;border-color:#e3c377;color:#7a5600}
+.lv-lab{font-weight:700;white-space:nowrap}
+.lv-box{max-width:520px}
+.lv-range{display:flex;gap:14px;flex-wrap:wrap;margin:6px 0 12px;font-size:14px}
+.lv-range input{margin-left:5px;padding:5px 7px;border:1px solid #cfc6b4;border-radius:6px;font:inherit}
+.lv-days{max-height:34vh;overflow:auto;border:1px solid #e6dfd2;border-radius:8px;padding:4px 8px}
+.lv-day{padding:8px 2px;border-bottom:1px solid #f0ebe1}
+.lv-day:last-child{border-bottom:0}
+.lv-date{font-weight:600;font-size:14px;margin-bottom:4px}
+.lv-tot{font-weight:400;opacity:.7;font-size:12.5px}
+.lv-modes{display:flex;gap:12px;flex-wrap:wrap}
+.lv-mode{font-size:13.5px;white-space:nowrap;cursor:pointer}
+.lv-hint{font-size:12.5px;line-height:1.5;opacity:.8;margin:10px 0 0}
+.lv-empty{font-size:13.5px;opacity:.75;padding:10px 2px;margin:0}
+
 /* ---- F13: ผู้สอนแทนนอกระบบ ---- */
-.btn-ext{margin-left:6px;background:#fff;border:1px solid #cfc6b4;color:#6b6152;font-weight:500}
+.c-act{white-space:nowrap}
+.c-act .btn{white-space:nowrap;display:inline-block}
+.btn-ext{margin-top:5px;font-size:12.5px;padding:4px 10px;background:#fff;border:1px solid #cfc6b4;color:#6b6152;font-weight:500;white-space:nowrap;display:block;margin-left:auto}
 .btn-ext:hover{background:#f6f2e9}
 .ext-back{position:fixed;inset:0;background:rgba(30,28,24,.45);display:flex;align-items:center;justify-content:center;z-index:99998;padding:16px}
 .ext-back:empty{display:none}
@@ -648,6 +678,7 @@ td.tt-clash .tt-mark{background:#c0392b;color:#fff;border-radius:4px;padding:1px
 </style>
 </head>
 <body>
+
 
 
 <!-- embedded-data island: empty in the master; filled only by self-export (Stage 23) -->
@@ -1949,32 +1980,65 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 
   // §5.9.8 report 2 — a give-up slot whose every row is ยกเลิก: cover was
   // arranged and then dropped. A slot with NO rows is NOT reported.
-  function ledgerUncovered(log){
-    var by=Object.create(null), order=[];
-    log = log || [];
+  /* F14 30c: when leave ROUNDS exist they are authoritative about who is away —
+     a declared-leave period with no live (non-ยกเลิก) coverage is uncovered,
+     including periods whose rows were DELETED or never created (which the
+     log-only rule below cannot see). For dates NOT in any round the original
+     "every row cancelled" fallback still applies unchanged, so a store with no
+     leave records behaves exactly as before (F14 fallback rule). `meta` is an
+     optional (tid,date,per)->{day,subject,group,room} resolver so the pure
+     ledger stays testable without an engine. */
+  function ledgerUncovered(log, leaves, meta){
+    log=log||[]; leaves=leaves||null;
+    var covered=Object.create(null);       // slots with a live log row
     for(var i=0;i<log.length;i++){
       var e=log[i];
-      if(!e || !e.me_id || !e.date_absent) continue;
-      var k=ledKey(e.me_id, e.date_absent, e.per_give);
-      if(!by[k]){ by[k]=[]; order.push(k); }
-      by[k].push(e);
+      if(!e||!e.me_id||!e.date_absent||e.status==='ยกเลิก') continue;
+      covered[ledKey(e.me_id,e.date_absent,e.per_give)]=true;
     }
-    var out=[];
+    var out=[], seen=Object.create(null), roundDay=Object.create(null);
+    function M(t,d,p){ try{ return (meta&&meta(t,d,p))||{}; }catch(_){ return {}; } }
+
+    if(leaves && leaves.length){
+      for(var r=0;r<leaves.length;r++){
+        var rd=leaves[r]; if(!rd||!rd.teacherId) continue;
+        for(var j=0;j<(rd.days||[]).length;j++){
+          var dy=rd.days[j]; roundDay[rd.teacherId+'|'+dy.date]=1;
+          for(var q=0;q<(dy.periods||[]).length;q++){
+            var per=String(dy.periods[q]), k=ledKey(rd.teacherId,dy.date,per);
+            if(covered[k]||seen[k]) continue;
+            seen[k]=1; var m=M(rd.teacherId,dy.date,per);
+            out.push({key:k, teacher_id:rd.teacherId, date:dy.date, period:per,
+                      day:m.day||dy.date, subject:m.subject||'', group:m.group||'',
+                      room:m.room||'', cancelled:0, source:'round', entries:[]});
+          }
+        }
+      }
+    }
+    // fallback: all-cancelled groups, only for (teacher,date) NOT in a round
+    var by=Object.create(null), order=[];
+    for(var i2=0;i2<log.length;i2++){
+      var e2=log[i2]; if(!e2||!e2.me_id||!e2.date_absent) continue;
+      if(roundDay[e2.me_id+'|'+String(e2.date_absent).slice(0,10)]) continue;
+      var k2=ledKey(e2.me_id,e2.date_absent,e2.per_give);
+      if(!by[k2]){ by[k2]=[]; order.push(k2); }
+      by[k2].push(e2);
+    }
     for(var n=0;n<order.length;n++){
       var key=order[n], rows=by[key], live=false;
-      for(var r=0;r<rows.length;r++) if(rows[r].status!=='ยกเลิก'){ live=true; break; }
-      if(live) continue;
-      var p=key.split('|'), f=rows[0];
+      for(var t=0;t<rows.length;t++) if(rows[t].status!=='ยกเลิก'){ live=true; break; }
+      if(live||seen[key]) continue;
+      var p=key.split('|'), f=rows[0]; seen[key]=1;
       out.push({key:key, teacher_id:p[0], date:p[1], period:p[2],
                 day:f.day_give, subject:f.subject_give, group:f.group_give,
-                room:f.room_give, cancelled:rows.length, entries:rows});
+                room:f.room_give, cancelled:rows.length, source:'log', entries:rows});
     }
     out.sort(function(a,b){ return a.date<b.date?-1:(a.date>b.date?1:(+a.period)-(+b.period)); });
     return out;
   }
 
-  function auditLedger(log){
-    var col=ledgerCollisions(log), unc=ledgerUncovered(log);
+  function auditLedger(log, leaves, meta){
+    var col=ledgerCollisions(log), unc=ledgerUncovered(log, leaves, meta);
     return {collisions:col, uncovered:unc, ok:(col.length===0 && unc.length===0)};
   }
 
@@ -2012,7 +2076,14 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     conflicts:ledgerConflicts, conflictText:ledgerConflictText,
     auditActive:function(){
       var sem = (typeof STORE!=='undefined' && STORE.activeSemester) ? STORE.activeSemester() : null;
-      return auditLedger((sem && sem.log) || []);
+      var meta=null;
+      try{
+        var eng=engineForActive();
+        if(eng) meta=function(t,d,p){ var day=__SWAP_DATES__.weekdayThai(d);
+          var row=eng.row(t,day,String(p));
+          return row?{day:day,subject:row.subject,group:row.group,room:row.room}:{day:day}; };
+      }catch(_){}
+      return auditLedger((sem&&sem.log)||[], (sem&&sem.leaves)||null, meta);
     }
   };
 
@@ -2182,6 +2253,21 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       var g=L.build([ext]);
       return g.busyAt('M1','2026-08-20','4').length===0 && g.handoverAt('M1','2026-08-20','4').length===1; });
 
+    // F14 30c — round-aware uncovered report
+    var LV=[{teacherId:'M1', days:[{date:'2026-08-20', mode:'บางคาบ', periods:['4','6']}]}];
+    t('L19','รอบการลา: คาบที่ลาและไม่มีใครแทน = รายงาน (แม้ไม่มีแถวเลย)', function(){
+      var u=L.audit([], LV).uncovered;
+      return u.length===2 && u[0].source==='round'; });
+    t('L20','รอบการลา: คาบที่มีคนแทนแล้ว = ไม่รายงาน', function(){
+      var cov=E({me_id:'M1',per_give:'4',date_absent:'2026-08-20',kind:'สอนแทน',day_back:'',per_back:'',date_back:''});
+      var u=L.audit([cov], LV).uncovered;
+      return u.length===1 && u[0].period==='6'; });
+    t('L21','คาบที่ไม่ได้อยู่ในรอบการลา = ไม่รายงาน (ครึ่งวันแล้วสอนเอง)', function(){
+      return L.audit([], LV).uncovered.every(function(u){return u.period!=='1';}); });
+    t('L22','วันที่ไม่มีรอบ ยังใช้ fallback เดิม (ทุกแถวยกเลิก)', function(){
+      var c=E({date_absent:'2026-09-01',status:'ยกเลิก'});
+      return L.audit([c], LV).uncovered.some(function(u){return u.date==='2026-09-01'&&u.source==='log';}); });
+
     var passed=0; for(var i=0;i<cases.length;i++) if(cases[i].ok) passed++;
     return {ok:true, cases:cases, passed:passed, total:cases.length, allGreen:passed===cases.length};
   }
@@ -2235,6 +2321,13 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       if(!this.data.settings) this.data.settings = cloneSettings(DEFAULT_SETTINGS);
       else { for(var k in DEFAULT_SETTINGS) if(this.data.settings[k]==null) this.data.settings[k]=DEFAULT_SETTINGS[k]; }
       if(this.data.approvedSinceBackup == null) this.data.approvedSinceBackup = 0;
+      // F14: every semester gains a leaves[] array. Purely additive — a store
+      // written before F14 simply has none, and every date without a leave
+      // record keeps behaving exactly as it did before (§F14 fallback rule).
+      for(var __sk in this.data.semesters){
+        var __sem=this.data.semesters[__sk];
+        if(__sem && !__sem.leaves) __sem.leaves=[];
+      }
       if(this.data.lastBackupAt === undefined) this.data.lastBackupAt = null;
       if(!this.data.phonebook || typeof this.data.phonebook!=='object'){ this.data.phonebook={ map:{}, lastImportedAt:null, sourceFilename:'' }; }
       if(!this.data.phonebook.map) this.data.phonebook.map={};
@@ -3092,6 +3185,9 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     if(teaching){
       o.subjGroup = row.subject+'  /  '+row.group;
       o.room = row.room; o.swappable = true;
+      // F14: is this period inside a leave round, and marked as leave?
+      var __lp = leavePeriodsFor(me, dateAbsentISO);        // null=no round
+      if(__lp!==null){ o.hasRound=true; o.onLeave = __lp.indexOf(String(per))!==-1; }
       var ls = logStatusFor(log, me, dateAbsentISO, per);  // R / S
       if(ls.status===''){ o.status='ยังไม่ได้ค้นหา'; o.cls='todo'; }
       else if(ls.status==='ยกเลิก'){ o.status='ยกเลิก — ค้นหาใหม่'; o.cls='cancel'; }
@@ -3195,6 +3291,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
           '<small class="fhint">เสนอสัปดาห์สอนคืนไปทางอนาคต / อดีต / ใกล้วันลาที่สุด</small></label>'+
       '</div>'+
       '<div id="absWarn" class="abs-warn" hidden></div>'+
+      leaveStripHTML()+
     '</div>';
   }
 
@@ -3289,8 +3386,22 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     if(DASH.day===''){ body.innerHTML='<p class="muted-note" style="padding:10px 4px">เลือกวันที่ลาที่เป็นวันจันทร์–ศุกร์</p>'; return; }
 
     var rows=dashboardRows();
-    var html='<table class="dash"><thead><tr>'+
+    // F14: does the shown day belong to a round? If so we render the ลา column.
+    var __f = (DASH.meId && DASH.dateAbsent) ? leaveRoundFor(DASH.meId, DASH.dateAbsent) : null;
+    var __hasRound = !!__f;
+    var __needPick = __hasRound && __f.day.mode==='บางคาบ' &&
+                     (__f.day.periods||[]).length===0;
+    var html='';
+    if(__hasRound){
+      html += '<div class="dash-leavebar'+(__needPick?' need':'')+'">'+
+        (__needPick
+          ? '⚠️ รอบการลานี้ระบุว่า “ลาบางคาบ” — ติ๊กช่อง “ลา” เฉพาะคาบที่ท่านลา'
+          : 'รอบการลา: '+esc(__f.day.mode)+' — ช่อง “ลา” ถูกติ๊กให้ตามที่เลือกไว้ (แก้เองได้)')+
+        '</div>';
+    }
+    html += '<table class="dash"><thead><tr>'+
       '<th class="c-per">คาบ</th><th>วิชา / กลุ่ม</th><th class="c-room">ห้อง</th>'+
+      (__hasRound?'<th class="c-leave">ลา</th>':'')+
       '<th class="c-stat">สถานะ</th><th class="c-act"></th>'+
       '</tr></thead><tbody>';
     for(var i=0;i<rows.length;i++){
@@ -3299,10 +3410,15 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         '<td class="c-per">'+r.period+'</td>'+
         '<td>'+esc(r.subjGroup)+'</td>'+
         '<td class="c-room">'+esc(r.room||'')+'</td>'+
+        (__hasRound
+          ? '<td class="c-leave">'+(r.swappable
+              ? '<input type="checkbox" class="lv-tick" data-per="'+r.period+'"'+(r.onLeave?' checked':'')+'>'
+              : '')+'</td>'
+          : '')+
         '<td class="c-stat">'+esc(r.status)+(r.impact&&r.impact!=='—'?'<div class="c-warn">'+esc(r.impact)+'</div>':'')+'</td>'+
         '<td class="c-act">'+(r.swappable
             ? '<button class="btn btn-small btn-find" data-per="'+r.period+'">ค้นหา</button>'+
-              '<button class="btn btn-small btn-ext" data-per="'+r.period+'" title="บันทึกผู้สอนแทนที่ไม่มีในระบบ เช่น นักศึกษาฝึกสอน">ให้คนนอกสอนแทน</button>'
+              '<button class="btn btn-ext" data-per="'+r.period+'" title="บันทึกผู้สอนแทนที่ไม่มีในระบบ เช่น นักศึกษาฝึกสอน">＋ คนนอกสอนแทน</button>'
             : '')+'</td>'+
       '</tr>';
     }
@@ -3314,6 +3430,34 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     });
     Array.prototype.forEach.call(body.querySelectorAll('.btn-ext'), function(b){
       b.addEventListener('click', function(){ openExternalSub(b.getAttribute('data-per')); });
+    });
+    Array.prototype.forEach.call(body.querySelectorAll('.lv-tick'), function(cb){
+      cb.addEventListener('change', function(){
+        var f=leaveRoundFor(DASH.meId, DASH.dateAbsent); if(!f) return;
+        var set={}; (f.day.periods||[]).forEach(function(p){ set[String(p)]=1; });
+        var per=cb.getAttribute('data-per');
+        if(cb.checked) set[per]=1; else delete set[per];
+        leaveSetPeriods(DASH.meId, DASH.dateAbsent, Object.keys(set));  // flips mode to บางคาบ if needed
+        refreshHome();
+      });
+    });
+    var lvN=document.getElementById('lvNew'), lvE=document.getElementById('lvEdit'), lvP=document.getElementById('lvPick');
+    if(lvN) lvN.addEventListener('click', function(){ openLeaveEditor(null); });
+    if(lvE) lvE.addEventListener('click', function(){ openLeaveEditor(lvE.getAttribute('data-id')); });
+    if(lvP) lvP.addEventListener('change', function(){
+      var id=lvP.value;
+      if(!id){ refreshHome(); return; }         // "ไม่ระบุ" — leave the date as is
+      var L=leavesOf(), r=null;
+      for(var i=0;i<L.length;i++) if(L[i].id===id) r=L[i];
+      if(r){ var first=(r.days||[]).map(function(d){return d.date;}).sort()[0];
+        // jump the dashboard onto this round unless the current date is already in it
+        if(first && !leaveRoundFor(DASH.meId, DASH.dateAbsent)){
+          DASH.dateAbsent=first; var el=document.getElementById('inAbsent'); if(el) el.value=first;
+        } else if(first && leaveRoundFor(DASH.meId, DASH.dateAbsent) && leaveRoundFor(DASH.meId, DASH.dateAbsent).round.id!==id){
+          DASH.dateAbsent=first; var el2=document.getElementById('inAbsent'); if(el2) el2.value=first;
+        }
+        refreshHome();
+      }
     });
   }
 
@@ -3434,6 +3578,241 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     return r.ok ? {ok:true, id:entry.id} : {ok:false, error:r.error};
   }
   function isExternalSub(e){ return !!e && e.kind==='สอนแทน' && !e.y_id; }
+
+  /* ====================================================================
+     F14 — รอบการลา (leave round)                        [Amendment A3]
+     The app never recorded that anyone was on leave; it INFERRED absence from
+     the existence of swap rows. So a period with no row was indistinguishable
+     from a period nobody was away for — which is how a give-up slot vanished
+     silently when its rows were deleted, why a period taught after all keeps
+     reporting as uncovered, and why half-day leave cannot be expressed.
+
+     A round is one leave event: the unit §6.4 already names as the พพ.1-1
+     form's unit but never stored. Top-down by design (owner, 2026-08-23):
+     declare the round first, then let each day's mode fill in the periods.
+
+       LeaveRound { id, teacherId, note, createdAt,
+                    days:[ {date, mode, periods[]} ] }
+
+     `mode` is what the human chose; `periods` is the truth the reports read.
+     Preset modes EXPAND TO A STORED PERIOD LIST at save time rather than being
+     recomputed later — same law as §5.2: a record must not change meaning when
+     the timetable behind it changes.
+
+     FALLBACK RULE, non-negotiable: a date with no round behaves exactly as it
+     did before F14. Nothing is mandatory and no back-filling is ever required.
+     ==================================================================== */
+  var LEAVE_MODES = ['ทั้งวัน','ครึ่งเช้า','ครึ่งบ่าย','บางคาบ'];
+
+  function leavesOf(){ var sem=STORE.activeSemester(); if(!sem) return [];
+    if(!sem.leaves) sem.leaves=[]; return sem.leaves; }
+
+  // every teaching period of that teacher on that weekday, within the mode's range
+  function leavePresetPeriods(tid, dateISO, mode){
+    if(mode==='บางคาบ') return [];
+    var eng=engineForActive(); if(!eng||!tid||!dateISO) return [];
+    var day=__SWAP_DATES__.weekdayThai(dateISO); if(!day) return [];
+    var lo=1, hi=9;
+    if(mode==='ครึ่งเช้า') hi=4; else if(mode==='ครึ่งบ่าย') lo=5;
+    var out=[];
+    for(var p=lo;p<=hi;p++){
+      var r=eng.row(tid, day, String(p));
+      if(r && r.is_teaching==='TRUE') out.push(String(p));
+    }
+    return out;
+  }
+  function leaveTeachingCount(tid, dateISO){ return leavePresetPeriods(tid,dateISO,'ทั้งวัน').length; }
+
+  function leaveRoundFor(tid, dateISO){
+    var L=leavesOf(), d=String(dateISO||'').slice(0,10);
+    for(var i=0;i<L.length;i++){
+      var r=L[i]; if(r.teacherId!==tid) continue;
+      for(var j=0;j<(r.days||[]).length;j++) if(r.days[j].date===d) return {round:r, day:r.days[j]};
+    }
+    return null;
+  }
+  // null  = no leave record for that date -> pre-F14 behaviour applies
+  // array = the periods declared as leave (may be empty for an unfilled บางคาบ)
+  function leavePeriodsFor(tid, dateISO){
+    var f=leaveRoundFor(tid, dateISO);
+    return f ? (f.day.periods||[]) : null;
+  }
+  function leaveSetPeriods(tid, dateISO, periods){
+    var f=leaveRoundFor(tid, dateISO); if(!f) return false;
+    f.day.periods=periods.slice().sort(function(a,b){return (+a)-(+b);});
+    var preset=leavePresetPeriods(tid,dateISO,f.day.mode).join(',');
+    if(f.day.mode!=='บางคาบ' && preset!==f.day.periods.join(',')) f.day.mode='บางคาบ';
+    STORE.save(); return true;
+  }
+  function leaveDatesBetween(fromISO, toISO, tid){
+    var out=[], a=__SWAP_DATES__, ms=Date.parse(fromISO+'T00:00:00Z'), end=Date.parse(toISO+'T00:00:00Z');
+    if(isNaN(ms)||isNaN(end)||end<ms) return out;
+    for(var t=ms; t<=end && out.length<40; t+=86400000){
+      var iso=new Date(t).toISOString().slice(0,10);
+      if(!a.weekdayThai(iso)) continue;                 // skip weekends
+      if(leaveTeachingCount(tid, iso)===0) continue;    // skip days with no classes
+      out.push(iso);
+    }
+    return out;
+  }
+  function leaveSaveRound(tid, note, days, existingId){
+    var L=leavesOf(), rec=null;
+    if(existingId){ for(var i=0;i<L.length;i++) if(L[i].id===existingId) rec=L[i]; }
+    // a date may belong to only one round
+    for(var i2=0;i2<L.length;i2++){
+      var r=L[i2]; if(r.teacherId!==tid || (rec&&r.id===rec.id)) continue;
+      for(var j=0;j<days.length;j++)
+        for(var k=0;k<(r.days||[]).length;k++)
+          if(r.days[k].date===days[j].date)
+            return {ok:false, error:'วันที่ '+thaiDate(days[j].date)+' อยู่ในรอบการลาอื่นแล้ว — แก้ที่รอบนั้นแทน'};
+    }
+    if(!rec){ rec={id:'lv_'+Date.now(), teacherId:tid, createdAt:new Date().toISOString(), days:[]}; L.push(rec); }
+    rec.note=note||''; rec.days=days;
+    var r2=STORE.save();
+    return r2.ok ? {ok:true, id:rec.id} : {ok:false, error:r2.error};
+  }
+  function leaveDeleteRound(id){
+    var L=leavesOf();
+    for(var i=0;i<L.length;i++) if(L[i].id===id){ L.splice(i,1); STORE.save(); return true; }
+    return false;
+  }
+  function leaveRoundLabel(r){
+    var ds=(r.days||[]).map(function(d){return d.date;}).sort();
+    if(!ds.length) return '(ว่าง)';
+    var span = ds[0]===ds[ds.length-1] ? thaiDate(ds[0]) : thaiDate(ds[0])+' – '+thaiDate(ds[ds.length-1]);
+    return span + (r.note ? ' · '+r.note : '');
+  }
+  window.__SWAP_LEAVE__ = {
+    all:leavesOf, roundFor:leaveRoundFor, periodsFor:leavePeriodsFor,
+    setPeriods:leaveSetPeriods, save:leaveSaveRound, del:leaveDeleteRound,
+    preset:leavePresetPeriods, datesBetween:leaveDatesBetween, label:leaveRoundLabel,
+    MODES:LEAVE_MODES
+  };
+
+  /* ---- F14 UI: the round strip on หน้าหลัก, and the editor ---- */
+  // Rounds are first-class entries the owner manages, not something tied to the
+  // date currently typed (owner feedback 2026-08-23). The strip is a picker over
+  // ALL of this teacher's rounds, plus create; picking one jumps the absence date
+  // onto that round so the dashboard below shows its periods. Creating another
+  // never requires deleting the first.
+  function myLeaveRounds(){
+    var L=leavesOf(), out=[];
+    for(var i=0;i<L.length;i++) if(L[i].teacherId===DASH.meId) out.push(L[i]);
+    out.sort(function(a,b){
+      var da=(a.days||[]).map(function(d){return d.date;}).sort()[0]||'';
+      var db=(b.days||[]).map(function(d){return d.date;}).sort()[0]||'';
+      return da<db?-1:(da>db?1:0); });
+    return out;
+  }
+  function leaveStripHTML(){
+    if(!DASH.meId) return '';
+    var rounds=myLeaveRounds();
+    var f = DASH.dateAbsent ? leaveRoundFor(DASH.meId, DASH.dateAbsent) : null;
+    var curId = f ? f.round.id : '';
+
+    var opts='<option value="">— ยังไม่ได้ระบุ (เดาจากรายการสลับ) —</option>';
+    for(var i=0;i<rounds.length;i++){
+      opts+='<option value="'+esc(rounds[i].id)+'"'+(rounds[i].id===curId?' selected':'')+'>'+
+            esc(leaveRoundLabel(rounds[i]))+'</option>';
+    }
+    var picker='<div class="lv-pickrow">'+
+      '<span class="lv-lab">รอบการลา</span>'+
+      '<select id="lvPick" class="lv-pick">'+opts+'</select>'+
+      '<button class="btn btn-small" id="lvNew">➕ สร้างรอบใหม่</button>'+
+      (f?'<button class="btn btn-small" id="lvEdit" data-id="'+esc(f.round.id)+'">แก้ไขรอบนี้</button>':'')+
+    '</div>';
+
+    // detail line for the currently-shown day, only when it belongs to a round
+    var detail='';
+    if(f && DASH.dateAbsent){
+      var d=f.day, n=(d.periods||[]).length, tot=leaveTeachingCount(DASH.meId, DASH.dateAbsent);
+      var need=(d.mode==='บางคาบ' && n===0);
+      detail='<div class="lv-detail'+(need?' lv-warn':' lv-ok')+'">'+
+        'วัน'+esc(__SWAP_DATES__.weekdayThai(DASH.dateAbsent))+' '+esc(thaiDate(DASH.dateAbsent))+
+        ' — ลา'+esc(d.mode)+' ('+n+'/'+tot+' คาบ)'+
+        (need?' · ยังไม่ได้เลือกว่าลาคาบไหน':'')+'</div>';
+    } else if(!rounds.length){
+      detail='<div class="lv-detail lv-none">ยังไม่มีรอบการลา — สร้างไว้เพื่อระบุวันและคาบที่ลาให้ชัด (ไม่บังคับ)</div>';
+    }
+    return '<div class="lv-strip">'+picker+detail+'</div>';
+  }
+
+  function openLeaveEditor(roundId){
+    if(isReadOnlySemester()){ alert(readOnlyText()); return; }
+    if(!DASH.meId){ alert('เลือกครูที่ต้องการลาก่อน'); return; }
+    var tid=DASH.meId, existing=null, L=leavesOf();
+    if(roundId) for(var i=0;i<L.length;i++) if(L[i].id===roundId) existing=L[i];
+    var from = existing ? existing.days.map(function(d){return d.date;}).sort()[0] : DASH.dateAbsent;
+    var to   = existing ? existing.days.map(function(d){return d.date;}).sort().pop() : DASH.dateAbsent;
+    var modeOf={}; if(existing) existing.days.forEach(function(d){ modeOf[d.date]=d.mode; });
+    var perOf={};  if(existing) existing.days.forEach(function(d){ perOf[d.date]=(d.periods||[]).slice(); });
+
+    var host=document.getElementById('lvDlg');
+    if(!host){ host=document.createElement('div'); host.id='lvDlg'; document.body.appendChild(host); }
+    function dayRows(f,t){
+      var ds=leaveDatesBetween(f,t,tid);
+      if(!ds.length) return '<p class="lv-empty">ไม่มีวันที่มีคาบสอนในช่วงนี้</p>';
+      return ds.map(function(iso){
+        var m=modeOf[iso]||'ทั้งวัน', tot=leaveTeachingCount(tid,iso);
+        return '<div class="lv-day"><div class="lv-date">'+esc('วัน'+__SWAP_DATES__.weekdayThai(iso)+' '+thaiDate(iso))+
+          ' <span class="lv-tot">('+tot+' คาบสอน)</span></div><div class="lv-modes">'+
+          LEAVE_MODES.map(function(md){
+            return '<label class="lv-mode"><input type="radio" name="lvm_'+iso+'" value="'+md+'"'+
+              (md===m?' checked':'')+'> '+md+'</label>'; }).join('')+
+        '</div></div>';
+      }).join('');
+    }
+    function render(){
+      host.className='ext-back';
+      host.innerHTML='<div class="ext-box lv-box" role="dialog" aria-modal="true">'+
+        '<h3 class="ext-h">'+(existing?'แก้ไขรอบการลา':'สร้างรอบการลา')+'</h3>'+
+        '<div class="lv-range"><label>ตั้งแต่ <input type="date" id="lvFrom" value="'+esc(from)+'"></label>'+
+          '<label>ถึง <input type="date" id="lvTo" value="'+esc(to)+'"></label></div>'+
+        '<div id="lvDays" class="lv-days">'+dayRows(from,to)+'</div>'+
+        '<label class="ext-lab">หมายเหตุ (ไม่บังคับ)</label>'+
+        '<input id="lvNote" class="ext-in" value="'+esc(existing?(existing.note||''):'')+'" placeholder="เช่น ไปราชการ">'+
+        '<p class="lv-hint">เลือก “บางคาบ” แล้วไปติ๊กคาบที่ลาในตารางด้านล่าง · เสาร์–อาทิตย์และวันที่ไม่มีคาบสอน ระบบข้ามให้</p>'+
+        '<div class="ext-act">'+
+          '<button class="btn" id="lvCancel">ยกเลิก</button>'+
+          (existing?'<button class="btn btn-del" id="lvDel">ลบรอบนี้</button>':'')+
+          '<button class="btn btn-primary" id="lvSave">บันทึกรอบการลา</button>'+
+          '<span class="ext-msg" id="lvMsg"></span>'+
+        '</div></div>';
+      function close(){ host.className=''; host.innerHTML=''; }
+      host.addEventListener('click', function(e){ if(e.target===host) close(); });
+      document.getElementById('lvCancel').addEventListener('click', close);
+      function refreshDays(){
+        var f=document.getElementById('lvFrom').value, t=document.getElementById('lvTo').value;
+        host.querySelectorAll('input[type=radio]:checked').forEach(function(r){
+          modeOf[r.name.slice(4)]=r.value; });
+        document.getElementById('lvDays').innerHTML=dayRows(f,t);
+      }
+      document.getElementById('lvFrom').addEventListener('change', refreshDays);
+      document.getElementById('lvTo').addEventListener('change', refreshDays);
+      var del=document.getElementById('lvDel');
+      if(del) del.addEventListener('click', function(){
+        if(!confirm('ลบรอบการลานี้? (รายการสลับที่บันทึกไว้แล้วจะไม่ถูกลบ)')) return;
+        leaveDeleteRound(existing.id); close(); refreshHome();
+      });
+      document.getElementById('lvSave').addEventListener('click', function(){
+        var f=document.getElementById('lvFrom').value, t=document.getElementById('lvTo').value;
+        var ds=leaveDatesBetween(f,t,tid), days=[];
+        if(!ds.length){ document.getElementById('lvMsg').textContent='ไม่มีวันที่มีคาบสอนในช่วงนี้';
+          document.getElementById('lvMsg').className='ext-msg err'; return; }
+        for(var i=0;i<ds.length;i++){
+          var iso=ds[i];
+          var picked=host.querySelector('input[name="lvm_'+iso+'"]:checked');
+          var md=picked?picked.value:(modeOf[iso]||'ทั้งวัน');
+          var per = (md==='บางคาบ' && perOf[iso]) ? perOf[iso] : leavePresetPeriods(tid,iso,md);
+          days.push({date:iso, mode:md, periods:per});
+        }
+        var r=leaveSaveRound(tid, document.getElementById('lvNote').value, days, existing?existing.id:null);
+        if(!r.ok){ var m=document.getElementById('lvMsg'); m.textContent='✗ '+r.error; m.className='ext-msg err'; return; }
+        close(); refreshHome();
+      });
+    }
+    render();
+  }
 
   /* ---- results bridge (minimal; full table is Stage 17) ---- */
   /* ====================================================================
@@ -4000,8 +4379,9 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
      act on them or is about to put them on paper (§5.9.8). Recomputed on every
      render; never a stored flag. */
   function auditActiveLog(){
-    var sem=STORE.activeSemester();
-    return auditLedger((sem && sem.log) || []);
+    // one source of truth — the ledger module already feeds leaves + a meta
+    // resolver into auditLedger, so the banners and the reminder strip agree.
+    return window.__SWAP_LEDGER__.auditActive();
   }
   function _aSlot(x){ return 'วัน'+weekdayThai(x.date)+' คาบ '+x.period+' · '+formatBE(x.date,false); }
   function _aWho(cl){
@@ -4137,7 +4517,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
      swaps are applied. The same log row renders as a mirror change for both
      the absent teacher and the partner teacher.
      ==================================================================== */
-  var TT_STATE={teacherId:'', lastTeacherId:'', weeks:null};
+  var TT_STATE={teacherId:'', lastTeacherId:'', weeks:null, roundId:'', lastScope:null};
 
   function ttDate(iso){ return String(iso||'').slice(0,10); }
   function ttParseISO(iso){
@@ -4237,15 +4617,20 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     if(!TT_STATE.weeks) return weeks.slice();
     return weeks.filter(function(w){ return !!TT_STATE.weeks[w]; });
   }
-  function ttCleanSelectedWeeks(weeks){
-    var next=Object.create(null);
-    if(!TT_STATE.weeks){
-      weeks.forEach(function(w){ next[w]=true; });
-      TT_STATE.weeks=next;
-      return;
+  function ttCurrentWeekStart(){ return ttWeekStart(todayISO()); }
+  // every week a leave round touches: its absence weeks + the make-up weeks of
+  // the live swaps arranged under it.
+  function ttWeeksForRound(tid, round){
+    var set=Object.create(null), sem=STORE.activeSemester(), log=(sem&&sem.log)||[];
+    var dates={}; (round.days||[]).forEach(function(d){ dates[d.date]=1; var w=ttWeekStart(d.date); if(w) set[w]=1; });
+    for(var i=0;i<log.length;i++){
+      var e=log[i];
+      if(e.status==='ยกเลิก') continue;
+      if(e.me_id===tid && dates[String(e.date_absent).slice(0,10)] && e.date_back){
+        var w=ttWeekStart(e.date_back); if(w) set[w]=1;
+      }
     }
-    weeks.forEach(function(w){ next[w]=!!TT_STATE.weeks[w]; });
-    TT_STATE.weeks=next;
+    return set;
   }
   function ttBaseCell(eng, tid, day, per){
     var row=eng ? eng.row(tid, day, per) : null;
@@ -4395,7 +4780,44 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     html+='</section>';
     return html;
   }
-  function renderTimetable(){
+  function ttRoundById(tid, id){
+    var L=leavesOf(); for(var i=0;i<L.length;i++) if(L[i].id===id && L[i].teacherId===tid) return L[i];
+    return null;
+  }
+  // the weeks the picker shows: everything, or — when a round is chosen — only
+  // that round's weeks (its absence weeks + the make-up weeks under it).
+  function ttVisibleWeeks(){
+    var all=TT_STATE.teacherId ? ttWeeksForTeacher(TT_STATE.teacherId) : [];
+    if(TT_STATE.roundId){
+      var r=ttRoundById(TT_STATE.teacherId, TT_STATE.roundId);
+      if(r){ var want=ttWeeksForRound(TT_STATE.teacherId, r);
+        return all.filter(function(w){ return !!want[w]; }); }
+    }
+    return all;
+  }
+  function ttScopeKey(){ return TT_STATE.teacherId+'|'+(TT_STATE.roundId||''); }
+  // reset ticks whenever the scope (teacher or round) changes: a round shows all
+  // its weeks ticked; no round defaults to current-week-onward.
+  function ttSyncScope(visible){
+    if(TT_STATE.lastScope===ttScopeKey() && TT_STATE.weeks) return;
+    TT_STATE.weeks=Object.create(null);
+    if(TT_STATE.roundId){ visible.forEach(function(w){ TT_STATE.weeks[w]=true; }); }
+    else { var cur=ttCurrentWeekStart(); visible.forEach(function(w){ TT_STATE.weeks[w]=(w>=cur); }); }
+    TT_STATE.lastScope=ttScopeKey();
+  }
+
+  function ttRoundRowHTML(){
+    var L=leavesOf(), mine=[];
+    for(var i=0;i<L.length;i++) if(L[i].teacherId===TT_STATE.teacherId) mine.push(L[i]);
+    if(!mine.length) return '';
+    mine.sort(function(a,b){ var da=(a.days||[]).map(function(d){return d.date;}).sort()[0]||'';
+      var db=(b.days||[]).map(function(d){return d.date;}).sort()[0]||''; return da<db?-1:1; });
+    var opts=mine.map(function(r){ return '<option value="'+esc(r.id)+'"'+(r.id===TT_STATE.roundId?' selected':'')+'>'+esc(leaveRoundLabel(r))+'</option>'; }).join('');
+    return '<div class="tt-row"><span class="tt-lab">รอบการลา</span>'+
+      '<select class="tt-select" id="ttRound"><option value=""'+(TT_STATE.roundId?'':' selected')+'>— แสดงทุกสัปดาห์ —</option>'+opts+'</select>'+
+      '<span class="tt-note">กรองให้เหลือเฉพาะสัปดาห์ของรอบการลาที่เลือก</span></div>';
+  }
+    function renderTimetable(){
     var host=document.getElementById('timetableArea'); if(!host) return;
     var sem=STORE.activeSemester();
     if(!sem){
@@ -4409,22 +4831,23 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     if(TT_STATE.teacherId && !ttTeacherById(TT_STATE.teacherId)){
       TT_STATE.teacherId=(touched[0]&&touched[0].id) || (teachers[0]&&teachers[0].id) || '';
     }
-    var weeks=TT_STATE.teacherId ? ttWeeksForTeacher(TT_STATE.teacherId) : [];
     if(TT_STATE.lastTeacherId!==TT_STATE.teacherId){
-      TT_STATE.weeks=null;
+      TT_STATE.roundId='';                     // a new teacher starts unfiltered
       TT_STATE.lastTeacherId=TT_STATE.teacherId;
     }
-    ttCleanSelectedWeeks(weeks);
+    var weeks=ttVisibleWeeks();
+    ttSyncScope(weeks);
     var selected=ttSelectedWeeks(weeks);
     var weekControls=weeks.length ? weeks.map(function(w){
       return '<label class="tt-week-check"><input type="checkbox" data-week="'+esc(w)+'" '+(TT_STATE.weeks[w]?'checked':'')+'> '+esc(ttWeekLabel(w))+'</label>';
-    }).join('') : '<span class="tt-note">ครูคนนี้ยังไม่มีสัปดาห์ที่มีรายการอนุมัติแล้ว</span>';
+    }).join('') : '<span class="tt-note">'+(TT_STATE.roundId?'รอบการลานี้ยังไม่มีสัปดาห์ที่มีการเปลี่ยนแปลง':'ครูคนนี้ยังไม่มีสัปดาห์ที่มีรายการอนุมัติแล้ว')+'</span>';
     var output=selected.length ? selected.map(function(w){ return ttRenderWeek(TT_STATE.teacherId,w); }).join('')
       : '<div class="card tt-empty">เลือกอย่างน้อยหนึ่งสัปดาห์เพื่อสร้างตารางสอน</div>';
     host.innerHTML='<div class="no-print">'+auditBannerHTML()+'</div>'+
                    '<div class="tt-controls no-print">'+
       '<div class="tt-row"><span class="tt-lab">ครู</span><select class="tt-select" id="ttTeacher">'+ttTeacherOptions(TT_STATE.teacherId)+'</select>'+
         '<span class="tt-note">ค่าเริ่มต้นเรียงจากครูที่มีรายการอนุมัติแล้ว</span></div>'+
+      ttRoundRowHTML()+
       '<div class="tt-row"><span class="tt-lab">สัปดาห์</span><div class="tt-weeks">'+weekControls+'</div></div>'+
       '<div class="tt-actions"><button class="btn btn-ghost" id="ttAllWeeks">เลือกทั้งหมด</button>'+
         '<button class="btn btn-ghost" id="ttNoWeeks">ไม่เลือก</button>'+
@@ -4436,6 +4859,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   function wireTimetable(){
     var sel=document.getElementById('ttTeacher');
     if(sel) sel.addEventListener('change', function(){ TT_STATE.teacherId=sel.value; renderTimetable(); });
+    var rsel=document.getElementById('ttRound');
+    if(rsel) rsel.addEventListener('change', function(){ TT_STATE.roundId=rsel.value; renderTimetable(); });
     Array.prototype.forEach.call(document.querySelectorAll('#timetableArea input[data-week]'), function(chk){
       chk.addEventListener('change', function(){
         if(!TT_STATE.weeks) TT_STATE.weeks=Object.create(null);
@@ -4445,21 +4870,21 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     });
     var all=document.getElementById('ttAllWeeks');
     if(all) all.addEventListener('click', function(){
-      TT_STATE.weeks=Object.create(null);
-      ttWeeksForTeacher(TT_STATE.teacherId).forEach(function(w){ TT_STATE.weeks[w]=true; });
+      if(!TT_STATE.weeks) TT_STATE.weeks=Object.create(null);
+      ttVisibleWeeks().forEach(function(w){ TT_STATE.weeks[w]=true; });
       renderTimetable();
     });
     var none=document.getElementById('ttNoWeeks');
     if(none) none.addEventListener('click', function(){
-      TT_STATE.weeks=Object.create(null);
-      ttWeeksForTeacher(TT_STATE.teacherId).forEach(function(w){ TT_STATE.weeks[w]=false; });
+      if(!TT_STATE.weeks) TT_STATE.weeks=Object.create(null);
+      ttVisibleWeeks().forEach(function(w){ TT_STATE.weeks[w]=false; });
       renderTimetable();
     });
     var pr=document.getElementById('ttPrint');
     if(pr) pr.addEventListener('click', printTimetable);
   }
   function printTimetable(){
-    var weeks=ttSelectedWeeks(ttWeeksForTeacher(TT_STATE.teacherId));
+    var weeks=ttSelectedWeeks(ttVisibleWeeks());
     if(!TT_STATE.teacherId || !weeks.length){ alert('ยังไม่มีตารางสอนสำหรับพิมพ์'); return; }
     var oldTitle=document.title, done=false;
     document.body.classList.add('print-timetable');

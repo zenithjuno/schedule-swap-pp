@@ -1,6 +1,70 @@
 CHANGELOG — schedule_swap_HTML  (append to cumulative changelog)
 ================================================================================
 
+Revision: s30   Date: 2026-08-24
+Base:     index.html s29 (F13)
+Author:   Claude, prototyped on /preview/ and approved by ครูชัชพงษ์ before promotion
+Type:     Amendment A3 / F14 — รอบการลา (leave round). Prototyped on /preview/
+          across four stages, then promoted to the site root; /preview/ removed.
+
+WHY
+  The app never recorded that anyone was on leave — it INFERRED absence from the
+  existence of swap rows. So a period with no row was indistinguishable from a
+  period nobody was away for. Three real symptoms shared that one root:
+    - a give-up slot vanished silently when its rows were deleted (the report
+      could only see slots whose rows were CANCELLED, not deleted or never made);
+    - a period taught after all kept reporting as uncovered, unclearable;
+    - half-day leave could not be expressed at all;
+  plus a fourth: the handout auto-selected every affected week, so long-finished
+  leaves printed as noise. §6.4 already named the พพ.1-1 form's unit as a leave
+  event but nothing stored one.
+
+CHANGE 1 — the model (stage 30a)
+  LeaveRound { id, teacherId, note, createdAt, days:[{date, mode, periods[]}] }
+  in a new semester.leaves[] array. mode is what the human chose (ทั้งวัน /
+  ครึ่งเช้า / ครึ่งบ่าย / บางคาบ); periods is the truth the reports read. Preset
+  modes EXPAND TO A STORED PERIOD LIST at save time, not recomputed later — same
+  law as §5.2. Top-down by the owner's design: declare the round (date range +
+  per-day mode + optional note) first, then let the periods follow.
+  Additive migration: _migrate seeds leaves=[]; schemaVersion unchanged; every
+  existing backup still loads. FALLBACK RULE: a date with no round behaves
+  exactly as before F14, and leavePeriodsFor() returns null (not []) so "no
+  record" stays distinguishable from "recorded as no periods".
+
+CHANGE 2 — dashboard tick column (stage 30b)
+  A "ลา" checkbox column appears ONLY when the shown day is in a round; ticks
+  pre-filled from the day's mode; unticking one flips the day to บางคาบ and
+  persists; an amber bar prompts when a บางคาบ day has nothing ticked yet.
+
+CHANGE 3 — round-aware uncovered report (stage 30c)
+  A declared-leave period with no live coverage is now uncovered — catching
+  DELETED and never-created rows the old all-cancelled rule could not see.
+  Dates in no round keep the original fallback. Home strip shows future ones.
+
+CHANGE 4 — handout (stage 30d, reworked)
+  Default week pre-selection is current-week-onward; finished weeks stay
+  available but unticked, so old leaves no longer print as noise. The รอบการลา
+  control is a DYNAMIC FILTER: choosing a round narrows the week list to that
+  round's own weeks (all ticked); "— แสดงทุกสัปดาห์ —" restores the full list.
+  Switching teacher or round resets the ticks; เลือกทั้งหมด / ไม่เลือก and Print
+  act on the visible set only.
+
+NOT TOUCHED
+  ฟอร์ม พพ.1-1 (the owner has not detailed that document yet); the swap engine;
+  LogEntry shape; schemaVersion; the four statuses; the frozen oracle fixture.
+
+TESTING
+  Oracle firewall unchanged: self-test 21/21 (1455 fields); golden top-5
+  104/103/89/87/74; rank-1 1202 พฤหัสฯ p6. Ledger suite 22/22 in-app (L19–L22
+  new for round-aware uncovered) and 43/43 at build time on BOTH editions.
+  In-browser end to end: round create/edit/delete keeping id; overlap refused;
+  tick prefill per mode and flip-to-บางคาบ; uncovered catches no-row leave
+  periods and closes on coverage while the non-round fallback still fires;
+  future uncovered reaches the home strip; handout filter narrows to a round's
+  weeks, A→B→A re-ticks fully, scoped select-all/none, print follows the ticks.
+  Both editions carry byte-identical engine code; zero console errors.
+================================================================================
+
 Revision: s29   Date: 2026-08-23
 Base:     index.html s28
 Author:   Claude, spec discussed and locked with ครูชัชพงษ์ before building
