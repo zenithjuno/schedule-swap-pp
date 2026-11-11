@@ -46,3 +46,8 @@
 - Visual inspection: home desktop and results mobile inspected; screenshots kept under private/ux-preview, not published.
 - Truth receipt: S01 PASS and S02 VERIFY; DEC-006 indexed; no changes to stable root, compression contract, score/eligibility/date logic. Daily-count bug, leave policy, broader document semantics and timetable simulation remain future stages.
 - Checkpoint: build/ui-preview/S02. Stop at user review after live publication.
+
+## PRG-007 — S02 delivered (2026-11-11)
+- Product commit ed38de6 pushed to main. Live preview HTTP 200 matches tested preview/index.html byte-for-byte. Original HTTP 200 matches untouched root (SHA-256 02d2c5d59f376906f867d5320f468e8f1315fbcdefb0452e04934909cc69067f).
+- Only active user gate: ผ่าน S02. S03 policy/calculation work has not started. Current checkpoint build/ui-preview/S02-review includes the delivery receipt; build/ui-preview/S02 retains the product release.
+- Stage map, contract/index and routing reviewed; no personal data in changed public files. Untracked pre-existing audit/bug-plan documents remain outside this checkpoint.

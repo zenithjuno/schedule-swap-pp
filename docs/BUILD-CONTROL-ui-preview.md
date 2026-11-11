@@ -36,7 +36,7 @@
 ## STATE
 - Current stage: `S02`
 - Done: `S01 (accepted by user 2026-11-11)`
-- Open / next: `S02 verified locally; deploy and await user review before S03.`
+- Open / next: `S02 deployed, HTTP-verified against tested release; awaiting user review before S03.`
 - Active gate: `ผ่าน S02`
 - Active history log: `history/BUILD-LOG-ui-preview-P01.md`
 - Last change: `PRG-006 — S02 ready for review`
@@ -46,7 +46,7 @@
 - Repository root: `.`
 - Branch: `main`
 - Approved-plan baseline: `7134bfb1b32b5c143589976ecfc50eb00df3f5f3`
-- Current checkpoint: `build/ui-preview/S02`
+- Current checkpoint: `build/ui-preview/S02-review`
 - Working-tree state: `CLEAN`
 - Checkpoint rule: `scoped commit per delivered stage; no unrelated files`
 
