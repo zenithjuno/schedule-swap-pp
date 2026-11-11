@@ -23,3 +23,13 @@
 - Current-truth review: root/legacy spec unchanged; S01 remains VERIFY until user trial; only active gate is “ผ่าน S01”; S02 not started.
 - Known limitations: direct copy requires same browser/profile and exact website origin; use backup restore if source was opened as file or on another device. S01 deliberately retains old layout and known calculation bugs for later stages.
 - Validation: control validate/doctor and stale-claim sweep passed with no blocking drift; managed files checked for personal data; unrelated audit documents remain untracked.
+
+## PRG-004 — S01 quota correction (2026-11-11)
+- User evidence: copy summary loads, but copy fails with QuotaExceededError. Shared origin means separate keys still share quota. No user data was cleared.
+- Missing coverage: original tests simulated a failed write but not successful copying under a realistic byte-counted quota with unrelated origin data. Added 5 MiB quota + 400 KiB unrelated data; pre-fix test failed waiting for copy navigation (red).
+- Probe: local full backup compact JSON occupies 3,835,388 UTF16 bytes; lossless table/dictionary backing representation occupies 813,340 bytes before normal lean-save stripping. Probe discarded; no new library/backend.
+- Correction: preview-only encoder/decoder preserves schedule fields including missing/null/numeric/object values. Reads old JSON, writes compact envelope. Normal JSON backups and exported HTML stay compatible. Root HTML/storage unchanged.
+- Durable safeguard: byte-quota regression, every original row-value assertion, codec mixed-type round trip, standard backup shape and exported-app boot. This restores S01 acceptance rather than advancing S02.
+- Verification: 49 S01 browser checks passed using the real local full backup under a simulated byte-counted 5 MiB quota with unrelated data; old plain JSON preview reopened and converted, regular backup restored, exported app booted. Engine 21/21; embedded ledger 22/22; standalone ledger 43/43.
+- Normal anonymous-fixture regression also passed before the additional legacy/restore checks (42 checks). Root remains byte-identical. Managed files scanned against all local rosters/phones with no matches.
+- Delivery checkpoint: `build/ui-preview/S01-quota`; S01 review remains open, no advance to S02.

@@ -19,6 +19,7 @@ User approved S01 on 2026-11-11. Each stage is create → test → human review.
 - Read-only: `index.html`, `private/**`, existing engine specs and tests, previous audit/bug-plan documents.
 - Create: clone standalone shell, isolate every persistent key, add review/copy summary and source-change protection, copied-at marker, return link, experimental export filenames.
 - Test: `SWAP_PLAYWRIGHT_MODULE=/Users/chutpong/.npm/_npx/31e32ef8478fbf80/node_modules/playwright node tests/preview-s01.cjs`; existing ledger suite against preview; frozen engine self-test from real browser; root hash remains identical; original/preview storage isolation including restored and self-exported variants; malformed/missing/quota/source-change cases.
+- Quota regression: run the focused command with `SWAP_SOURCE_BACKUP=private/swap_backup_2569-2_2026-11-10.json SWAP_QUOTA_BYTES=5242880`; includes 400 KiB unrelated same-origin data, all-row round trip, normal JSON backup and ready-file compatibility.
 - Publication: add only managed files; push without rewriting root; verify new URL content and root content against baseline; wait for deployment.
 - Checkpoint: scoped git commit on main, no unrelated audit documents or private data.
 - Pass gate: published working preview with copy action and proof root preserved; stop for user to try before S02.

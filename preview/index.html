@@ -899,6 +899,56 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 
 </script>
 
+<script id="previewStorageCodec">
+// Compact only the preview's backing storage. Backups and app objects stay normal JSON.
+(function(){
+  'use strict';
+  var PREFIX='SWAP-PREVIEW-TABLES-1:';
+  var own=Object.prototype.hasOwnProperty;
+  function encode(data){
+    var packed=JSON.parse(JSON.stringify(data)),strings=[],ids=Object.create(null);
+    function intern(value){
+      if(!own.call(ids,value)){ids[value]=strings.length;strings.push(value);}
+      return ids[value];
+    }
+    Object.keys(packed.semesters||{}).forEach(function(label){
+      var sem=packed.semesters[label],columns=[],seen=Object.create(null);
+      if(!Array.isArray(sem.schedule)) return;
+      sem.schedule.forEach(function(row){Object.keys(row).forEach(function(key){if(!seen[key]){seen[key]=true;columns.push(key);}});});
+      sem.schedule={columns:columns,rows:sem.schedule.map(function(row){
+        return columns.map(function(key){
+          if(!own.call(row,key)) return null; // absent field; literal null is [null]
+          return typeof row[key]==='string'?intern(row[key]):[row[key]];
+        });
+      })};
+    });
+    return PREFIX+JSON.stringify({strings:strings,data:packed});
+  }
+  function decode(raw){
+    if(raw.slice(0,PREFIX.length)!==PREFIX) return JSON.parse(raw); // existing S01 stores
+    var envelope=JSON.parse(raw.slice(PREFIX.length)),data=envelope.data,strings=envelope.strings;
+    if(!data||!data.semesters||!Array.isArray(strings)) throw new Error('สำเนารุ่นทดลองมีรูปแบบไม่ถูกต้อง');
+    Object.keys(data.semesters).forEach(function(label){
+      var sem=data.semesters[label],table=sem.schedule;
+      if(!table||!Array.isArray(table.columns)||!Array.isArray(table.rows)) throw new Error('ตารางสำเนาไม่ครบ');
+      sem.schedule=table.rows.map(function(values){
+        if(!Array.isArray(values)||values.length!==table.columns.length) throw new Error('แถวสำเนาไม่ครบ');
+        var row=Object.create(null);
+        values.forEach(function(value,i){
+          if(value===null) return;
+          if(Array.isArray(value)){row[table.columns[i]]=value[0];return;}
+          if(typeof value!=='number'||value%1!==0||value<0||value>=strings.length||typeof strings[value]!=='string') throw new Error('ข้อมูลสำเนาไม่ครบ');
+          row[table.columns[i]]=strings[value];
+        });
+        return row;
+      });
+    });
+    return data;
+  }
+  window.__SWAP_PREVIEW_STORAGE__={encode:encode,decode:decode};
+})();
+</script>
+
 <script>
 (function(){
   "use strict";
@@ -2300,7 +2350,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   // s22.1: persist schedules WITHOUT derived fields (recomputed on load via ensureSemesterDerived).
   var DERIVED_SET = {level:1,lunch_period:1,is_lunch:1,is_combined:1,nt_class:1,is_teaching:1,is_eligible:1,building:1,key_tdp:1,key_gdp:1};
   function leanReplacer(k,v){ return DERIVED_SET[k]===1 ? undefined : v; }
-  function storageUsedMB(){ try{ return JSON.stringify(STORE.data, leanReplacer).length/1048576; }catch(e){ return 0; } }
+  function storageUsedMB(){ try{ return (localStorage.getItem(STORE_KEY)||'').length/1048576; }catch(e){ return 0; } }
 
   var STORE = {
     data:null,
@@ -2308,7 +2358,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     load:function(){
       try{
         var raw = localStorage.getItem(STORE_KEY);
-        if(raw){ this.data = JSON.parse(raw); this._migrate(); }
+        if(raw){ this.data = window.__SWAP_PREVIEW_STORAGE__.decode(raw); this._migrate(); }
         else { this.data = emptyStore(); }
       }catch(e){ this.data = emptyStore(); }
       return this.data;
@@ -2339,7 +2389,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       if(this.data.noEmbed === undefined) this.data.noEmbed = false;
     },
     save:function(){
-      try{ localStorage.setItem(STORE_KEY, JSON.stringify(this.data, leanReplacer)); return {ok:true}; }
+      try{ localStorage.setItem(STORE_KEY, window.__SWAP_PREVIEW_STORAGE__.encode(JSON.parse(JSON.stringify(this.data, leanReplacer)))); return {ok:true}; }
       catch(e){ return {ok:false, error:(e && e.name==='QuotaExceededError')
           ? 'พื้นที่จัดเก็บในเครื่องเต็ม — โปรดสำรองข้อมูลก่อน แล้วใช้ \"ล้างทั้งหมด\" ในตั้งค่าขั้นสูงเพื่อเริ่มใหม่' : (e&&e.message)||String(e)}; }
     },
@@ -5239,17 +5289,17 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   copy.addEventListener('click',function(){
     if(!pending) return;
     try{
-      var currentTarget=JSON.parse(localStorage.getItem(TARGET_KEY)||'null');
+      var currentTarget=window.__SWAP_PREVIEW_STORAGE__.decode(localStorage.getItem(TARGET_KEY)||'null');
       if(hasData(store.data)||hasData(currentTarget)){pending=null;copy.hidden=true;message('รุ่นทดลองมีข้อมูลแล้ว จึงไม่คัดลอกทับ — อาจมีอีกแท็บเพิ่งบันทึกข้อมูล');return;}
       if(localStorage.getItem(SOURCE_KEY)!==pending.raw){review();message('ข้อมูลเว็บเดิมเปลี่ยนหลังตรวจสอบ กรุณาตรวจจำนวนล่าสุดข้างต้นแล้วยืนยันอีกครั้ง');return;}
       var snapshot=JSON.parse(pending.raw);
       snapshot.previewCopy={copiedAt:new Date().toISOString(),sourceSemester:snapshot.activeSemester};
       snapshot.lastBackupAt=null;snapshot.approvedSinceBackup=0;
       // Commit atomically; a failed quota write leaves both existing stores intact.
-      localStorage.setItem(TARGET_KEY,JSON.stringify(snapshot));
+      localStorage.setItem(TARGET_KEY,window.__SWAP_PREVIEW_STORAGE__.encode(snapshot));
       copy.disabled=true;message('คัดลอกสำเร็จ กำลังเปิดสำเนารุ่นทดลอง…');
       location.reload();
-    }catch(e){message(e.name==='QuotaExceededError'?'พื้นที่ในเบราว์เซอร์ไม่พอสำหรับสำเนา — ข้อมูลเว็บเดิมไม่เปลี่ยน โปรดสำรองข้อมูลก่อนจัดการพื้นที่':(e.message||'คัดลอกไม่สำเร็จ ข้อมูลเว็บเดิมไม่เปลี่ยน'));}
+    }catch(e){message(e.name==='QuotaExceededError'?'พื้นที่ในเบราว์เซอร์ยังไม่พอสำหรับสำเนาขนาดย่อ — ข้อมูลเว็บเดิมไม่เปลี่ยน กรุณาติดต่อผู้พัฒนา ไม่ต้องลบข้อมูลเว็บเดิม':(e.message||'คัดลอกไม่สำเร็จ ข้อมูลเว็บเดิมไม่เปลี่ยน'));}
   });
   document.getElementById('previewRestore').addEventListener('click',function(){
     document.querySelector('.tab[data-page="settings"]').click();

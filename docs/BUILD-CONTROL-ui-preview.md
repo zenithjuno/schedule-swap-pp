@@ -36,17 +36,17 @@
 ## STATE
 - Current stage: `S01`
 - Done: `(none)`
-- Open / next: `S01 deployed and verified; awaiting user trial before S02.`
+- Open / next: `S01 quota correction tested (49 checks under byte quota); publish fix, then retry user copy. S02 not started.`
 - Active gate: `ผ่าน S01`
 - Active history log: `history/BUILD-LOG-ui-preview-P01.md`
-- Last change: `none`
+- Last change: `PRG-004 — S01 quota correction; same data and isolation contract`
 
 ## VERSION CONTROL
 - Mode: `git`
 - Repository root: `.`
 - Branch: `main`
 - Approved-plan baseline: `7134bfb1b32b5c143589976ecfc50eb00df3f5f3`
-- Current checkpoint: `build/ui-preview/S01`
+- Current checkpoint: `build/ui-preview/S01-quota`
 - Working-tree state: `CLEAN`
 - Checkpoint rule: `scoped commit per delivered stage; no unrelated files`
 

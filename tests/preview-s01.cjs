@@ -39,9 +39,22 @@ const server = http.createServer((req,res)=>{
     const origin='http://127.0.0.1:'+server.address().port;
     browser=await chromium.launch({headless:true,...(process.env.SWAP_CHROMIUM ? {executablePath:process.env.SWAP_CHROMIUM}:{})});
     const context=await browser.newContext({viewport:{width:1280,height:900}});
+    if(process.env.SWAP_QUOTA_BYTES) {
+      // Reproduce a byte-counting browser with unrelated same-origin data.
+      await context.addInitScript(limit=>{
+        const set=Storage.prototype.setItem;
+        Storage.prototype.setItem=function(k,v){
+          let bytes=2*(String(k).length+String(v).length);
+          for(let i=0;i<this.length;i++){const key=this.key(i);if(key!==String(k))bytes+=2*(key.length+this.getItem(key).length);}
+          if(bytes>limit)throw new DOMException('storage full','QuotaExceededError');
+          return set.call(this,k,v);
+        };
+      },Number(process.env.SWAP_QUOTA_BYTES));
+    }
     const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
     await page.goto(origin);
     await page.evaluate(raw=>localStorage.setItem('swapApp.v1',raw),raw);
+    if(process.env.SWAP_QUOTA_BYTES)await page.evaluate(()=>localStorage.setItem('other-app-test','x'.repeat(200*1024)));
     await page.goto(origin+'/preview/');
     check(await page.locator('#previewShell').isVisible(),'experimental banner visible');
     check(await page.evaluate(()=>Object.keys(__SWAP_STORE__.data.semesters).length===0),'no automatic copying');
@@ -49,8 +62,10 @@ const server = http.createServer((req,res)=>{
     check(await page.locator('#previewSummary').isVisible(),'source summary visible');
     check(await page.locator('#previewSummary').innerText().then(t=>t.includes(source.activeSemester)),'correct source semester');
     check(await page.evaluate(()=>localStorage.getItem('swapApp.v1'))===raw,'review does not write original');
-    await Promise.all([page.waitForNavigation(),page.locator('#previewCopy').click()]);
+    await Promise.all([page.waitForNavigation({timeout:5000}),page.locator('#previewCopy').click()]);
     const copied=await page.evaluate(()=>__SWAP_STORE__.data);
+    check(await page.evaluate(()=>localStorage.getItem('swapApp.preview.v1').startsWith('SWAP-PREVIEW-TABLES-1:')),'compact storage active');
+    check((await page.evaluate(()=>localStorage.getItem('swapApp.preview.v1').length))<raw.length,'compact store smaller than source');
     check(copied.activeSemester===source.activeSemester,'active semester preserved');
     check(Object.keys(copied.semesters).length===Object.keys(source.semesters).length,'all semesters preserved');
     check(Object.keys(copied.phonebook.map).length===Object.keys(source.phonebook.map).length,'phonebook copied');
@@ -58,7 +73,24 @@ const server = http.createServer((req,res)=>{
       check(copied.semesters[label].schedule.length===source.semesters[label].schedule.length,'all rows preserved');
       check(copied.semesters[label].log.length===source.semesters[label].log.length,'all log entries preserved');
       check(copied.semesters[label].leaves.length===(source.semesters[label].leaves||[]).length,'all leave rounds preserved');
+      check(source.semesters[label].schedule.every((row,i)=>Object.keys(row).every(k=>JSON.stringify(row[k])===JSON.stringify(copied.semesters[label].schedule[i][k]))),'all original row values preserved');
     }
+    check(await page.evaluate(()=>{
+      const data={schemaVersion:1,semesters:{a:{schedule:[{s:'ไทย',zero:0,bool:false,nil:null,obj:{a:1},list:[1,'x']},{s:'ไทย',extra:''}]}}};
+      const codec=__SWAP_PREVIEW_STORAGE__,actual=codec.decode(codec.encode(data));
+      return JSON.stringify(actual)===JSON.stringify(data)&&JSON.stringify(codec.decode(JSON.stringify(data)))===JSON.stringify(data);
+    }),'codec round-trip including missing fields, null, numbers, objects and old JSON');
+    const backup=await page.evaluate(async()=>JSON.parse(await __SWAP_STORE__.backupBlob().text()));
+    check(Array.isArray(backup.semesters[backup.activeSemester].schedule),'backup remains normal JSON with schedule arrays');
+    check(await page.evaluate(data=>__SWAP_STORE__.restoreFromObject(data).ok,backup),'normal JSON backup restores into compact store');
+    // Use a fresh context so old uncompressed data is not duplicated beside a large root store.
+    const legacyContext=await browser.newContext();const legacy=await legacyContext.newPage();
+    await legacy.goto(origin+'/preview/');
+    await legacy.evaluate(raw=>localStorage.setItem('swapApp.preview.v1',raw),raw);
+    await legacy.reload();
+    check(await legacy.evaluate(()=>__SWAP_STORE__.data.activeSemester)===source.activeSemester,'existing plain JSON preview reopens');
+    check(await legacy.evaluate(()=>localStorage.getItem('swapApp.preview.v1').startsWith('SWAP-PREVIEW-TABLES-1:')),'old preview converts on save');
+    await legacyContext.close();
     check(Boolean(copied.previewCopy.copiedAt),'copy time recorded');
     check(copied.lastBackupAt===null,'preview backup reminder reset');
     const changed=await page.evaluate(()=>{
@@ -70,7 +102,7 @@ const server = http.createServer((req,res)=>{
     });
     check(changed,'approval mutation uses app status path');
     check(await page.evaluate(()=>localStorage.getItem('swapApp.v1'))===raw,'preview approval does not write original');
-    check(await page.evaluate(()=>JSON.parse(localStorage.getItem('swapApp.preview.v1')).semesters[__SWAP_STORE__.data.activeSemester].log.some(e=>e.id==='s01-isolation'&&e.status==='อนุมัติแล้ว')),'preview approval persists');
+    check(await page.evaluate(()=>__SWAP_PREVIEW_STORAGE__.decode(localStorage.getItem('swapApp.preview.v1')).semesters[__SWAP_STORE__.data.activeSemester].log.some(e=>e.id==='s01-isolation'&&e.status==='อนุมัติแล้ว')),'preview approval persists');
     await page.locator('#previewCopyPanel').evaluate(el=>el.open=true);
     await page.locator('#previewReview').click();
     check(await page.locator('#previewCopy').isHidden(),'copy cannot overwrite populated preview');
@@ -99,7 +131,7 @@ const server = http.createServer((req,res)=>{
     await page.evaluate(raw=>localStorage.setItem('swapApp.v1',raw+' '),raw);
     await page.locator('#previewCopy').click();
     check(await page.locator('#previewMessage').innerText().then(t=>t.includes('เปลี่ยนหลังตรวจสอบ')),'source-change guard');
-    check(await page.evaluate(()=>Object.keys(JSON.parse(localStorage.getItem('swapApp.preview.v1')).semesters).length===0),'changed source not copied without re-review');
+    check(await page.evaluate(()=>Object.keys(__SWAP_PREVIEW_STORAGE__.decode(localStorage.getItem('swapApp.preview.v1')).semesters).length===0),'changed source not copied without re-review');
     await reset();
     const before=await page.evaluate(()=>localStorage.getItem('swapApp.preview.v1'));
     await page.evaluate(()=>{const set=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){if(k==='swapApp.preview.v1')throw new DOMException('full','QuotaExceededError');return set.call(this,k,v);};});
@@ -108,7 +140,7 @@ const server = http.createServer((req,res)=>{
     check(await page.evaluate(()=>localStorage.getItem('swapApp.preview.v1'))===before,'quota failure preserves preview');
     check(await page.evaluate(()=>localStorage.getItem('swapApp.v1'))===raw,'quota failure preserves original');
     await page.reload();await page.locator('#previewReview').click();
-    await page.evaluate(raw=>localStorage.setItem('swapApp.preview.v1',raw),raw);
+    await page.evaluate(raw=>localStorage.setItem('swapApp.preview.v1',__SWAP_PREVIEW_STORAGE__.encode(JSON.parse(raw))),raw);
     await page.locator('#previewCopy').click();
     check(await page.locator('#previewMessage').innerText().then(t=>t.includes('อีกแท็บ')),'other preview tab cannot be overwritten');
     await reset();
