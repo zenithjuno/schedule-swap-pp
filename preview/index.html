@@ -131,18 +131,6 @@ main{max-width:1080px;margin:0 auto;padding:26px 20px 80px}
 }
 .placeholder ul{margin:10px 0 0;padding-inline-start:22px}
 .placeholder li{margin:5px 0}
-/* a tiny weekly grid motif drawn once on the home page as the page's signature */
-.grid-motif{
-  --c:#e9e6dc;
-  display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:24px 0 4px;max-width:520px;
-}
-.grid-motif .cell{
-  aspect-ratio:1/.62;border-radius:7px;background:var(--card);
-  border:1px solid var(--line);
-}
-.grid-motif .cell.busy{background:var(--chalk-wash);border-color:#cfe2dd}
-.grid-motif .cell.lunch{background:repeating-linear-gradient(45deg,#f3efe4,#f3efe4 5px,#ece7d9 5px,#ece7d9 10px)}
-.grid-motif .cell.swap{background:var(--green-wash);border-color:#bfe0c9}
 /* status legend chips reused later */
 .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:18px;font-size:15px;color:var(--ink-soft)}
 .legend .chip{display:inline-flex;align-items:center;gap:7px}
@@ -697,8 +685,8 @@ td.tt-clash .tt-mark{background:#c0392b;color:#fff;border-radius:4px;padding:1px
 </header>
 
 <nav class="tabbar" role="tablist" aria-label="หน้าหลักของโปรแกรม">
-  <button class="tab" role="tab" aria-selected="true"  data-page="home">หน้าหลัก</button>
-  <button class="tab" role="tab" aria-selected="false" data-page="results">ผลการค้นหา</button>
+  <button class="tab" role="tab" aria-selected="true"  data-page="home">จัดคาบที่ลา</button>
+  <button class="tab" role="tab" aria-selected="false" data-page="results">เลือกคู่สลับ</button>
   <button class="tab" role="tab" aria-selected="false" data-page="log">บันทึกการสลับ</button>
   <button class="tab" role="tab" aria-selected="false" data-page="form">แบบฟอร์มใบแลกคาบ</button>
   <button class="tab" role="tab" aria-selected="false" data-page="timetable">ตารางสอน</button>
@@ -710,24 +698,18 @@ td.tt-clash .tt-mark{background:#c0392b;color:#fff;border-radius:4px;padding:1px
   <!-- หน้าหลัก -->
   <section class="page active" id="page-home" role="tabpanel">
     <div id="reminderArea" class="reminder-area"></div>
-    <h1>หน้าหลัก</h1>
-    <p class="lede">หน้าสำหรับกรอกข้อมูลการลาและดูสถานะแต่ละคาบในวันที่ลา จากนั้นกดค้นหาคู่สลับได้ทันที</p>
+    <h1>จัดคาบที่ลา</h1>
+    <p class="lede">เลือกคาบที่ต้องการแลก แล้วดูว่ามีครูคนไหนเป็นคู่สลับได้บ้าง</p>
 
-    <div class="grid-motif" aria-hidden="true">
-      <!-- จ อ พ พฤ ศ — one decorative week; period rows -->
-      <div class="cell busy"></div><div class="cell"></div><div class="cell busy"></div><div class="cell swap"></div><div class="cell"></div>
-      <div class="cell"></div><div class="cell busy"></div><div class="cell"></div><div class="cell"></div><div class="cell busy"></div>
-      <div class="cell lunch"></div><div class="cell lunch"></div><div class="cell lunch"></div><div class="cell lunch"></div><div class="cell lunch"></div>
-      <div class="cell busy"></div><div class="cell"></div><div class="cell swap"></div><div class="cell busy"></div><div class="cell"></div>
-    </div>
+    <ol class="ux-path" aria-label="ขั้นตอนแลกคาบ"><li aria-current="step"><b>1</b> เลือกคาบที่ลา</li><li><b>2</b> เลือกคู่สลับ</li><li><b>3</b> บันทึกข้อเสนอ</li></ol>
 
     <div id="absenceArea" style="margin-top:22px"></div>
 
   </section>
 
   <section class="page" id="page-results" role="tabpanel">
-    <h1>ผลการค้นหา</h1>
-    <p class="lede">ตารางรายชื่อครูที่สลับได้ เรียงตามคะแนน คลิกแต่ละแถวเพื่อดูรายละเอียดและบันทึกลง Log</p>
+    <h1>เลือกคู่สลับ</h1>
+    <p class="lede">เทียบวันสอนคืนและข้อควรตกลง แล้วเปิดรายละเอียดคู่ที่สนใจ</p>
     <div id="resultsArea"></div>
   </section>
 
@@ -3289,7 +3271,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     if(typeof renderReminders==='function') renderReminders();
     if(!sem || !sem.schedule || !sem.schedule.length){
       host.innerHTML = '<div class="placeholder"><span class="stage-note">ยังไม่มีข้อมูล</span>'+
-        '<p style="margin:0">ยังไม่มีข้อมูลตารางสอน — ไปที่หน้า “ตั้งค่า” เพื่อนำเข้าตารางสอนก่อน แล้วหน้านี้จะแสดงช่องกรอกวันลาและตารางสถานะรายคาบ</p></div>';
+        '<p>เริ่มจากข้อมูลจริงของคุณ โดยคัดลอกจากเว็บเดิมด้านบน หรือนำเข้าไฟล์สำรอง</p><button class="btn btn-primary" id="homeImportShortcut" type="button">เปิดการนำเข้าและกู้คืนข้อมูล</button></div>';
+      document.getElementById('homeImportShortcut').addEventListener('click',function(){show('settings');});
       return;
     }
     // seed defaults once
@@ -3316,42 +3299,29 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   }
 
   function inputsHTML(L, meta){
-    var meDisplay = DASH.meId ? (DASH.meId+' — '+meName()) : '';
-    var prefSel = ['อนาคต','อดีต','ใกล้ที่สุด'].map(function(p){
-      return '<option value="'+p+'"'+(p===DASH.preference?' selected':'')+'>'+p+'</option>'; }).join('');
-    return ''+
-    '<div class="card" id="absInputs">'+
-      '<div class="card-head"><h2>① ข้อมูลการลา</h2>'+
-        '<span class="muted-note">ภาคเรียน '+esc(meta.label)+' ('+esc(thaiDate(meta.startDate))+' – '+esc(thaiDate(meta.endDate))+')</span></div>'+
-      '<div class="abs-grid">'+
-        '<label class="fld"><span>วันที่เสนอสลับ</span>'+
-          '<input type="date" id="inProposed" value="'+esc(DASH.dateProposed)+'">'+
-          '<small class="fhint">วันที่คุณวางแผนจะสลับ (เก็บไว้จนกว่าจะแก้)</small></label>'+
-        '<label class="fld"><span>วันที่ลา</span>'+
-          '<input type="date" id="inAbsent" value="'+esc(DASH.dateAbsent)+'">'+
-          '<small class="fhint" id="absWeekday"></small></label>'+
-        '<label class="fld"><span>ครูที่ต้องการลา</span>'+
-          '<div class="ac-wrap">'+
-            '<input type="text" id="inTeacher" autocomplete="off" value="'+esc(meDisplay)+'" placeholder="พิมพ์รหัสหรือชื่อครู">'+
-            '<ul id="acList" class="ac-list" role="listbox" hidden></ul>'+
-          '</div>'+
-          '<small class="fhint" id="teacherHint"></small></label>'+
-        '<label class="fld"><span>ขอบเขตการสลับคืน</span>'+
-          '<select id="inPref">'+prefSel+'</select>'+
-          '<small class="fhint">เสนอสัปดาห์สอนคืนไปทางอนาคต / อดีต / ใกล้วันลาที่สุด</small></label>'+
-      '</div>'+
-      '<div id="absWarn" class="abs-warn" hidden></div>'+
-      leaveStripHTML()+
-    '</div>';
+    var meDisplay=DASH.meId?(DASH.meId+' — '+meName()):'';
+    var prefSel=['อนาคต','อดีต','ใกล้ที่สุด'].map(function(p){return '<option value="'+p+'"'+(p===DASH.preference?' selected':'')+'>'+p+'</option>';}).join('');
+    return '<div class="card" id="absInputs">'+
+      '<div class="card-head"><h2><span class="ux-step-no">1</span> ใครลา และลาเมื่อไร</h2></div>'+
+      '<p class="card-lede">เลือกครูและวันที่ แล้วเลือกคาบจากตารางด้านล่าง</p>'+
+      '<div class="abs-grid ux-primary-fields">'+
+        '<label class="fld"><span>ครูที่ลา</span><div class="ac-wrap">'+
+          '<input type="text" id="inTeacher" autocomplete="off" value="'+esc(meDisplay)+'" placeholder="พิมพ์ชื่อหรือรหัสครู">'+
+          '<ul id="acList" class="ac-list" role="listbox" hidden></ul></div><small class="fhint" id="teacherHint"></small></label>'+
+        '<label class="fld"><span>วันที่ลา</span><input type="date" id="inAbsent" value="'+esc(DASH.dateAbsent)+'">'+
+          '<small class="fhint" id="absWeekday"></small></label></div>'+
+      '<div id="absWarn" class="abs-warn" hidden></div>'+leaveStripHTML()+
+      '<details class="ux-options"><summary>ตัวเลือกวันที่เสนอและทิศทางสอนคืน</summary><div class="abs-grid ux-primary-fields">'+
+        '<label class="fld"><span>วันที่เสนอแลกคาบ</span><input type="date" id="inProposed" value="'+esc(DASH.dateProposed)+'">'+
+          '<small class="fhint">ใช้ตรวจว่าวันสอนคืนเป็นวันย้อนหลังหรือไม่</small></label>'+
+        '<label class="fld"><span>อยากสอนคืนช่วงไหน</span><select id="inPref">'+prefSel+'</select>'+
+          '<small class="fhint">ใช้เลือกสัปดาห์เริ่มต้น คุณเปลี่ยนได้ในผลค้นหา</small></label></div></details>'+
+      '<p class="ux-semester">ภาคเรียน '+esc(meta.label)+' · '+esc(thaiDate(meta.startDate))+' – '+esc(thaiDate(meta.endDate))+'</p></div>';
   }
 
   function dashboardHTML(meta){
-    return ''+
-    '<div class="card" id="dashCard">'+
-      '<div class="card-head"><h2>② ตารางในวันที่ลา — สถานะรายคาบ</h2>'+
-        '<span class="muted-note" id="dashWho"></span></div>'+
-      '<div id="dashBody"></div>'+
-    '</div>';
+    return '<div class="card" id="dashCard"><div class="card-head"><h2><span class="ux-step-no">2</span> เลือกคาบที่ต้องการแลก</h2></div>'+
+      '<p class="card-lede" id="dashWho"></p><div id="dashBody"></div></div>';
   }
 
   function wireHome(meta){
@@ -3467,7 +3437,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
           : '')+
         '<td class="c-stat">'+esc(r.status)+(r.impact&&r.impact!=='—'?'<div class="c-warn">'+esc(r.impact)+'</div>':'')+'</td>'+
         '<td class="c-act">'+(r.swappable
-            ? '<button class="btn btn-small btn-find" data-per="'+r.period+'">ค้นหา</button>'+
+            ? '<button class="btn btn-small btn-find" data-per="'+r.period+'">หาคู่สลับ</button>'+
               '<button class="btn btn-ext" data-per="'+r.period+'" title="บันทึกผู้สอนแทนที่ไม่มีในระบบ เช่น นักศึกษาฝึกสอน">＋ คนนอกสอนแทน</button>'
             : '')+'</td>'+
       '</tr>';
@@ -3959,88 +3929,39 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   }
 
   function detailPanel(c){
-    var S=LAST_SEARCH, st=STORE.data.settings;
-    var sem=STORE.activeSemester();
-    var ph=phoneFor(c.Yid); var phTxt = ph ? (window.__SWAP_PHONE__?window.__SWAP_PHONE__.displayPhone(ph):ph) : 'ไม่มีข้อมูลเบอร์ติดต่อ';
-    var B=+st.WORKLOAD_WEEKLY_BASELINE;
-    var off=chosenOffset(c), gbISO=givebackFor(c,off);
-    // date-dependent warnings always reflect the CURRENTLY chosen offset, not the
-    // engine's default-offset snapshot (so a forced clash/retro week shows correctly)
-    c.warn_absence_clash = (c.offset_info && c.offset_info[off] && c.offset_info[off].clash) ? 1 : 0;
-    c.warn_retro = (DASH.dateProposed && gbISO<DASH.dateProposed) ? 1 : 0;
-    var gbBE=__SWAP_DATES__.formatBE(gbISO,false);
-    var src=S.source||{};
-    var w=warnSections(c);
-    function wlist(arr){ if(!arr.length) return '<div class="w-none">— ไม่มี —</div>';
-      return arr.map(function(x){ return '<div class="w-item'+(x.loud?' w-loud':'')+'">• '+esc(x.t)+'</div>'; }).join(''); }
-
-    // section ②③ day counts — before(eng.dayCount) → after(engine candidate fields)
-    var meD1=S.day, meD2=c.day2;
-    var eng2=engineForActive();
-    var beMeD1=eng2?eng2.dayCount(S.me,meD1):c.aMe_d1, beMeD2=eng2?eng2.dayCount(S.me,c.day2):c.aMe_d2;
-    var beYD1 =eng2?eng2.dayCount(c.Yid,meD1):c.aY_d1, beYD2 =eng2?eng2.dayCount(c.Yid,c.day2):c.aY_d2;
-    // room sequences
-    var giveup = endBlock('ฝั่งที่ยกให้', +S.per, c.prev_u, c.R1, c.Yroom, c.next_u, c.giveup_d);
-    var giveback = endBlock('ฝั่งที่รับคืน', +c.per2, c.prev_b, c.Yroom, c.R1, c.next_b, c.giveback_d);
-    var walkLine = c.walk_total>0
-        ? ('รวมการข้ามอาคารที่เปลี่ยนทั้งสองฝั่ง: +'+c.walk_total+'   →   คะแนนการเดิน '+c.walk_term)
-        : (c.walk_total<0 ? ('นักเรียนเดินข้ามอาคารน้อยลงหลังสลับ (สุทธิ '+c.walk_total+')   →   คะแนนการเดิน +'+Math.abs(c.walk_term))
-                          : ('ไม่มีการเปลี่ยนการข้ามอาคาร   →   คะแนนการเดิน 0'));
-
-    var rawRow=c.seq_row||{};
-    return '<div class="detail">'+
-      // ①
-      '<div class="d-sec"><div class="d-h">① ครูคู่สลับ (Y) และภาระงาน</div>'+
-        '<div class="d-grid">'+
-          '<div><span class="d-lbl">ครู Y</span><span class="d-val">'+esc(c.Yid+' — '+c.Yname)+'</span></div>'+
-          '<div><span class="d-lbl">เบอร์ติดต่อ</span>'+(ph?'<a class="d-phone" href="tel:'+esc(String(ph).replace(/[^0-9+]/g,''))+'">'+esc(phTxt)+'</a>':'<span class="d-val muted">'+esc(phTxt)+'</span>')+'</div>'+
-          '<div><span class="d-lbl">ภาระงานสอน/สัปดาห์ — Y</span><span class="d-val">'+c.Y_weekly+' คาบ</span></div>'+
-          '<div><span class="d-lbl">ภาระงานสอน/สัปดาห์ — คุณ (Me)</span><span class="d-val">'+c.Me_weekly+' คาบ <span class="muted">(ปกติ '+B+' คาบ/สัปดาห์)</span></span></div>'+
-        '</div></div>'+
-      // ②
-      '<div class="d-sec"><div class="d-h">② คุณยกคาบให้ครู Y มาสอนแทน (ในวันที่คุณลา)</div>'+
-        '<div class="d-grid">'+
-          '<div><span class="d-lbl">คาบที่ยกให้</span><span class="d-val">วัน'+esc(meD1)+'  คาบ '+esc(S.per)+'</span></div>'+
-          '<div><span class="d-lbl">วันที่</span><span class="d-val">วันที่ลา '+esc(thaiDate(S.dateAbsent))+'  (วัน'+esc(meD1)+')</span></div>'+
-          '<div><span class="d-lbl">วิชา / กลุ่ม / ห้อง</span><span class="d-val">'+esc((src.subject||'')+'  •  กลุ่ม '+(S.G||'')+'  •  ห้องเดิม '+(c.R1||'—'))+'</span></div>'+
-          '<div><span class="d-lbl">ภาระวันของคุณ (Me)</span><span class="d-val">วัน'+esc(meD1)+': '+beMeD1+' → '+c.aMe_d1+' คาบ</span></div>'+
-          '<div><span class="d-lbl">ภาระวันของครู Y</span><span class="d-val">วัน'+esc(meD1)+': '+beYD1+' → '+c.aY_d1+' คาบ</span></div>'+
-        '</div>'+
-      '</div>'+
-      // ③
-      '<div class="d-sec"><div class="d-h">③ คุณไปสอนคืนให้ครู Y (รับคาบกลับ)</div>'+
-        '<div class="d-grid">'+
-          '<div><span class="d-lbl">คาบที่รับคืน</span><span class="d-val">วัน'+esc(c.day2)+'  คาบ '+esc(c.per2)+'</span></div>'+
-          '<div><span class="d-lbl">วันที่</span><span class="d-val" id="gbDate-'+c.idx+'">'+esc(gbBE)+'  (สัปดาห์: '+esc(weekLabel(off))+')</span></div>'+
-          '<div><span class="d-lbl">วิชา / กลุ่ม / ห้อง</span><span class="d-val">'+esc((c.Ysub||'')+'  •  กลุ่ม '+(S.G||'')+'  •  ห้อง '+(c.R1||'—')+' (คุณสอนในห้องเดิมของคุณ)')+'</span></div>'+
-          '<div><span class="d-lbl">ภาระวันของคุณ (Me)</span><span class="d-val">วัน'+esc(c.day2)+': '+beMeD2+' → '+c.aMe_d2+' คาบ</span></div>'+
-          '<div><span class="d-lbl">ภาระวันของครู Y</span><span class="d-val">วัน'+esc(c.day2)+': '+beYD2+' → '+c.aY_d2+' คาบ</span></div>'+
-        '</div></div>'+
-      // ④
-      '<div class="d-sec"><div class="d-h">④ คำเตือนทั้งหมด</div>'+
-        '<div class="w-sec"><div class="w-sh">─ คำเตือนสำหรับครู Me (คุณ) ───</div>'+wlist(w.me)+'</div>'+
-        '<div class="w-sec"><div class="w-sh">─ คำเตือนสำหรับครู Y ───</div>'+wlist(w.y)+'</div>'+
-        '<div class="w-sec"><div class="w-sh">─ คำเตือนทั่วไป / นักเรียน ───</div>'+wlist(w.gen)+'</div>'+
-      '</div>'+
-      // ⑤
-      '<div class="d-sec"><div class="d-h">⑤ ผลกระทบนักเรียน — การเดินข้ามอาคาร (3 คาบ ต่อฝั่ง)</div>'+
-        '<div class="rt-wrap">'+giveup+giveback+'</div>'+
-        '<div class="rt-score">ผลต่อคะแนน (การเดิน): '+esc(walkLine)+'</div>'+
-      '</div>'+
-      // ⑥
-      '<div class="d-sec"><div class="d-h">⑥ ที่มาคะแนน (ตรวจสอบได้)</div>'+scoreReceipt(c)+'</div>'+
-      // ⑦
-      '<div class="d-sec"><div class="d-h">⑦ ข้อมูลดิบ (audit) — คาบที่รับคืนของครู Y</div>'+
-        '<div class="d-grid"><div><span class="d-lbl">raw_cell</span><span class="d-val mono">'+esc(rawRow.raw_cell||'—')+'</span></div>'+
-        '<div><span class="d-lbl">audit_note</span><span class="d-val">'+esc(rawRow.audit_note||'—')+'</span></div></div>'+
-      '</div>'+
-      // save
-      '<label class="d-giveaway"><input type="checkbox" class="chk-giveaway" data-idx="'+c.idx+'"> '+
-        'ยกคาบให้เลย — ไม่รับคาบคืน (สอนแทน)'+
-        '<span class="d-giveaway-note">ใช้เมื่อครูคู่สลับรับคาบไปเฉย ๆ ไม่มีการสอนคืน — จะบันทึกโดยเว้นฝั่ง “คาบที่รับคืน” ว่างไว้ และไม่คิดคะแนน</span></label>'+
-      '<div class="d-actions"><button class="btn btn-primary btn-savelog" data-idx="'+c.idx+'"'+(isReadOnlySemester()?' disabled':'')+'>บันทึกลง Log (สถานะ: เสนอ)</button>'+
-        '<span class="save-msg '+(isReadOnlySemester()?'err':'')+'" id="saveMsg-'+c.idx+'">'+(isReadOnlySemester()?esc(readOnlyText()):'')+'</span></div>'+
-    '</div>';
+    var S=LAST_SEARCH,st=STORE.data.settings,off=chosenOffset(c),gbISO=givebackFor(c,off);
+    c.warn_absence_clash=(c.offset_info&&c.offset_info[off]&&c.offset_info[off].clash)?1:0;
+    c.warn_retro=(DASH.dateProposed&&gbISO<DASH.dateProposed)?1:0;
+    var w=warnSections(c),src=S.source||{},ph=phoneFor(c.Yid);
+    var phTxt=ph?(window.__SWAP_PHONE__?__SWAP_PHONE__.displayPhone(ph):ph):'ยังไม่มีเบอร์ติดต่อ';
+    var eng=engineForActive();
+    function count(tid,day,fallback){return eng?eng.dayCount(tid,day):fallback;}
+    function warnings(arr){return arr.map(function(x){return '<p class="w-item'+(x.loud?' w-loud':'')+'">'+esc(uiWarning(c,x.t))+'</p>';}).join('');}
+    function load(name,date,before,after){return '<div class="ux-load-row"><span>'+esc(name)+' · '+esc(thaiDate(date))+'</span><b>'+before+' → '+after+' คาบ</b></div>';}
+    var warningHTML=warnings(w.me)+warnings(w.y)+warnings(w.gen);
+    var raw=c.seq_row||{};
+    return '<div class="detail ux-detail">'+
+      '<div class="ux-detail-overview"><div><span class="ux-label">ติดต่อครูคู่สลับ</span><strong>'+esc(c.Yname)+'</strong> '+
+        (ph?'<a class="d-phone" href="tel:'+esc(String(ph).replace(/[^0-9+]/g,''))+'">'+esc(phTxt)+'</a>':'<span class="ux-muted">'+esc(phTxt)+'</span>')+'</div>'+
+        '<p>ภาระสอนต่อสัปดาห์: '+esc(S.meName)+' <b>'+c.Me_weekly+'</b> คาบ · '+esc(c.Yname)+' <b>'+c.Y_weekly+'</b> คาบ</p></div>'+
+      '<div class="ux-slot-pair"><div><span class="ux-label">คาบที่ '+esc(S.meName)+' ขอแลก</span><strong>'+esc(thaiDate(S.dateAbsent))+' · คาบ '+esc(S.per)+'</strong><p>'+esc(src.subject||'')+' · ม.'+esc(String(S.G||'').replace(/\./g,'/'))+' · ห้อง '+esc(c.R1||'—')+'</p></div>'+
+        '<div><span class="ux-label">คาบที่รับคืนจาก '+esc(c.Yname)+'</span><strong id="gbDate-'+c.idx+'">'+esc(thaiDate(gbISO))+' · คาบ '+esc(c.per2)+'</strong><p>วิชาของคู่สลับ: '+esc(c.Ysub||'—')+' · ห้อง '+esc(c.Yroom||'—')+'</p></div></div>'+
+      '<div class="ux-agreement"><h4>เรื่องที่ควรคุยก่อนตกลง</h4>'+(warningHTML||'<p class="ux-clear">ไม่พบคำเตือนจากเงื่อนไขที่ตรวจ</p>')+'</div>'+
+      '<label class="d-giveaway"><input type="checkbox" class="chk-giveaway" data-idx="'+c.idx+'"> ให้สอนแทนโดยไม่รับคาบคืน'+
+        '<span class="d-giveaway-note">ใช้เมื่อครูคู่สลับรับสอนแทนโดยไม่แลกคาบกลับ รายการนี้จะไม่บันทึกคะแนนและคาบคืน</span></label>'+
+      '<div class="d-actions"><button class="btn btn-primary btn-savelog" data-idx="'+c.idx+'"'+(isReadOnlySemester()?' disabled':'')+'>บันทึกข้อเสนอ</button>'+
+        '<span class="save-msg '+(isReadOnlySemester()?'err':'')+'" id="saveMsg-'+c.idx+'">'+(isReadOnlySemester()?esc(readOnlyText()):'ยังไม่ใช่การอนุมัติ')+'</span></div>'+
+      '<details class="ux-fold"><summary>ดูภาระสอนรายวัน ก่อน–หลังแลก</summary><div class="ux-fold-content">'+
+        load(S.meName,S.dateAbsent,count(S.me,S.day,c.aMe_d1),c.aMe_d1)+
+        load(c.Yname,S.dateAbsent,count(c.Yid,S.day,c.aY_d1),c.aY_d1)+
+        load(S.meName,gbISO,count(S.me,c.day2,c.aMe_d2),c.aMe_d2)+
+        load(c.Yname,gbISO,count(c.Yid,c.day2,c.aY_d2),c.aY_d2)+'</div></details>'+
+      '<details class="ux-fold"><summary>ดูผลกระทบการเดินของนักเรียน</summary><div class="ux-fold-content rt-wrap">'+
+        endBlock('คาบที่ขอแลก',+S.per,c.prev_u,c.R1,c.Yroom,c.next_u,c.giveup_d)+
+        endBlock('คาบสอนคืน',+c.per2,c.prev_b,c.Yroom,c.R1,c.next_b,c.giveback_d)+
+        '<p>การข้ามอาคารสุทธิ '+(c.walk_total>=0?'+':'')+c.walk_total+' · คะแนนการเดิน '+c.walk_term+'</p></div></details>'+
+      '<details class="ux-fold"><summary>ดูที่มาคะแนนจัดอันดับ '+c.SCORE+' คะแนน</summary><div class="ux-fold-content">'+scoreReceipt(c).replace(/ครู Y/g,esc(c.Yname)).replace(/ของ Y/g,'ของครูคู่สลับ')+'</div></details>'+
+      '<details class="ux-fold"><summary>ดูข้อมูลต้นทางสำหรับตรวจสอบ</summary><div class="ux-fold-content"><dl><dt>ข้อมูลคาบต้นทาง</dt><dd>'+esc(raw.raw_cell||'—')+'</dd><dt>หมายเหตุการตรวจข้อมูล</dt><dd>'+esc(raw.audit_note||'—')+'</dd></dl></div></details></div>';
   }
 
   // commit a candidate to the Log as status เสนอ
@@ -4091,110 +4012,81 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   }
 
   // ---- main renderer (replaces the s16 bridge) ----
+  function uiWarning(c,text){
+    return String(text||'').replace(/ครู Me/g,LAST_SEARCH.meName).replace(/ครู Y/g,c.Yname)
+      .replace(/ประชุม Me/g,'ติดประชุม: '+LAST_SEARCH.meName).replace(/ประชุม Y/g,'ติดประชุม: '+c.Yname);
+  }
+  function candidateWarnings(c){
+    return compactItems(c).map(function(t){return uiWarning(c,t);});
+  }
+  function warningSummary(c){
+    var list=candidateWarnings(c);
+    return list.length?list.map(function(t){return '<li>'+esc(t)+'</li>';}).join(''):'<li class="ux-clear">ไม่พบคำเตือนจากเงื่อนไขที่ตรวจ</li>';
+  }
   function renderResultsBridge(){
-    var host=document.getElementById('resultsArea'); if(!host) return;
-    if(!LAST_SEARCH){ host.innerHTML='<div class="placeholder"><span class="stage-note">ผลการค้นหา</span><p style="margin:0">กดปุ่ม “ค้นหา” จากหน้าหลักเพื่อหาคู่สลับของคาบที่ต้องการ</p></div>'; return; }
-    var S=LAST_SEARCH, res=S.res;
-    var head='<div class="card res-banner"><div class="card-head"><h2>ผลการค้นหาคู่สลับ</h2></div>'+
-      '<p class="card-lede">ครูที่ลา: '+esc(S.me+' — '+S.meName)+'  |  วัน'+esc(S.day)+' คาบ '+esc(S.per)+
-      (S.G?('  |  กลุ่ม '+esc(S.G)):'')+'  |  วันที่ลา '+esc(thaiDate(S.dateAbsent))+'</p></div>';
-
-    if(res.valid!=='VALID'){
-      host.innerHTML=head+'<div class="report fail"><p class="r-title">⛔ คาบนี้ค้นหาไม่ได้</p><p class="r-more">'+esc(res.message||'')+'</p></div>';
-      return;
-    }
+    var host=document.getElementById('resultsArea');if(!host)return;
+    var back='<button class="btn btn-ghost ux-home-back" type="button">← กลับไปเลือกคาบ</button>';
+    if(!LAST_SEARCH){host.innerHTML='<div class="card ux-empty"><h2>เริ่มจากคาบที่ต้องการแลก</h2><p>เลือกครู วันที่ลา และกด “หาคู่สลับ” ที่คาบนั้น</p>'+back+'</div>';wireResults();return;}
+    var S=LAST_SEARCH,res=S.res;
+    var head='<div class="ux-result-heading"><div><p class="ux-eyebrow">คาบที่กำลังหาคู่สลับ</p><h2>'+esc(thaiDate(S.dateAbsent))+' · คาบ '+esc(S.per)+'</h2>'+
+      '<p>'+esc(S.meName)+' · '+esc((S.source||{}).subject||'')+' · ม.'+esc(String(S.G||'').replace(/\./g,'/'))+'</p></div>'+back+'</div>';
+    if(res.valid!=='VALID'){host.innerHTML=head+'<div class="report fail"><h3>คาบนี้ค้นหาไม่ได้</h3><p>'+esc(res.message||'')+'</p></div>';wireResults();return;}
     var cs=res.candidates;
-    if(!cs.length){
-      host.innerHTML=head+'<div class="report warn empty-res">'+
-        '<p class="r-title">⛔ ไม่พบครูที่สามารถสลับได้  (กลุ่ม '+esc(S.G)+'  •  วัน'+esc(S.day)+'  คาบ '+esc(S.per)+')</p>'+
-        '<p class="r-more">สาเหตุที่เป็นไปได้: ครูคนอื่นในกลุ่มนี้ติดภารกิจที่สลับไม่ได้ในคาบนี้ หรือคาบที่เขาว่างตรงกับคาบที่คุณติดภารกิจ</p>'+
-        '<p class="r-more">ลองปรับ: พิจารณาคาบอื่นในวันเดียวกัน  •  หรือตรวจสอบวันที่เสนอสลับและวันที่ลา</p></div>';
-      return;
-    }
-    var note='<p class="res-note">คอลัมน์ “สัปดาห์”: ค่าเริ่มต้น = สัปดาห์ที่ระบบแนะนำ • เลือกเพื่อเลื่อนได้ ±6 สัปดาห์ (สัปดาห์ที่ติดคิวจะเลือกไม่ได้) • วันก่อน “วันที่เสนอสลับ” จะขึ้น ⚠️ ย้อนหลัง แต่ยังบันทึกได้</p>';
-    var GMIN=+STORE.data.settings.SCORE_COLOR_GREEN_MIN, YMIN=+STORE.data.settings.SCORE_COLOR_YELLOW_MIN;
-    var rows='';
-    for(var i=0;i<cs.length;i++){
-      var c=cs[i];
-      var band = c.SCORE>=GMIN?'sc-green':(c.SCORE>=YMIN?'sc-amber':'sc-rose');
-      var off=chosenOffset(c);
-      var gbBE=__SWAP_DATES__.formatBE(givebackFor(c,off),false);
-      rows+='<tr class="cand-row" data-idx="'+c.idx+'">'+
-        '<td class="c-rank">'+c.rank+'</td>'+
-        '<td class="c-score"><span class="score-pill '+band+'">'+c.SCORE+'</span></td>'+
-        '<td>'+esc(c.Yid+' — '+c.Yname)+'</td>'+
-        '<td class="c-dp">วัน'+esc(c.day2)+' คาบ '+esc(c.per2)+'</td>'+
-        '<td>'+esc(c.Ysub)+'</td>'+
-        '<td class="c-wk">'+offsetSelectHTML(c)+'</td>'+
-        '<td class="c-gb" id="gbcell-'+c.idx+'">'+esc(gbBE)+'</td>'+
-        '<td class="c-warn">'+esc(compactCell(c))+'</td>'+
-      '</tr>'+
-      '<tr class="detail-row" id="detail-'+c.idx+'" hidden><td colspan="8"></td></tr>';
-    }
-    host.innerHTML=head+note+
-      '<div class="card"><table class="restab"><thead><tr>'+
-      '<th class="c-rank">อันดับ</th><th class="c-score">คะแนน</th><th>ครูคู่สลับ</th>'+
-      '<th>วัน-คาบ (คืน)</th><th>วิชา (ของครู Y)</th><th>สัปดาห์</th><th>วันที่สอนคืน</th><th>คำเตือน</th>'+
-      '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+    if(!cs.length){host.innerHTML=head+'<div class="card ux-empty"><h3>ยังไม่พบคู่ที่เข้าเงื่อนไข</h3><p>ลองเลือกคาบอื่น หรือตรวจวันที่ลาและทิศทางสอนคืน ไม่พบคู่แลกไม่ได้แปลว่าไม่มีใครว่างสอนแทน</p>'+back+'</div>';wireResults();return;}
+    var unique={};cs.forEach(function(c){unique[c.Yid]=1;});
+    var html=head+'<div class="ux-results-intro"><p><b>'+cs.length+' ตัวเลือก</b> จากครู '+Object.keys(unique).length+' คน · เรียงตามคะแนนจัดอันดับเดิม</p>'+
+      '<p>ดูวันสอนคืนและข้อควรคุยก่อนเลือก · คะแนนใช้จัดลำดับ ไม่ใช่เปอร์เซ็นต์</p></div><div class="ux-candidates">';
+    var green=+STORE.data.settings.SCORE_COLOR_GREEN_MIN,yellow=+STORE.data.settings.SCORE_COLOR_YELLOW_MIN;
+    cs.forEach(function(c){
+      var band=c.SCORE>=green?'sc-green':(c.SCORE>=yellow?'sc-amber':'sc-rose');
+      html+='<article class="cand-row ux-candidate" data-idx="'+c.idx+'">'+
+        '<div class="ux-candidate-head"><div class="ux-person"><span class="ux-rank">'+c.rank+'</span><div><h3>'+esc(c.Yname)+'</h3><p>รหัส '+esc(c.Yid)+' · สอน '+c.Y_weekly+' คาบ/สัปดาห์</p></div></div>'+
+          '<div class="ux-score"><span class="score-pill '+band+'">'+c.SCORE+'</span><span>คะแนนจัดอันดับ</span></div></div>'+
+        '<div class="ux-candidate-facts"><div><span class="ux-label">คาบที่ขอแลก</span><strong>'+esc(thaiDate(S.dateAbsent))+' · คาบ '+esc(S.per)+'</strong></div>'+
+          '<div><span class="ux-label">คาบสอนคืน</span><strong><span id="gbcell-'+c.idx+'">'+esc(__SWAP_DATES__.formatBE(givebackFor(c,chosenOffset(c)),false))+'</span> · คาบ '+esc(c.per2)+'</strong></div>'+
+          '<label class="ux-week-label"><span class="ux-label">เปลี่ยนสัปดาห์สอนคืน</span>'+offsetSelectHTML(c)+'</label></div>'+
+        '<div class="ux-candidate-bottom"><ul class="ux-warnings" id="warnings-'+c.idx+'">'+warningSummary(c)+'</ul>'+
+          '<button type="button" class="btn btn-candidate-toggle" data-idx="'+c.idx+'" aria-controls="detail-'+c.idx+'" aria-expanded="false">ดูรายละเอียดคู่สลับ</button></div>'+
+        '<section class="detail-row" id="detail-'+c.idx+'" hidden aria-label="รายละเอียด '+esc(c.Yname)+'"></section></article>';
+    });
+    host.innerHTML=html+'</div><p class="ux-results-foot">วันสอนคืนเลือกได้ในช่วง ±6 สัปดาห์ ตัวเลือกที่ติดคิวจะเลือกไม่ได้ · รายละเอียดคะแนนและข้อมูลตรวจสอบยังเปิดดูได้ในแต่ละคู่</p>';
     wireResults();
   }
 
   function offsetSelectHTML(c){
     var opts='';
-    for(var off=-WEEK_SPAN; off<=WEEK_SPAN; off++){
-      var info=c.offset_info && c.offset_info[off];
-      if(!info) continue;
-      var sel=(off===chosenOffset(c))?' selected':'';
-      var dis=info.blocked?' disabled':'';
-      var mark=info.blocked
-        ? (info.hold==='soft' ? ' (จองไว้แล้ว — ยังไม่อนุมัติ)' : ' (ติดคิวแล้ว)')
-        : (info.clash?' (ตรงวันลา!)':'');
-      opts+='<option value="'+off+'"'+sel+dis+'>'+esc(weekLabel(off)+mark)+'</option>';
+    for(var off=-WEEK_SPAN;off<=WEEK_SPAN;off++){
+      var info=c.offset_info&&c.offset_info[off];if(!info)continue;
+      var mark=info.blocked?(info.hold==='soft'?' (จองไว้ — ยังไม่อนุมัติ)':' (ติดคิวแล้ว)'):(info.clash?' (ตรงวันลา!)':'');
+      opts+='<option value="'+off+'"'+(off===chosenOffset(c)?' selected':'')+(info.blocked?' disabled':'')+'>'+esc(weekLabel(off)+mark)+'</option>';
     }
     return '<select class="wk-pick" data-idx="'+c.idx+'">'+opts+'</select>';
   }
-
   function candById(idx){
-    var cs=LAST_SEARCH.res.candidates;
-    for(var i=0;i<cs.length;i++) if(cs[i].idx===idx) return cs[i];
-    return null;
+    var cs=LAST_SEARCH.res.candidates;for(var i=0;i<cs.length;i++)if(cs[i].idx===idx)return cs[i];return null;
   }
-
   function wireResults(){
     var host=document.getElementById('resultsArea');
-    // week picker
-    Array.prototype.forEach.call(host.querySelectorAll('.wk-pick'), function(sel){
-      sel.addEventListener('change', function(e){
-        e.stopPropagation();
-        var idx=+sel.getAttribute('data-idx'); var c=candById(idx); if(!c) return;
-        var off=+sel.value; LAST_SEARCH.chosen[idx]=off;
-        var gb=givebackFor(c,off); var be=__SWAP_DATES__.formatBE(gb,false);
-        var cell=document.getElementById('gbcell-'+idx); if(cell) cell.textContent=be;
-        // if detail open, re-render it (date-warnings depend on offset)
-        var dr=document.getElementById('detail-'+idx);
-        if(dr && !dr.hidden){
-          // recompute date-dependent flags for the chosen offset
-          c.warn_absence_clash = (c.offset_info[off] && c.offset_info[off].clash)?1:0;
-          c.warn_retro = (DASH.dateProposed && gb<DASH.dateProposed)?1:0;
-          dr.querySelector('td').innerHTML=detailPanel(c); wireDetail(idx);
-        }
+    Array.prototype.forEach.call(host.querySelectorAll('.ux-home-back'),function(b){b.addEventListener('click',function(){show('home');});});
+    Array.prototype.forEach.call(host.querySelectorAll('.wk-pick'),function(sel){
+      sel.addEventListener('change',function(){
+        var idx=+sel.getAttribute('data-idx'),c=candById(idx);if(!c)return;
+        var off=+sel.value;LAST_SEARCH.chosen[idx]=off;
+        var gb=givebackFor(c,off);
+        c.warn_absence_clash=(c.offset_info[off]&&c.offset_info[off].clash)?1:0;
+        c.warn_retro=(DASH.dateProposed&&gb<DASH.dateProposed)?1:0;
+        document.getElementById('gbcell-'+idx).textContent=__SWAP_DATES__.formatBE(gb,false);
+        document.getElementById('warnings-'+idx).innerHTML=warningSummary(c);
+        var dr=document.getElementById('detail-'+idx);if(dr&&!dr.hidden){dr.innerHTML=detailPanel(c);wireDetail(idx);}
       });
-      sel.addEventListener('click', function(e){ e.stopPropagation(); });
     });
-    // row expand
-    Array.prototype.forEach.call(host.querySelectorAll('.cand-row'), function(tr){
-      tr.addEventListener('click', function(){
-        var idx=+tr.getAttribute('data-idx');
-        var dr=document.getElementById('detail-'+idx);
-        var wasOpen=dr && !dr.hidden;
-        // close all
-        Array.prototype.forEach.call(host.querySelectorAll('.detail-row'), function(d){ d.hidden=true; d.querySelector('td').innerHTML=''; });
-        Array.prototype.forEach.call(host.querySelectorAll('.cand-row'), function(r){ r.classList.remove('open'); });
-        if(!wasOpen){
-          var c=candById(idx);
-          dr.querySelector('td').innerHTML=detailPanel(c); dr.hidden=false; tr.classList.add('open');
-          wireDetail(idx);
-        }
+    Array.prototype.forEach.call(host.querySelectorAll('.btn-candidate-toggle'),function(btn){
+      btn.addEventListener('click',function(){
+        var idx=+btn.getAttribute('data-idx'),dr=document.getElementById('detail-'+idx),wasOpen=!dr.hidden;
+        Array.prototype.forEach.call(host.querySelectorAll('.detail-row'),function(d){d.hidden=true;d.innerHTML='';});
+        Array.prototype.forEach.call(host.querySelectorAll('.btn-candidate-toggle'),function(b){b.setAttribute('aria-expanded','false');b.textContent='ดูรายละเอียดคู่สลับ';});
+        Array.prototype.forEach.call(host.querySelectorAll('.cand-row'),function(r){r.classList.remove('open');});
+        if(!wasOpen){dr.innerHTML=detailPanel(candById(idx));dr.hidden=false;btn.closest('.cand-row').classList.add('open');btn.setAttribute('aria-expanded','true');btn.textContent='ปิดรายละเอียด';wireDetail(idx);}
       });
     });
   }
@@ -4206,7 +4098,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       var c=candById(idx); var r=saveToLog(c);
       var msg=document.getElementById('saveMsg-'+idx);
       if(r.ok){
-        if(msg){ msg.textContent='✓ บันทึกลง Log แล้ว (ดูได้ที่แท็บ “บันทึกการสลับ”)'; msg.className='save-msg ok'; }
+        if(msg){ msg.textContent='บันทึกข้อเสนอแล้ว · ดูต่อที่บันทึกการสลับ'; msg.className='save-msg ok'; }
         btn.disabled=true;
         if(typeof refreshHome==='function') refreshHome();
       } else if(msg){ msg.textContent='✗ บันทึกไม่สำเร็จ: '+(r.error||''); msg.className='save-msg err'; }
@@ -5224,8 +5116,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 @media print{.preview-shell{display:none!important}}
 </style>
 <aside class="preview-shell" id="previewShell" aria-label="รุ่นทดลอง">
-  <div class="preview-heading"><span class="preview-badge">รุ่นทดลอง · ขั้นที่ 1</span><span>สำเนาข้อมูลแยกจากเว็บเดิม</span><a href="https://zenithjuno.github.io/schedule-swap-pp/" target="_blank" rel="noopener">เปิดเว็บเดิม ↗</a></div>
-  <p>ขั้นนี้เตรียมลิงก์และข้อมูลก่อน หน้าจอยังเหมือนเว็บเดิม การปรับหน้าจอและตารางจำลองจะตามมาในขั้นถัดไป</p>
+  <div class="preview-heading"><span class="preview-badge">รุ่นทดลอง · หน้าจอใหม่</span><span>สำเนาข้อมูลแยกจากเว็บเดิม</span><a href="https://zenithjuno.github.io/schedule-swap-pp/" target="_blank" rel="noopener">เปิดเว็บเดิม ↗</a></div>
+  <p id="previewStageNote">กำลังทดลองหน้าแรกและการเลือกคู่สลับ · ตารางจำลองก่อนอนุมัติจะเพิ่มในขั้นถัดไป</p>
   <p id="previewSource" role="status"></p>
   <details id="previewCopyPanel"><summary>เริ่มจากข้อมูลจริงชุดเดียวกับเว็บเดิม</summary>
     <p>คัดลอกตารางสอน เบอร์ติดต่อ รายการแลกคาบ และรอบการลาเป็นสำเนา หลังจากนั้นสองเว็บบันทึกแยกกัน ไม่มีการส่งข้อมูลขึ้นเว็บไซต์</p>
@@ -5306,6 +5198,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     var el=document.getElementById('btnBackup');if(el)el.scrollIntoView({block:'center'});
     message('ไปที่ตั้งค่าแล้ว ใช้ “กู้คืนจากไฟล์สำรอง” เพื่อนำเข้ารุ่นทดลองเท่านั้น');
   });
+  if(hasData(store.data)) document.getElementById('previewStageNote').setAttribute('data-ready-note','');
   var stamp=store.data.previewCopy;
   document.getElementById('previewSource').textContent=stamp
     ? 'คัดลอกจากเว็บเดิมเมื่อ '+new Date(stamp.copiedAt).toLocaleString('th-TH')+' · ภาคเรียน '+stamp.sourceSemester+' · หลังคัดลอก การเปลี่ยนแปลงสองเว็บแยกกัน'
@@ -5313,6 +5206,43 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   panel.open=!hasData(store.data);
 })();
 </script>
+
+<style id="previewUxS02">
+@media screen{
+  :root{--ink:#17302b;--ink-soft:#4e625e;--ink-faint:#687a75;--paper:#f3f6f4;--line:#dce5df;--line-strong:#b5c7bd;--shadow:0 2px 12px rgba(22,58,42,.045);--radius:14px}
+  body{font-family:Tahoma,Thonburi,system-ui,sans-serif;font-size:16px;line-height:1.65}
+  main{max-width:1160px;padding:30px 24px 70px}
+  .page{animation:none}.page h1{font-size:30px;line-height:1.4;letter-spacing:-.5px;margin-bottom:8px}
+  .page .lede{font-size:16px;max-width:78ch;margin-bottom:24px}
+  .appbar{padding:17px 24px;border-bottom:0;background:#153f34}.appbar .brand{font-size:18px}.appbar .strip{font-size:13px;color:#d2e6dc}
+  .appbar .sem-pill,.appbar .sem-switch{font-size:13px}.tabbar{padding:0 max(12px,calc((100% - 1112px)/2));border-color:var(--line)}
+  .tab{font-size:14px;padding:16px 14px;min-height:50px}.tab[aria-selected=true]{border-bottom-width:3px;color:#156748}
+  .card{padding:26px;margin-top:20px;border-radius:16px}.card-head h2{font-size:20px;line-height:1.5}.card-lede{font-size:14px;margin:8px 0 20px}
+  .btn{font-size:14px;min-height:42px;padding:9px 16px;border-radius:9px;font-weight:600}.btn-primary{background:#1b6b4b;border-color:#1b6b4b;color:#fff}.btn:hover{filter:brightness(.97)}
+  .muted-note,.fhint{font-size:13px;color:#52665f}.fld>span{font-size:14px;font-weight:700;margin-bottom:6px}.fld input,.fld select{font-size:16px;min-height:46px;border-radius:9px;padding:10px 12px;background:#fff}
+  .ux-primary-fields{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:20px}.fld,.ac-wrap{min-width:0}.ac-item{font-size:14px;padding:12px}
+  .ux-step-no{display:inline-flex;align-items:center;justify-content:center;width:29px;height:29px;border-radius:8px;background:#e9f3ed;color:#236547;font-size:15px;margin-right:7px}
+  .ux-path{display:flex;gap:26px;margin:0 0 22px;padding:0;list-style:none;font-size:13px;color:#5b7067}.ux-path li{display:flex;align-items:center;gap:8px}.ux-path b{display:inline-flex;align-items:center;justify-content:center;width:23px;height:23px;border-radius:50%;background:#e4ece7;font-size:12px;color:#436653}.ux-path li[aria-current=step]{color:#175f40;font-weight:700}.ux-path li[aria-current=step] b{background:#1b6b4b;color:#fff}
+  .ux-options{margin-top:20px;border-top:1px solid var(--line);padding-top:12px}.ux-options summary,.ux-fold summary{cursor:pointer;font-size:14px;font-weight:600;padding:9px 0}.ux-options .abs-grid{margin-top:14px}
+  .ux-semester{margin:16px 0 0;font-size:12px;color:#62786b}.lv-strip{font-size:14px}.lv-pick{font-size:14px;min-height:42px}.lv-detail{font-size:13px}.lv-detail.lv-none{background:#f6f8f5;border-color:#e2e9e2;color:#5d7063}
+  #dashBody{overflow-x:auto}table.dash{font-size:14px}table.dash th{font-size:12px;padding:12px 10px;background:#f5f8f6;color:#52675c}table.dash td{padding:12px 10px;border-color:#e4ebe6}.dash .c-stat{font-size:13px}.dash .c-per{font-weight:700}table.dash tr.band-todo td{background:#fff}table.dash tr.band-todo .c-stat{color:#7a6537}.dash .c-warn{font-size:12px}.btn-ext{font-size:12px;min-height:30px;padding:4px 8px;font-weight:400}
+  .preview-shell{padding:9px max(24px,calc((100% - 1112px)/2));font-size:13px;line-height:1.6;background:#fff8e8;border-bottom:1px solid #e1cf9c}.preview-heading{font-size:13px;gap:10px}.preview-badge{font-size:11px;letter-spacing:.2px;padding:2px 8px}.preview-shell>p{font-size:12px;margin:4px 0}.preview-shell p[data-ready-note]{display:none}.preview-shell details{font-size:13px}.preview-shell summary{font-size:12px;padding:4px 0}.preview-summary dl{grid-template-columns:minmax(0,1fr) minmax(0,1fr);font-size:13px}.preview-actions .btn{font-size:13px}
+  .ux-result-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0 0 20px}.ux-result-heading h2{font-size:24px;margin:4px 0}.ux-result-heading p{margin:4px 0;font-size:14px}.ux-eyebrow{color:#5e7369;font-size:12px!important}.ux-home-back{flex-shrink:0}
+  .ux-results-intro{display:flex;justify-content:space-between;gap:20px;align-items:baseline;margin-bottom:16px}.ux-results-intro p{margin:0;font-size:13px;color:#576d60}.ux-results-intro b{color:#173e2b}.ux-candidates{display:grid;gap:14px}
+  .ux-candidate{background:#fff;border:1px solid #d7e3db;border-radius:14px;padding:22px;box-shadow:var(--shadow);cursor:default!important}.ux-candidate:hover{background:#fff!important}.ux-candidate.open{border-color:#64a681;box-shadow:0 0 0 1px #64a681}
+  .ux-candidate-head{display:flex;justify-content:space-between;gap:14px;align-items:center}.ux-person{display:flex;gap:13px;align-items:center;min-width:0}.ux-person h3{font-size:18px;line-height:1.5;margin:0;overflow-wrap:anywhere}.ux-person p{font-size:12px;color:#627369;margin:3px 0 0}.ux-rank{display:inline-flex;align-items:center;justify-content:center;width:35px;height:35px;flex-shrink:0;border-radius:9px;background:#e9f2eb;color:#256443;font-size:15px;font-weight:700}.ux-score{display:flex;align-items:center;gap:7px;font-size:11px;color:#5f7168;flex-shrink:0}.score-pill{font-size:15px;padding:4px 10px;min-width:40px}
+  .ux-candidate-facts{display:grid;grid-template-columns:1.2fr 1.2fr 1fr;gap:16px;margin:18px 0;padding:16px 0;border-top:1px solid #e8eee9;border-bottom:1px solid #e8eee9}.ux-candidate-facts>div,.ux-week-label{min-width:0}.ux-label{display:block;font-size:12px;color:#60746a;margin-bottom:5px}.ux-candidate-facts strong{display:block;font-size:15px;font-weight:600;overflow-wrap:anywhere}.ux-week-label .wk-pick{max-width:none;width:100%;min-height:40px;padding:7px 9px;border-radius:8px;font-size:13px}
+  .ux-candidate-bottom{display:flex;justify-content:space-between;gap:18px;align-items:center}.ux-warnings{margin:0;padding:0;list-style:none;font-size:13px;color:#846025;line-height:1.7;min-width:0}.ux-warnings li{overflow-wrap:anywhere}.ux-clear{color:#3d7655!important;font-size:13px}.btn-candidate-toggle{color:#246344;background:#eef6ef;border:1px solid #d4e4d8;flex-shrink:0}
+  .detail-row[hidden]{display:none!important}.detail-row{margin-top:20px;border-top:1px solid #dce7df}.ux-detail{background:transparent;border:0;padding:20px 0 0;font-size:14px}.ux-detail-overview{font-size:14px}.ux-detail-overview p{color:#516b5d;font-size:13px;margin:12px 0}.ux-muted{display:inline-block;color:#687b6f;font-size:13px;margin-left:10px}.d-phone{display:inline-block;font-size:15px;margin-left:12px;color:#1d6243}
+  .ux-slot-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}.ux-slot-pair>div{background:#f5f8f4;border:1px solid #e0e8df;border-radius:10px;padding:15px;min-width:0}.ux-slot-pair strong{font-size:15px}.ux-slot-pair p{font-size:12px;margin:8px 0 0;color:#5e7163;overflow-wrap:anywhere}.ux-agreement{margin:18px 0}.ux-agreement h4{font-size:14px;margin:0 0 8px}.w-item{font-size:13px;margin:5px 0;padding:0}.d-giveaway{font-size:13px;padding:12px;background:#fffaf0}.d-giveaway-note{font-size:12px}.d-actions{margin:14px 0 22px}.save-msg{font-size:12px}
+  .ux-fold{border-top:1px solid #e2eae3}.ux-fold summary{padding:13px 0;color:#4e6758;font-size:13px}.ux-fold-content{padding:4px 0 16px;font-size:13px;overflow-wrap:anywhere}.ux-fold-content dd{margin:4px 0 12px}.ux-load-row{display:flex;justify-content:space-between;gap:15px;padding:9px 0;border-bottom:1px solid #edf1ed}.ux-fold .receipt{font-size:13px}.ux-fold .rc-n{font-size:12px}.ux-fold .rt-body{font-size:13px}.ux-results-foot{font-size:12px;color:#63786b;margin-top:22px}.ux-empty h2{font-size:20px}.ux-empty p{font-size:14px}.ux-empty .btn{margin-top:10px}
+  .paper,.tt-week{font-family:'TH Sarabun New','Sarabun',serif}
+  button:focus-visible,summary:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #4d9c76;outline-offset:3px}
+  @media(max-width:700px){
+    main{padding:22px 16px 50px}.card{padding:20px}.page h1{font-size:25px}.appbar{padding:14px 16px}.appbar .strip{margin-left:0;gap:8px}.tab{padding:13px 11px;font-size:13px}.preview-shell{padding:8px 16px}.ux-primary-fields{grid-template-columns:1fr}.ux-path{gap:14px;flex-wrap:wrap;font-size:11px}.ux-path b{width:20px;height:20px}.ux-result-heading{align-items:flex-start;flex-direction:column}.ux-result-heading h2{font-size:21px}.ux-results-intro{display:block}.ux-results-intro p+p{margin-top:6px}.ux-candidate{padding:17px}.ux-person h3{font-size:16px}.ux-candidate-head{align-items:flex-start}.ux-score{flex-direction:column;gap:3px;max-width:65px;text-align:center}.ux-candidate-facts{grid-template-columns:1fr 1fr;gap:14px}.ux-week-label{grid-column:1/-1}.ux-candidate-facts strong{font-size:14px}.ux-candidate-bottom{align-items:stretch;flex-direction:column;gap:12px}.btn-candidate-toggle{align-self:flex-start}.ux-slot-pair{grid-template-columns:1fr}.ux-load-row{flex-direction:column;gap:3px}.ux-fold .receipt tr{display:grid;grid-template-columns:minmax(0,1fr) 70px}.ux-fold .receipt td{padding:6px 3px}.ux-fold .receipt .rc-n{display:block;grid-column:1/-1;font-size:11px}.ux-fold .receipt .rc-v{width:auto}.ux-detail-overview .d-phone{margin-left:0}.lv-pick{min-width:0;width:100%}.lv-pickrow{align-items:stretch}.ux-semester{font-size:11px}
+  }
+}
+</style>
 
 </body>
 </html>

@@ -33,3 +33,16 @@
 - Verification: 49 S01 browser checks passed using the real local full backup under a simulated byte-counted 5 MiB quota with unrelated data; old plain JSON preview reopened and converted, regular backup restored, exported app booted. Engine 21/21; embedded ledger 22/22; standalone ledger 43/43.
 - Normal anonymous-fixture regression also passed before the additional legacy/restore checks (42 checks). Root remains byte-identical. Managed files scanned against all local rosters/phones with no matches.
 - Delivery checkpoint: `build/ui-preview/S01-quota`; S01 review remains open, no advance to S02.
+
+## PRG-005 — S01 passed; S02 started (2026-11-11)
+- User accepted compact preview storage and said “ต่อไปได้ครับ”; closes S01 and authorizes S02, not later stages.
+- Previous quota fix b6b159b was published and HTTP-verified byte-for-byte; root unchanged.
+- Current truth: S01 PASS, S02 ACTIVE, DEC-006 indexed; no new public-data format, backend or calculation changes.
+
+## PRG-006 — S02 verification (2026-11-11)
+- Built: task-first home, explicit import shortcut, optional planning controls, candidate cards with actual dates and accessible detail buttons, direct save action, four folded evidence sections, Thai names instead of Me/Y, screen-only typography and 390px layout. No fake preview action before S04.
+- Verification: S02 38/38 browser checks with real local data; engine region byte-identical to root; all candidate ids/ranks/scores/return dates/offsets match stable root for the test case. Keyboard expand, date/warning updates, single-open candidate, UI save, paper font and mobile expanded-score fit verified.
+- Regression: S01 49 checks with quota 5 MiB and real local backup passed after S02 code changes; engine oracle 21/21 and embedded ledger 22/22; standalone ledger 43/43. Root index.html unchanged from 7134bfb.
+- Visual inspection: home desktop and results mobile inspected; screenshots kept under private/ux-preview, not published.
+- Truth receipt: S01 PASS and S02 VERIFY; DEC-006 indexed; no changes to stable root, compression contract, score/eligibility/date logic. Daily-count bug, leave policy, broader document semantics and timetable simulation remain future stages.
+- Checkpoint: build/ui-preview/S02. Stop at user review after live publication.
