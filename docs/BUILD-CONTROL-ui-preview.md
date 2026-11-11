@@ -41,14 +41,14 @@
 - Open / next: `Set A built, reviewed and documented; user review before B.`
 - Active gate: `S02A delivered for user review; do not start B until accepted.`
 - Active history log: `history/BUILD-LOG-ui-preview-P01.md`
-- Last change: `PRG-005 — set A verified; user review pending`
+- Last change: `PRG-006 — set A published and byte-verified; user review pending`
 
 ## VERSION CONTROL
 - Mode: `git`
 - Repository root: `.`
 - Branch: `main`
 - Approved-plan baseline: `7134bfb1b32b5c143589976ecfc50eb00df3f5f3`
-- Current checkpoint: `build/ui-preview/S02A`
+- Current checkpoint: `build/ui-preview/S02A-delivery`
 - Working-tree state: `CLEAN — managed stage checkpoint; unrelated historical audit files remain untracked`
 - Checkpoint rule: `scoped commit per delivered stage; no unrelated files`
 

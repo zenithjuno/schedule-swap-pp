@@ -83,3 +83,10 @@
 - Checkpoint planned: build/ui-preview/S02A. User review remains open; B partial-day policy and D agreement/status mapping remain gated. Historical S02 test asserts rejected composition and is not current UI acceptance.
 
 - Documentation: shipped documenter extracted final preview-only DESIGN.md and design.json; parent checked frontmatter/content and JSON. Checkpoint records only declared files, excluding private captures, source backups and prior untracked audits.
+
+### PRG-006 — S02A live delivery / user review gate
+- Product checkpoint: build/ui-preview/S02A, commit 0ff018d8. Pushed main and tag; GitHub Pages build42994640839 completed successfully.
+- Verified deployed preview bytes exactly equal tested source (SHA256 fc3fdf4417a9b444922e687582433cd38a9c1a1c04a5395957b8836546cd2473), stable deployed root equal protected original bytes. Cache-busted live URL: https://zenithjuno.github.io/schedule-swap-pp/preview/?v=0ff018d8 .
+- Opened live URL in visible browser and observed Set A badge, four destinations, new round entry and import fallback. Did not import or alter user data in that browser.
+- Delivery receipt checkpoint: build/ui-preview/S02A-delivery. Managed work clean; pre-existing untracked audit/bug-plan files excluded.
+- Waiting: user review of A; B partial-day return policy; D agreement/status mapping. Recommend trying a round and comparison in the live preview, reply “ผ่านชุด A” to close A and begin B planning. No B implementation in this delivery.
