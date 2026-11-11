@@ -1,0 +1,397 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-11T09:20:49.720743+00:00",
+  "title": "Design System: Schedule Swap — Preview Set A",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Primary",
+        "tonalRamp": [
+          "oklch(15% 0.0192 204.05)",
+          "oklch(26% 0.0357 204.05)",
+          "oklch(38% 0.0467 204.05)",
+          "oklch(50% 0.0549 204.05)",
+          "oklch(62% 0.0549 204.05)",
+          "oklch(74% 0.0467 204.05)",
+          "oklch(86% 0.0302 204.05)",
+          "oklch(95% 0.0110 204.05)"
+        ]
+      },
+      "primary-hover": {
+        "role": "primary",
+        "displayName": "Primary Hover",
+        "tonalRamp": [
+          "oklch(15% 0.0179 204.94)",
+          "oklch(26% 0.0332 204.94)",
+          "oklch(38% 0.0435 204.94)",
+          "oklch(50% 0.0511 204.94)",
+          "oklch(62% 0.0511 204.94)",
+          "oklch(74% 0.0435 204.94)",
+          "oklch(86% 0.0281 204.94)",
+          "oklch(95% 0.0102 204.94)"
+        ]
+      },
+      "nav-hover": {
+        "role": "primary",
+        "displayName": "Nav Hover",
+        "tonalRamp": [
+          "oklch(15% 0.0201 203.49)",
+          "oklch(26% 0.0373 203.49)",
+          "oklch(38% 0.0488 203.49)",
+          "oklch(50% 0.0574 203.49)",
+          "oklch(62% 0.0574 203.49)",
+          "oklch(74% 0.0488 203.49)",
+          "oklch(86% 0.0316 203.49)",
+          "oklch(95% 0.0115 203.49)"
+        ]
+      },
+      "nav-active": {
+        "role": "primary",
+        "displayName": "Nav Active",
+        "tonalRamp": [
+          "oklch(15% 0.0199 201.92)",
+          "oklch(26% 0.0369 201.92)",
+          "oklch(38% 0.0483 201.92)",
+          "oklch(50% 0.0568 201.92)",
+          "oklch(62% 0.0568 201.92)",
+          "oklch(74% 0.0483 201.92)",
+          "oklch(86% 0.0312 201.92)",
+          "oklch(95% 0.0114 201.92)"
+        ]
+      },
+      "paper": {
+        "role": "primary",
+        "displayName": "Paper",
+        "tonalRamp": [
+          "oklch(15% 0.0043 178.02)",
+          "oklch(26% 0.0080 178.02)",
+          "oklch(38% 0.0105 178.02)",
+          "oklch(50% 0.0123 178.02)",
+          "oklch(62% 0.0123 178.02)",
+          "oklch(74% 0.0105 178.02)",
+          "oklch(86% 0.0068 178.02)",
+          "oklch(95% 0.0025 178.02)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Surface",
+        "tonalRamp": [
+          "oklch(15% 0.0000 89.88)",
+          "oklch(26% 0.0000 89.88)",
+          "oklch(38% 0.0000 89.88)",
+          "oklch(50% 0.0000 89.88)",
+          "oklch(62% 0.0000 89.88)",
+          "oklch(74% 0.0000 89.88)",
+          "oklch(86% 0.0000 89.88)",
+          "oklch(95% 0.0000 89.88)"
+        ]
+      },
+      "surface-wash": {
+        "role": "primary",
+        "displayName": "Surface Wash",
+        "tonalRamp": [
+          "oklch(15% 0.0031 179.60)",
+          "oklch(26% 0.0058 179.60)",
+          "oklch(38% 0.0075 179.60)",
+          "oklch(50% 0.0089 179.60)",
+          "oklch(62% 0.0089 179.60)",
+          "oklch(74% 0.0075 179.60)",
+          "oklch(86% 0.0049 179.60)",
+          "oklch(95% 0.0018 179.60)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "tonalRamp": [
+          "oklch(15% 0.0099 214.35)",
+          "oklch(26% 0.0183 214.35)",
+          "oklch(38% 0.0239 214.35)",
+          "oklch(50% 0.0282 214.35)",
+          "oklch(62% 0.0282 214.35)",
+          "oklch(74% 0.0239 214.35)",
+          "oklch(86% 0.0155 214.35)",
+          "oklch(95% 0.0056 214.35)"
+        ]
+      },
+      "ink-soft": {
+        "role": "neutral",
+        "displayName": "Ink Soft",
+        "tonalRamp": [
+          "oklch(15% 0.0117 218.75)",
+          "oklch(26% 0.0218 218.75)",
+          "oklch(38% 0.0285 218.75)",
+          "oklch(50% 0.0335 218.75)",
+          "oklch(62% 0.0335 218.75)",
+          "oklch(74% 0.0285 218.75)",
+          "oklch(86% 0.0184 218.75)",
+          "oklch(95% 0.0067 218.75)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Line",
+        "tonalRamp": [
+          "oklch(15% 0.0069 184.86)",
+          "oklch(26% 0.0128 184.86)",
+          "oklch(38% 0.0167 184.86)",
+          "oklch(50% 0.0197 184.86)",
+          "oklch(62% 0.0197 184.86)",
+          "oklch(74% 0.0167 184.86)",
+          "oklch(86% 0.0108 184.86)",
+          "oklch(95% 0.0039 184.86)"
+        ]
+      },
+      "line-strong": {
+        "role": "neutral",
+        "displayName": "Line Strong",
+        "tonalRamp": [
+          "oklch(15% 0.0118 181.90)",
+          "oklch(26% 0.0220 181.90)",
+          "oklch(38% 0.0288 181.90)",
+          "oklch(50% 0.0338 181.90)",
+          "oklch(62% 0.0338 181.90)",
+          "oklch(74% 0.0288 181.90)",
+          "oklch(86% 0.0186 181.90)",
+          "oklch(95% 0.0068 181.90)"
+        ]
+      },
+      "control-border": {
+        "role": "neutral",
+        "displayName": "Control Border",
+        "tonalRamp": [
+          "oklch(15% 0.0144 181.77)",
+          "oklch(26% 0.0267 181.77)",
+          "oklch(38% 0.0349 181.77)",
+          "oklch(50% 0.0410 181.77)",
+          "oklch(62% 0.0410 181.77)",
+          "oklch(74% 0.0349 181.77)",
+          "oklch(86% 0.0226 181.77)",
+          "oklch(95% 0.0082 181.77)"
+        ]
+      },
+      "focus": {
+        "role": "primary",
+        "displayName": "Focus",
+        "tonalRamp": [
+          "oklch(15% 0.0246 201.66)",
+          "oklch(26% 0.0457 201.66)",
+          "oklch(38% 0.0597 201.66)",
+          "oklch(50% 0.0703 201.66)",
+          "oklch(62% 0.0703 201.66)",
+          "oklch(74% 0.0597 201.66)",
+          "oklch(86% 0.0387 201.66)",
+          "oklch(95% 0.0141 201.66)"
+        ]
+      },
+      "caveat": {
+        "role": "secondary",
+        "displayName": "Caveat",
+        "tonalRamp": [
+          "oklch(15% 0.0315 67.05)",
+          "oklch(26% 0.0585 67.05)",
+          "oklch(38% 0.0765 67.05)",
+          "oklch(50% 0.0900 67.05)",
+          "oklch(62% 0.0900 67.05)",
+          "oklch(74% 0.0765 67.05)",
+          "oklch(86% 0.0495 67.05)",
+          "oklch(95% 0.0180 67.05)"
+        ]
+      },
+      "preview-ground": {
+        "role": "secondary",
+        "displayName": "Preview Ground",
+        "tonalRamp": [
+          "oklch(15% 0.0059 88.00)",
+          "oklch(26% 0.0109 88.00)",
+          "oklch(38% 0.0142 88.00)",
+          "oklch(50% 0.0167 88.00)",
+          "oklch(62% 0.0167 88.00)",
+          "oklch(74% 0.0142 88.00)",
+          "oklch(86% 0.0092 88.00)",
+          "oklch(95% 0.0033 88.00)"
+        ]
+      },
+      "danger": {
+        "role": "secondary",
+        "displayName": "Danger",
+        "tonalRamp": [
+          "oklch(15% 0.0315 24.85)",
+          "oklch(26% 0.0585 24.85)",
+          "oklch(38% 0.0765 24.85)",
+          "oklch(50% 0.0900 24.85)",
+          "oklch(62% 0.0900 24.85)",
+          "oklch(74% 0.0765 24.85)",
+          "oklch(86% 0.0495 24.85)",
+          "oklch(95% 0.0180 24.85)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Observed preview headline role."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Observed preview title role."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Observed preview body role."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Observed preview label role."
+      },
+      "table": {
+        "displayName": "Table",
+        "purpose": "Observed preview table role."
+      },
+      "helper": {
+        "displayName": "Helper",
+        "purpose": "Observed preview helper role."
+      },
+      "print": {
+        "displayName": "Print",
+        "purpose": "Paper document and timetable surfaces."
+      }
+    },
+    "shadows": [
+      {
+        "name": "workspace-flat",
+        "value": "none",
+        "purpose": "New workspace panels and standard cards; legacy overlays excluded."
+      }
+    ],
+    "motion": [
+      {
+        "name": "wayfinding-background",
+        "value": "background-color .16s ease-out",
+        "purpose": "Active period and navigation; only with prefers-reduced-motion: no-preference."
+      },
+      {
+        "name": "button-state",
+        "value": "background .12s, border-color .12s, box-shadow .12s",
+        "purpose": "Inherited button state transition."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact-desktop",
+        "value": "1180px"
+      },
+      {
+        "name": "mobile",
+        "value": "760px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Explicit selection or a secondary workspace action.",
+      "html": "<button class=\"ds-button-primary\" type=\"button\">เลือกและบันทึก</button>",
+      "css": ".ds-button-primary{font-family:Tahoma,Thonburi,system-ui,sans-serif;font-size:13px;font-weight:600;min-height:42px;padding:9px 13px;border:1px solid #789c95;border-radius:7px;cursor:pointer;transition:background .12s,border-color .12s,box-shadow .12s;background:var(--chalk,#164b50);color:#fff;border-color:var(--chalk,#164b50);}.ds-button-primary:hover{background:#0c3e43;border-color:var(--chalk,#164b50)}.ds-button-primary:focus-visible{outline:2px solid var(--chalk,#164b50);outline-offset:2px}.ds-button-primary:disabled{opacity:.5;cursor:not-allowed}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Explicit selection or a secondary workspace action.",
+      "html": "<button class=\"ds-button-secondary\" type=\"button\">กลับไปเลือกคาบ</button>",
+      "css": ".ds-button-secondary{font-family:Tahoma,Thonburi,system-ui,sans-serif;font-size:13px;font-weight:600;min-height:42px;padding:9px 13px;border:1px solid #789c95;border-radius:7px;cursor:pointer;transition:background .12s,border-color .12s,box-shadow .12s;background:#fff;color:var(--chalk,#164b50);}.ds-button-secondary:hover{background:var(--chalk-wash,#edf5f3);border-color:var(--chalk,#164b50)}.ds-button-secondary:focus-visible{outline:2px solid var(--chalk,#164b50);outline-offset:2px}.ds-button-secondary:disabled{opacity:.5;cursor:not-allowed}"
+    },
+    {
+      "name": "Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Screen field with a label and native input.",
+      "html": "<label class=\"ds-field\"><span>วันที่ลา</span><input type=\"date\" /></label>",
+      "css": ".ds-field{font-family:Tahoma,Thonburi,system-ui,sans-serif;display:grid;gap:7px;color:var(--ink,#20353a);font-size:14px;font-weight:600}.ds-field input{font-family:Tahoma,Thonburi,system-ui,sans-serif;font-size:15px;min-height:44px;padding:9px 10px;background:#fff;color:var(--ink,#20353a);border:1px solid var(--line-strong,#97b5af);border-radius:7px}.ds-field input:focus{outline:2px solid var(--chalk,#164b50);outline-offset:1px;border-color:var(--chalk,#164b50)}"
+    },
+    {
+      "name": "Primary Navigation",
+      "kind": "nav",
+      "refersTo": "nav",
+      "description": "Horizontal wayfinding with a clear current page.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"เมนูหลัก\"><button type=\"button\" aria-current=\"page\">จัดแผนแลกคาบ</button><button type=\"button\">บันทึกและสถานะ</button></nav>",
+      "css": ".ds-nav{display:flex;flex-wrap:wrap;gap:10px;padding:14px;background:var(--chalk,#164b50)}.ds-nav button{font-family:Tahoma,Thonburi,system-ui,sans-serif;border:0;background:transparent;color:#edf7f5;padding:10px 16px;border-radius:8px;font-size:15px;font-weight:600;min-height:44px;cursor:pointer}.ds-nav button:hover{background:#2b6166}.ds-nav button[aria-current=page]{background:#376c70;color:#fff}.ds-nav button:focus-visible{outline:3px solid #397f84;outline-offset:3px}@media(prefers-reduced-motion:no-preference){.ds-nav button{transition:background-color .16s ease-out}}@media(max-width:760px){.ds-nav{gap:3px}.ds-nav button{font-size:12px;padding:9px;min-height:42px}}"
+    },
+    {
+      "name": "Semester Pill",
+      "kind": "chip",
+      "refersTo": "semester-pill",
+      "description": "Informational context in the teal header.",
+      "html": "<div class=\"ds-pill-shell\"><span class=\"ds-pill\">ภาคเรียน</span></div>",
+      "css": ".ds-pill-shell{background:var(--chalk,#164b50);padding:16px}.ds-pill{font-family:Tahoma,Thonburi,system-ui,sans-serif;display:inline-flex;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);padding:3px 11px;border-radius:999px;font-size:12px;color:#eef4f2}"
+    },
+    {
+      "name": "Work Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Flat white work surface.",
+      "html": "<section class=\"ds-card\"><h2>เลือกคาบในรอบลา</h2><p>ระบุข้อมูลก่อนค้นหาคู่แลกคาบ</p></section>",
+      "css": ".ds-card{font-family:Tahoma,Thonburi,system-ui,sans-serif;background:#fff;color:var(--ink,#20353a);border:0;box-shadow:none;border-radius:12px;padding:22px}.ds-card h2{font-size:20px;line-height:1.5;margin:0}.ds-card p{font-size:14px;color:var(--ink-soft,#466068);margin:8px 0 18px}@media(max-width:760px){.ds-card{padding:20px}}"
+    },
+    {
+      "name": "Active Period",
+      "kind": "custom",
+      "refersTo": "period-active",
+      "description": "Current period context; illustrative label without personal data.",
+      "html": "<button type=\"button\" class=\"ds-period\" aria-current=\"true\"><strong>คาบที่เลือก</strong><span>วิชาและกลุ่มเรียน</span><small>ยังไม่ได้เลือกคู่</small></button>",
+      "css": ".ds-period{font-family:Tahoma,Thonburi,system-ui,sans-serif;display:block;width:100%;text-align:left;border:0;border-bottom:1px solid #d5e3df;padding:12px 10px;color:var(--ink,#20353a);background:var(--paper,#e8f3f0);outline:1px solid #73998f;outline-offset:-1px;border-radius:7px;cursor:pointer}.ds-period strong{display:block;font-size:14px;line-height:1.55}.ds-period span,.ds-period small{display:block;font-size:12px;color:var(--ink-soft,#466068);margin-top:4px}.ds-period:hover{background:#f0f7f4}.ds-period:focus-visible{outline:3px solid #397f84;outline-offset:3px}@media(prefers-reduced-motion:no-preference){.ds-period{transition:background-color .16s ease-out}}"
+    },
+    {
+      "name": "Selected Proposal Band",
+      "kind": "custom",
+      "refersTo": "selected-summary",
+      "description": "Lower in-flow summary of chosen proposals.",
+      "html": "<section class=\"ds-selected\"><h2>ชุดที่เลือกในแผนนี้</h2><p>ยังไม่มีข้อเสนอที่เลือก</p><small>ข้อเสนอที่เลือกยังไม่ใช่การอนุมัติ</small></section>",
+      "css": ".ds-selected{font-family:Tahoma,Thonburi,system-ui,sans-serif;margin-top:16px;background:#fff;color:var(--ink,#20353a);padding:18px 22px;border-radius:12px}.ds-selected h2{font-size:18px;margin:0 0 5px}.ds-selected p{font-size:13px;margin:0;color:var(--ink-soft,#466068)}.ds-selected small{display:block;font-size:12px;color:var(--ink-soft,#466068);margin-top:12px}@media(max-width:760px){.ds-selected{padding:18px}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Library wayfinding clarity",
+    "overview": "This preview uses the clarity of school library signage: a deep teal navigation shell, pale teal ground and white work surfaces. Readable Thai sans text and quiet boundaries keep dates, people and caveats available for comparison. There is no library ornament or new raster imagery.\n\nThis is the implemented Set A system in preview/index.html, derived from its final previewUxA screen overrides and inherited controls. It covers the preview shell, entry view and comparison workspace. The stable root index.html retains its existing visual system. Set A is a partial overhaul: later simulation, communication documents and status changes are not implemented by this design record; existing legacy routes can retain older treatments.",
+    "keyCharacteristics": [
+      "Deep teal wayfinding with pale teal and white working surfaces.",
+      "Desktop comparison first; compact, labeled reading blocks on mobile.",
+      "Explicit proposal selection with a lower summary in normal document flow.",
+      "Flat panels, visible keyboard focus and restrained state changes."
+    ],
+    "rules": [
+      {
+        "name": "The Wayfinding Rule",
+        "body": "Use the deep teal shell to orient the user; keep comparison content on light surfaces with dark text.",
+        "section": "colors"
+      },
+      {
+        "name": "The Reading Rule",
+        "body": "Use the Thai workhorse sans stack for the screen interface and retain TH Sarabun New for document and timetable paper surfaces.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Surface Rule",
+        "body": "Use tonal grouping and boundaries for the new workspace panels; do not add card shadows to these panels.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep actual dates and caveats visible beside each candidate’s selection action.",
+      "Do retain labeled mobile comparison fields, visible focus and explicit selected states.",
+      "Do keep the selected-proposal summary in document flow below the workspace.",
+      "Do preserve TH Sarabun New on printed document surfaces."
+    ],
+    "donts": [
+      "Don't apply this preview system to the protected stable root page.",
+      "Don't turn previewing, opening details or printing into an approval action.",
+      "Don't add ornamental library illustrations, new raster decoration or synthetic personal data.",
+      "Don't treat legacy typography, glyph decoration or later unbuilt flows as newly approved design rules."
+    ]
+  }
+}

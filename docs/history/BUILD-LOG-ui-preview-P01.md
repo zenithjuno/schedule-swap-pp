@@ -51,3 +51,35 @@
 - Product commit ed38de6 pushed to main. Live preview HTTP 200 matches tested preview/index.html byte-for-byte. Original HTTP 200 matches untouched root (SHA-256 02d2c5d59f376906f867d5320f468e8f1315fbcdefb0452e04934909cc69067f).
 - Only active user gate: ผ่าน S02. S03 policy/calculation work has not started. Current checkpoint build/ui-preview/S02-review includes the delivery receipt; build/ui-preview/S02 retains the product release.
 - Stage map, contract/index and routing reviewed; no personal data in changed public files. Untracked pre-existing audit/bug-plan documents remain outside this checkpoint.
+
+## CHG-001 — Full-flow overhaul discovery (2026-11-11)
+- User clarified: timetable A is for communicating with the partner, list B is private decision support; there are two dimensions, selection and communication. User chose overhaul of the complete website flow.
+- Approved scope now: full-flow design discovery; not a pass of S02 and not implementation approval for an unspecified replacement.
+- Product context captured in PRODUCT.md after the real answer round; no aesthetic choices invented. Material discovery questions issued for device emphasis, communication range and multi-period grouping.
+- Truth receipt: S02 visual recipe loses authority (DEC-006 superseded by DEC-007), original product problem and root/data isolation remain. Active gate is shape discovery, not ผ่าน S02. Future stage order must be reconciled after concept approval. No UI files changed.
+
+### CHG-001 discovery answer round — 2026-11-11
+- Confirmed desktop-first selection; mobile viewing/communication; full-week default; one leave-round plan split into partner packets.
+- Updated PRODUCT and blueprint proposed topology, including explicit handling of distinct affected weeks. No new statuses, engine rules or app edits.
+- Next: visual concept selection, then confirmed full-flow brief and revised construction stages.
+
+### CHG-001 concept selected and brief proposed — 2026-11-11
+- Read question 87b42c3a answer: library, code-led, buildPathFlipped=false. User confirmed selection in chat. Preserve the selected HTML sketch as composition evidence; no direction contract in shape.
+- Added SHAPE-ui-overhaul.md: full-flow screen topology, real-week simulation, desktop/mobile priorities, existing-feature routing, pending status/policy mapping, proposed A–F delivery and acceptance roadmap. Await brief confirmation before implementation contracts and UI work.
+- The decision page heartbeat timeout was reproduced from its log; restarted the same question key, reopened and verified HTTP 200, then successfully collected the choice. Screenshots in chat provide a non-expiring-by-heartbeat review fallback. No user choice inferred from a dead server.
+- No edits to root or preview application. No private data published, committed, or added to design sketches.
+
+### CHG-001 approved — set A authorized
+- User: accepted full brief and authorized set A. Added: library direction, round rail, table and selected-proposal summary. Replaced: rejected stacked-card composition with wide comparison workspace. Removed: discovery-only prohibition after brief acceptance. Superseded: DEC-007 by DEC-008; S02 by S02A.
+- Existing root/data isolation, engine, ledger schema unchanged. No new statuses or partial-day rule assumed. B partial-day policy and D agreement mapping retained as bounded pending decisions.
+- Exact scope and verification declared in S02A. Select/save uses existing proposed records; navigation never commits.
+
+### PRG-005 — S02A / set A verified
+- Built selected library shell: four primary destinations, seven reachable legacy pages, round period rail across actual dates, semantic comparison with complete candidates/offsets/evidence, explicit proposed selection, per-partner selected summary from existing records. Teacher pick refreshes its round picker. No new store schema or engine/ranking changes.
+- Focused browser tests: 51/51 with anonymous 2569/1 fixture and 51/51 with full local 2569/2 backup. Includes cross-date rail, return-week/detail sync, explicit one-record save, reload, all routes, archive guard, empty recovery, responsive width and keyboard focus.
+- Storage regression: 49/49 with full backup, 5 MiB quota and unrelated origin data; browser engine21/21 + ledger22/22. Standalone preview ledger43/43. Protected root SHA256 remains 02d2c5d59f376906f867d5320f468e8f1315fbcdefb0452e04934909cc69067f; engine/frozen region identical.
+- Rendered/inspected six desktop/mobile captures kept ignored and private. Hookless detector ran once: one inherited contrast warning; reviewer resolved it from final backup-stale override. Independent full review requested two fixes; both (SVG warning consistency and active mobile rail/focus) scored resolved in verdict pass with disposition ship. Verdict pass covers those two fixes, not a second whole-surface audit.
+- Source privacy check found no private teacher names in added UI code; embedded-data remains empty. No shipping raster assets. Accepted shape/context and direction contract recorded; DESIGN documentation follows final source.
+- Checkpoint planned: build/ui-preview/S02A. User review remains open; B partial-day policy and D agreement/status mapping remain gated. Historical S02 test asserts rejected composition and is not current UI acceptance.
+
+- Documentation: shipped documenter extracted final preview-only DESIGN.md and design.json; parent checked frontmatter/content and JSON. Checkpoint records only declared files, excluding private captures, source backups and prior untracked audits.

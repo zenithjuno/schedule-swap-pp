@@ -1,5 +1,5 @@
 # BLUEPRINT — UI Preview
-Version 2 / approved through S02 2026-11-11. Control: `BUILD-CONTROL-ui-preview.md`.
+Version 4 / full-flow library brief accepted; set A (S02A) authorized 2026-11-11. Control: `BUILD-CONTROL-ui-preview.md`.
 
 ## Original problem
 ทำรุ่นทดลองที่อ่านง่ายและทำข้อเสนอแลกคาบพร้อมตารางจำลองก่อนอนุมัติได้ เปิดด้วยอีกลิงก์เพื่อเปรียบเทียบกับเว็บเดิม โดยรักษาเว็บเดิมไว้ใช้งานต่อและใช้ข้อมูลจริงชุดเดียวกันเป็นฐาน
@@ -9,12 +9,12 @@ Version 2 / approved through S02 2026-11-11. Control: `BUILD-CONTROL-ui-preview.
 |---|---|
 | Goal | รุ่นทดลอง `/preview/` ที่พัฒนาทีละขั้นและเว็บเดิมยังใช้ได้ |
 | User value | ลอง UI และข้อเสนอด้วยสำเนาข้อมูลจริงโดยไม่กระทบงานจริง |
-| Scope | S01 delivered; S02 homepage/results UI only, preserving storage and calculation semantics |
+| Scope | S01 delivered; CHG-001 full-flow brief accepted; set A (S02A) authorized. Existing S02 card design superseded; B–F gated |
 | Source of truth | `docs/UX-UI-AUDIT-2026-11-11.md`; stable behavior `docs/BLUEPRINT-swap-html.md`; stage sequence `CONSTRUCTION_PLAN-ui-preview.md` |
 | Constraints | Root `index.html` and existing storage are read-only; no real data embedded/published |
-| Acceptance criteria | Copy real snapshot with counts; changing preview does not change original; existing engine/ledger tests pass |
+| Acceptance criteria | S01 isolation retained; round rail, all candidate rows, actual dates and selected proposals are usable; all legacy routes accessible; explicit saves only; unchanged engine/ledger pass |
 | Verification | Browser isolation, backup/export, failure tests; root hash; publication and old-page checks |
-| Out of scope | S03–S07 until their gates; no score, eligibility or leave-rule changes in S02 |
+| Out of scope | Sets B–F until their gates; no score, eligibility, leave-rule or stored-status changes in A |
 
 ## 1. รุ่นทดลองและสำเนาข้อมูล
 Root page stays at `/schedule-swap-pp/`. New page `/schedule-swap-pp/preview/` starts as a standalone copy of the current app. Always show experimental badge, current stage scope and old-page link. Preserve offline/self-export behavior.
@@ -26,17 +26,34 @@ Data schema stays version 1: use real backup shape already inspected: `schemaVer
 Same-origin and same browser profile are required for direct read. For file:// or different browser/device show backup-restore alternative; never auto-detect another origin or fetch private data. Preview backup filenames and ready-file exports identify the experimental edition. Exported HTML retains preview storage keys and shell.
 
 ## 2. หน้าแรกและผลค้นหา (S02)
+S02 implementation below is incumbent evidence only. User did not accept its visual direction; do not treat stacked cards or one-open detail as binding future design. CHG-001 below governs the new discovery.
+
 User accepted S01 and authorized S02 with “ต่อไปได้ครับ” on 2026-11-11. Only homepage/results presentation changes: remove decorative grid; teacher/date first, planning-date and preference in optional settings; concise task steps and real data summary. Existing default selection and eligibility stay unchanged until S03.
 
-Results become readable candidate cards, preserving every candidate, idx, rank, score and available offset. Show name/date/period first, week selector with explicit label, plain-Thai warnings and a keyboard-operable detail button. Opening one candidate closes the other. Changing return week updates date, warning summary and open detail without losing candidate order. No fake or disabled preview action before S04.
+Incumbent results use candidate cards, preserving every candidate, idx, rank, score and available offset. Show name/date/period first, week selector with explicit label, plain-Thai warnings and a keyboard-operable detail button. Opening one candidate closes the other. Changing return week updates date, warning summary and open detail without losing candidate order. No fake or disabled preview action before S04.
 
 Detail first shows both dates, contact, weekly load, warnings and the save action. Daily workload, student walking, score receipt and raw audit are separate collapsed details. Preserve all existing data; explain ranking score is not a percentage. Replace Me/Y only in UI strings, never mutate engine warnings/data. Keep known S03 calculation issues deferred. Screen-only sans-serif font and higher contrast; paper/print retain embedded TH Sarabun New and existing print semantics. Narrow-screen home/results must not overflow at 390px.
+
+## 3. Accepted full-flow overhaul (CHG-001)
+Product truth and confirmed user workflow: `../PRODUCT.md`. User explicitly confirmed two dimensions: chooser compares people/dates/constraints and decides; communicator shows the selected proposal through both teachers' before/after timetables. Both must coexist in one complete flow, not compete as alternative designs.
+
+Whole-site UI brief is accepted; implementation is authorized for set A only. Preserve stable root and independent real-data copy. Do not advance to B without its gate or use the rejected S02 look. Confirmed: desktop selection, mobile viewing/communication; full-week communication tables; one leave-round plan with per-partner packets. User selected the library concept (“พื้นที่ทำงานคุ้นมือ”) from question 87b42c3a. Full-flow brief and proposed A–F roadmap: `SHAPE-ui-overhaul.md`, accepted by user, set A authorized. DEC-008 and S02A now govern implementation. No new storage statuses or data migration is implied by planning a peer-agreement step.
+
+### Accepted end-to-end topology (delivery split by SHAPE A–F)
+- Global destinations: plans, actual timetable, records/documents, data/settings. Selected library shell uses these groups; all seven legacy routes remain reachable before any future feature replacement.
+- Plan overview: absent periods in one leave round, selected/unresolved periods, saved work and a route back to each decision. No auto-selection.
+- Selection workspace on desktop: absent-period list, a dense candidate comparison table scoped to the chosen period, and persistent chosen-proposal context. Compare eligible dates/return periods and explicit caveats before optional scoring evidence. Do not suppress candidates or treat rank as approval.
+- Plan review: show cross-selection conflicts and uncovered periods. Alternatives remain editable. Revalidation is needed after an upstream choice changes; design does not imply a new engine rule.
+- Partner packet: collect the selected swaps for one teacher, plain-language responsibilities, full-week before/after tables for both teachers, real week dates and changed periods. If two weeks differ, identify/show each affected week; never combine different weeks into a fictional timetable. Clearly label draft simulation. Print/export design remains subject to existing capabilities and privacy constraints.
+- Agreement/approval: record the outcome through a reviewed mapping to existing statuses; opening/exporting simulation never approves. Unsuccessful negotiations return to candidate selection. Changed proposals must regenerate communication content and be checked again.
+- Actual timetable/history: distinguish actual approved lessons from proposals, preserve withdrawal/cancellation/history and documents. No new stored status is approved here.
+- Supporting flows included in overhaul inventory: substitution, import/backup/ready-file export, contacts, archived semesters, first-run/empty/error states, forms, navigation, printing and return-to-plan paths. S03 known bugs remain tracked separately.
 
 ## Active Contract Index
 | Scope | Active contract | Current source | Enforcement |
 |---|---|---|---|
-| `preview/**` | `DEC-001`, `DEC-002`, `DEC-003`, `DEC-004`, `DEC-005`, `DEC-006` | `BLUEPRINT-ui-preview.md` | `tests/preview-s01.cjs`, `tests/preview-s02.cjs` |
-| `tests/**` | `DEC-001`, `DEC-002`, `DEC-005`, `DEC-006` | `BLUEPRINT-ui-preview.md` | browser isolation, UI interaction and original digest assertions |
+| `preview/**` | `DEC-001`, `DEC-002`, `DEC-003`, `DEC-004`, `DEC-005`, `DEC-008` | `BLUEPRINT-ui-preview.md` | `tests/preview-s01.cjs`, `tests/preview-a.cjs` |
+| `tests/**` | `DEC-001`, `DEC-002`, `DEC-005`, `DEC-008` | `BLUEPRINT-ui-preview.md` | browser isolation, UI interaction and original digest assertions |
 
 
 ## Decision Log
@@ -48,9 +65,11 @@ Detail first shows both dates, contact, weekly load, warnings and the save actio
 | DEC-004 | preview | Stage gate at each review; S01 approved by “โอเค เริ่มได้ครับ”; not an instruction to do all stages | ACTIVE |
 | DEC-005 | preview/tests | No embedded personal data; preserve regression baseline and test failure paths | ACTIVE |
 
-| DEC-006 | preview/tests | S02 presentation as §2; preserve every engine result and keep detailed evidence accessible | ACTIVE |
+| DEC-006 | preview/tests | S02 presentation as §2, now evidence of rejected direction | SUPERSEDED BY DEC-007 |
+| DEC-007 | preview/product context | Whole-flow discovery, completed by accepted SHAPE brief and set A authorization | SUPERSEDED BY DEC-008 |
+| DEC-008 | preview/tests | Accepted library direction and SHAPE flow; S02A implements only set A, candidate generation unchanged; explicit select/save uses existing proposed log entries, no new storage model | ACTIVE |
 
-Ledger fidelity: original D01–D05 migrated 5/5; current active constraints indexed 5/5. D05 planning-only state superseded by explicit S01 approval. Existing draft ledger remains historical routing only.
+Ledger fidelity: original D01–D05 migrated 5/5; current active constraints indexed 6/6. D05 planning-only state superseded by explicit S01 approval. Existing draft ledger remains historical routing only.
 
 ## Assumptions
 Pages branch publishing: verify via actual deployment in S01. Shared localStorage between root/preview only on same origin/profile: verify browser in S01. Future partial-day return policy remains deferred to S03; S01 leaves behavior unchanged.
