@@ -15,3 +15,11 @@
 - Original index.html has no changes. Copy does not auto-run or overwrite populated preview.
 - Truth receipt: build-only approval supersedes planning-only state; S01 moved ACTIVE → VERIFY; S02–S07 unchanged.
 - Checkpoint planned: build/ui-preview/S01. Live URL verification remains before user review.
+
+## PRG-003 — S01 delivered for user review (2026-11-11)
+- Product commit: a2b1168, pushed to main; stable checkpoint `build/ui-preview/S01` includes this delivery record.
+- Live preview HTTP 200, byte-identical to tested preview/index.html. Root HTTP 200, byte-identical to original index.html; SHA-256 02d2c5d59f376906f867d5320f468e8f1315fbcdefb0452e04934909cc69067f.
+- Browser opened deployed preview and visibly confirmed experimental banner, data-copy controls, old-site link, and scope note (S01 only). No real data submitted to website.
+- Current-truth review: root/legacy spec unchanged; S01 remains VERIFY until user trial; only active gate is “ผ่าน S01”; S02 not started.
+- Known limitations: direct copy requires same browser/profile and exact website origin; use backup restore if source was opened as file or on another device. S01 deliberately retains old layout and known calculation bugs for later stages.
+- Validation: control validate/doctor and stale-claim sweep passed with no blocking drift; managed files checked for personal data; unrelated audit documents remain untracked.

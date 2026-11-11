@@ -36,8 +36,8 @@
 ## STATE
 - Current stage: `S01`
 - Done: `(none)`
-- Open / next: `S01 local verification complete; publish and verify both live URLs.`
-- Active gate: `S01 deployment verification`
+- Open / next: `S01 deployed and verified; awaiting user trial before S02.`
+- Active gate: `ผ่าน S01`
 - Active history log: `history/BUILD-LOG-ui-preview-P01.md`
 - Last change: `none`
 
@@ -47,7 +47,7 @@
 - Branch: `main`
 - Approved-plan baseline: `7134bfb1b32b5c143589976ecfc50eb00df3f5f3`
 - Current checkpoint: `build/ui-preview/S01`
-- Working-tree state: `DIRTY — S01 implementation and control files; prior audit files remain untracked`
+- Working-tree state: `CLEAN`
 - Checkpoint rule: `scoped commit per delivered stage; no unrelated files`
 
 ## ACTIVE CONTRACT INDEX
