@@ -35,6 +35,8 @@
 | accepted-design-brief | `SHAPE-ui-overhaul.md` | user concept/brief decision | semantic |
 | legacy-product-contract | `BLUEPRINT-swap-html.md` | root changes (not authorized) | semantic |
 
+> **Superseded 2026-11-16 (CHG-002):** the user ordered a one-shot rebuild of the preview with full authority. Current truth is `PREVIEW-REBUILD.md`; everything below is the record of the staged S01–S02A build.
+
 ## STATE
 - Current stage: `S02A`
 - Done: `S01 (accepted by user 2026-11-11)`

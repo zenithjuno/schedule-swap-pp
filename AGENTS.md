@@ -1,6 +1,11 @@
 # Schedule Swap
 Root `index.html` is the stable application. Do not edit it during preview work. Private school data must never be committed or embedded in published HTML.
 
+## Preview (rebuilt 2026-11-16)
+- Read `docs/PREVIEW-REBUILD.md` first. `preview/js/core.js` is generated: change `tools/build-preview-core.cjs`, never the output.
+- Verify: `node tools/build-preview-core.cjs && node tests/preview-core.cjs && git diff --exit-code -- index.html`
+- The staged-build block below predates the rebuild; its stage gates and scope list are historical.
+
 <!-- grill-to-build:ui-preview:start -->
 ## Active staged build: ui-preview
 - Control file: `docs/BUILD-CONTROL-ui-preview.md`
