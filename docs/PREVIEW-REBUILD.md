@@ -1,19 +1,27 @@
+# Site layout (2026-11-16, final)
+| URL | Content |
+|---|---|
+| `/schedule-swap-pp/` | **The app** (this document) |
+| `/schedule-swap-pp/legacy/` | The previous single-file app, kept as-is with a banner; the logic core below is generated from it |
+| `/schedule-swap-pp/preview/` | Redirect stub to `/` (old bookmarks) |
+Both apps share one browser origin but different storage keys (`swapApp.preview.v1` for this app — the key name is kept so existing data stays — and `swapApp.v1` for legacy), so neither touches the other's data. The app's "copy from legacy" reads `swapApp.v1` read-only.
+
 # Preview rebuild — 2026-11-16 (CHG-002)
 
 The user asked for a one-shot rebuild of the preview's UI and structure with full
 authority, replacing the staged S01–S02A preview (its last version is in git
 history at `99921a9`). The stage gates in `BUILD-CONTROL-ui-preview.md` no longer
-describe the current preview. Root `index.html` and its storage are still untouched.
+describe the current preview. The old app was untouched during the rebuild.
 
 ## Structure
 | Path | What |
 |---|---|
-| `preview/index.html` | Shell only (~3 KB). Empty `embedded-data` island. |
-| `preview/css/app.css` | All screen + print styles. System Thai sans on screen; TH Sarabun New only for paper. |
-| `preview/js/core.js` | **Generated** by `tools/build-preview-core.cjs` — engine, ledger, store, import contract, leave model copied verbatim from root `index.html` by line range, plus the listed patches. Never edit by hand. |
-| `preview/js/base.js` | State, router, dialogs, shared timetable renderer, write-gates. |
-| `preview/js/plan.js` · `pick.js` · `records.js` · `docs.js` · `data.js` · `main.js` | Pages: จัดคาบที่ลา · หาคนแทน · รายการ + ตารางไปคุย · ตารางสอน + ใบขอแลกคาบ · ข้อมูล · boot. |
-| `preview/assets/` | Loaded only when needed: `xlsx.js` (import/templates), `selftest-fixture.js` (ตรวจสอบระบบ), fonts (paper). |
+| `index.html` | Shell only (~3 KB). Empty `embedded-data` island. |
+| `css/app.css` | All screen + print styles. System Thai sans on screen; TH Sarabun New only for paper. |
+| `js/core.js` | **Generated** by `tools/build-preview-core.cjs` — engine, ledger, store, import contract, leave model copied verbatim from root `index.html` by line range, plus the listed patches. Never edit by hand. |
+| `js/base.js` | State, router, dialogs, shared timetable renderer, write-gates. |
+| `js/plan.js` · `pick.js` · `records.js` · `docs.js` · `data.js` · `main.js` | Pages: จัดคาบที่ลา · หาคนแทน · รายการ + ตารางไปคุย · ตารางสอน + ใบขอแลกคาบ · ข้อมูล · boot. |
+| `assets/` | Loaded only when needed: `xlsx.js` (import/templates), `selftest-fixture.js` (ตรวจสอบระบบ), fonts (paper). |
 
 Page weight on first load: about 0.3 MB (was 2.6 MB in one file).
 
@@ -32,14 +40,14 @@ Page weight on first load: about 0.3 MB (was 2.6 MB in one file).
 - A give-back on the absence date is selectable only when a leave round says that period is not on leave; give-back dates outside the semester are not offered (F04).
 
 ## ใบขอแลกคาบ → PDF / DOCX (added 2026-11-16)
-`preview/js/formdoc.js` lays the พพ.1-1 form out from measurements of a real signed copy: one A4 page per leave day, crest, dotted leaders, all on one page. The same model feeds both writers, with no external library.
+`js/formdoc.js` lays the พพ.1-1 form out from measurements of a real signed copy: one A4 page per leave day, crest, dotted leaders, all on one page. The same model feeds both writers, with no external library.
 - **PDF**: each page is drawn on a canvas (the browser shapes Thai correctly) and stored as a full-page image at 220 dpi. Text in the PDF is therefore not selectable.
 - **DOCX**: real editable Word XML (TH Sarabun New, exact line spacing, Wingdings 2 tick boxes), zipped store-only.
 - Per-teacher fields (ตำแหน่ง, กลุ่มสาระ, signatories) live in `STORE.data.formProfiles`, the crest in `STORE.data.formLogo` — local store and backups only, never in the repo.
 - Checked by converting the DOCX with LibreOffice and rasterising both outputs. Not yet opened in Microsoft Word itself.
 
 ## Getting data in and out (reworked 2026-11-16)
-Real data never lives on the public site, so every browser needs one file once. `preview/js/data.js` now has a single entry point: drop or choose any file, anywhere on the page. The app classifies it, says what it is, and asks before changing anything.
+Real data never lives on the public site, so every browser needs one file once. `js/data.js` now has a single entry point: drop or choose any file, anywhere on the page. The app classifies it, says what it is, and asks before changing anything.
 | File | Recognised by | Effect |
 |---|---|---|
 | School data file `ข้อมูลตารางสอน_<ภาคเรียน>.json` | `kind:"swap-data-pack"` | New semester, or — if that semester already exists — replaces timetable + phones and keeps the user's swap records and leave rounds |
@@ -52,8 +60,7 @@ The school data file holds timetable + phones + settings only (no swap records),
 ```
 node tools/build-preview-core.cjs
 node tests/preview-core.cjs [private/swap_backup_….json]
-node private/test_ledger_suite.js preview/js/core.js
-git diff --exit-code -- index.html
-node tools/serve-preview.cjs      # http://127.0.0.1:8765/preview/
+node private/test_ledger_suite.js legacy/index.html
+node tools/serve-preview.cjs      # http://127.0.0.1:8765/  (old app: /legacy/)
 ```
 Not yet verified: printed/PDF pagination, Safari, and the GitHub Pages deployment.

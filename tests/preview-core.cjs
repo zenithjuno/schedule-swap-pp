@@ -1,8 +1,8 @@
-// Headless check of preview/js/core.js: oracle self-test, ledger suite, compact
+// Headless check of js/core.js: oracle self-test, ledger suite, compact
 // storage round-trip. Optional arg: a backup .json (private; never committed).
 //   node tests/preview-core.cjs [private/swap_backup_….json]
 const fs=require('fs'), path=require('path'), vm=require('vm');
-const P=path.join(__dirname,'..','preview');
+const P=path.join(__dirname,'..');
 const mem={};
 const ctx={console, Date, JSON, Math, setTimeout,
   localStorage:{getItem:k=>(k in mem?mem[k]:null), setItem:(k,v)=>{mem[k]=String(v);}, removeItem:k=>{delete mem[k];}},

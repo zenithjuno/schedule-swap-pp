@@ -26,7 +26,7 @@
       '<input id="intakeInput" type="file" multiple accept=".json,.xlsx,application/json" hidden data-chg="intake"></label>';
   };
   var ACCEPTS='<ul class="accepts"><li><b>ไฟล์ข้อมูลโรงเรียน</b> (.json) ที่ได้จากผู้ดูแล — ตารางสอนและเบอร์ติดต่อ</li>'+
-    '<li><b>ไฟล์สำรองของฉัน</b> (.json) — ย้ายงานมาจากเครื่องอื่นหรือจากเว็บเดิม</li>'+
+    '<li><b>ไฟล์สำรองของฉัน</b> (.json) — ย้ายงานมาจากเครื่องอื่นหรือจากเว็บเดิม (legacy)</li>'+
     '<li><b>ไฟล์ Excel</b> ตารางสอนหรือเบอร์ติดต่อ (.xlsx) — สำหรับผู้ดูแลที่เตรียมภาคเรียนใหม่</li></ul>';
   A.chgs.intake=function(el){ var f=[].slice.call(el.files||[]); el.value=''; A.intake(f); };
 
@@ -247,13 +247,13 @@
   };
   A.acts.copyOld=function(){
     function run(){
-      var obj; try{ obj=JSON.parse(localStorage.getItem(SOURCE_KEY)); }catch(e){ A.toast('อ่านข้อมูลของเว็บเดิมไม่สำเร็จ',{bad:true}); return; }
+      var obj; try{ obj=JSON.parse(localStorage.getItem(SOURCE_KEY)); }catch(e){ A.toast('อ่านข้อมูลของเว็บเดิม (legacy)ไม่สำเร็จ',{bad:true}); return; }
       var r=replaceStore(obj, function(){ STORE.data.previewCopy={copiedAt:new Date().toISOString(), sourceSemester:STORE.data.activeSemester}; STORE.data.lastBackupAt=null; STORE.data.approvedSinceBackup=0; });
       if(!r.ok){ A.toast('คัดลอกไม่สำเร็จ: '+r.error,{bad:true}); return; }
-      A.toast('คัดลอกข้อมูลจากเว็บเดิมแล้ว'); if(A.route.name==='plan') A.rerender(); else A.go('#plan');
+      A.toast('คัดลอกข้อมูลจากเว็บเดิม (legacy)แล้ว'); if(A.route.name==='plan') A.rerender(); else A.go('#plan');
     }
     if(!hasData()) run();
-    else A.ask({title:'คัดลอกทับข้อมูลในเครื่องนี้?', body:'<p>ตาราง รายการแลกคาบ และรอบการลาในรุ่นทดลองจะถูกแทนที่ด้วยสำเนาจากเว็บเดิม เว็บเดิมไม่ถูกแก้ไข</p>', ok:'คัดลอกทับ', danger:true}).then(function(y){ if(y) run(); });
+    else A.ask({title:'คัดลอกทับข้อมูลในเครื่องนี้?', body:'<p>ตาราง รายการแลกคาบ และรอบการลาในเว็บนี้จะถูกแทนที่ด้วยสำเนาจากเว็บเดิม (legacy) เว็บเดิมไม่ถูกแก้ไข</p>', ok:'คัดลอกทับ', danger:true}).then(function(y){ if(y) run(); });
   };
   function oldSiteInfo(){
     var raw=null; try{ raw=localStorage.getItem(SOURCE_KEY); }catch(_){}
@@ -264,7 +264,7 @@
   }
   A.oldSiteHTML=function(){
     var o=oldSiteInfo(); if(!o) return '';
-    return '<div class="oldsite"><div><b>พบข้อมูลของเว็บเดิมในเบราว์เซอร์นี้</b><span class="muted"> ภาคเรียน '+h(o.active||'—')+' · รายการแลกคาบ '+o.logs+' รายการ</span></div>'+
+    return '<div class="oldsite"><div><b>พบข้อมูลของเว็บเดิม (legacy)ในเบราว์เซอร์นี้</b><span class="muted"> ภาคเรียน '+h(o.active||'—')+' · รายการแลกคาบ '+o.logs+' รายการ</span></div>'+
       '<button class="btn btn-sm" data-act="copyOld">'+icon('down')+'คัดลอกมาใช้</button></div>';
   };
 
@@ -282,7 +282,7 @@
       '<div><dt>พื้นที่ที่ใช้</dt><dd>'+S.storageUsedMB().toFixed(2)+' MB</dd></div></dl>'+
       (labels.length>1?'<label class="fld inline"><span>สลับภาคเรียน</span><select class="sel" data-chg="semSwitch">'+labels.map(function(l){
         var ro=STORE.data.semesters[l].meta.archived; return '<option value="'+h(l)+'"'+(l===STORE.data.activeSemester?' selected':'')+'>'+h(l+(ro?' (เก็บไว้ อ่านอย่างเดียว)':' (ใช้งาน)'))+'</option>'; }).join('')+'</select></label>':'')+
-      (cp?'<p class="hint">คัดลอกจากเว็บเดิมเมื่อ '+h(new Date(cp.copiedAt).toLocaleString('th-TH'))+' — หลังจากนั้นข้อมูลสองฝั่งแยกกัน</p>':'')+'</section>';
+      (cp?'<p class="hint">คัดลอกจากเว็บเดิม (legacy)เมื่อ '+h(new Date(cp.copiedAt).toLocaleString('th-TH'))+' — หลังจากนั้นข้อมูลสองฝั่งแยกกัน</p>':'')+'</section>';
   }
   function secIn(){
     return '<section class="card" id="sec-in"><h2 class="card-h">'+(hasData()?'นำข้อมูลเข้า':'เริ่มใช้งาน')+'</h2>'+A.intakeHTML(!hasData())+
@@ -351,7 +351,7 @@
   }
   A.pages.data={
     render:function(){
-      return '<header class="page-head"><div><h1>ข้อมูล</h1><p>นำข้อมูลเข้า ส่งออก และตั้งค่า — ข้อมูลของรุ่นทดลองแยกจากเว็บเดิม</p></div></header>'+
+      return '<header class="page-head"><div><h1>ข้อมูล</h1><p>นำข้อมูลเข้า ส่งออก และตั้งค่า — ข้อมูลของเว็บนี้แยกจากเว็บเดิม (legacy)</p></div></header>'+
         (STORE.loadError?'<div class="banner bad">'+icon('warn')+'<div><b>อ่านข้อมูลเดิมในเครื่องไม่สำเร็จ</b><p>'+h(STORE.loadError)+'</p><p>โปรแกรมจะไม่บันทึกทับข้อมูลเดิม — ใช้ “ล้างทั้งหมด” ในเครื่องมืออื่น แล้วนำไฟล์สำรองมาวางใหม่</p></div></div>':'')+
         '<div class="data-grid"><div>'+secSemester()+secIn()+secOut()+secPrep()+'</div><div>'+secSettings()+secAdmin()+secGuide()+'</div></div>';
     },
@@ -389,7 +389,7 @@
         var pre=first?'<script>'+inlineJS(parts.__xlsx)+'</script>\n':''; first=false;
         return pre+'<script>'+inlineJS(parts[s])+'</script>'; });
       html=html.replace(/(<script type="application\/json" id="embedded-data">)[\s\S]*?(<\/script>)/, function(_, a1, a2){ return a1+json+a2; });
-      A.download(new Blob([html],{type:'text/html;charset=utf-8'}), 'แลกคาบ-รุ่นทดลอง_'+String(a.meta.label||'semester').replace(/[\/\\]/g,'-')+'_พร้อมใช้.html');
+      A.download(new Blob([html],{type:'text/html;charset=utf-8'}), 'แลกคาบ_'+String(a.meta.label||'semester').replace(/[\/\\]/g,'-')+'_พร้อมใช้.html');
       say('backup','สร้างไฟล์พร้อมใช้แล้ว ('+(html.length/1048576).toFixed(1)+' MB · ไม่รวมรายการแลกคาบ)'); A.rerender();
     }).catch(function(){
       say('backup','สร้างไฟล์พร้อมใช้ไม่สำเร็จ — ต้องเปิดโปรแกรมผ่านที่อยู่เว็บ (https) จึงจะรวมไฟล์ประกอบได้',true); A.rerender();
@@ -441,7 +441,7 @@
   };
   A.acts.clearAll=function(){
     if((document.getElementById('clrAll').value||'').trim()!=='ล้าง'){ A.toast('พิมพ์คำว่า “ล้าง” ในช่องก่อน',{bad:true}); return; }
-    A.ask({title:'ล้างข้อมูลทั้งหมดในรุ่นทดลอง?', body:'<p>ตารางสอน รายการแลกคาบ รอบการลา และภาคเรียนที่เก็บไว้จะถูกลบ เบอร์ติดต่อและการตั้งค่ายังอยู่ เว็บเดิมไม่ถูกแตะ</p>', ok:'ล้างทั้งหมด', danger:true}).then(function(y){
+    A.ask({title:'ล้างข้อมูลทั้งหมดในเว็บนี้?', body:'<p>ตารางสอน รายการแลกคาบ รอบการลา และภาคเรียนที่เก็บไว้จะถูกลบ เบอร์ติดต่อและการตั้งค่ายังอยู่ เว็บเดิมไม่ถูกแตะ</p>', ok:'ล้างทั้งหมด', danger:true}).then(function(y){
       if(!y) return; STORE.loadError=null; STORE.clearAllData(); location.hash='#plan'; location.reload(); });
   };
 

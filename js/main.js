@@ -18,7 +18,7 @@
       ? '<span class="sem">ภาคเรียน '+h(sem.meta.label)+(sem.meta.archived?' <i>อ่านอย่างเดียว</i>':'')+'</span>'+
         '<span class="'+((ds==null||ds>30)?'stale':'')+'">สำรองล่าสุด: '+(ds==null?'ยังไม่เคย':(ds===0?'วันนี้':ds+' วันที่แล้ว'))+'</span>'
       : '<span class="sem">ยังไม่มีข้อมูล</span>')+
-      '<a href="../">เปิดเว็บเดิม ↗</a>';
+      '<a href="legacy/">เว็บเดิม (legacy) ↗</a>';
     var ro=document.getElementById('roBar');
     ro.hidden=!(sem && sem.meta && sem.meta.archived);
     if(!ro.hidden) ro.innerHTML='กำลังดูภาคเรียน '+h(sem.meta.label)+' ที่เก็บไว้ (อ่านอย่างเดียว) — <a href="#data/sem">สลับกลับภาคเรียนปัจจุบัน</a>เพื่อบันทึกหรือแก้ไข';

@@ -2,7 +2,8 @@
 
 เครื่องมือช่วยครูหา "คู่สลับคาบ" เวลาต้องลา — ป้อนว่าจะลาวันไหน คาบไหน แล้วโปรแกรมจะจัดอันดับครูที่สลับคาบด้วยได้ พร้อมคะแนนความเหมาะสม เบอร์ติดต่อ วันคืนคาบ และพิมพ์ใบแลกคาบให้เสร็จ
 
-**เปิดใช้งาน → https://zenithjuno.github.io/schedule-swap-pp/**
+**เปิดใช้งาน → https://zenithjuno.github.io/schedule-swap-pp/**  
+เว็บเวอร์ชันเก่า (legacy) → https://zenithjuno.github.io/schedule-swap-pp/legacy/
 
 ---
 

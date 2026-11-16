@@ -1,4 +1,4 @@
-/* แลกคาบ — รุ่นทดลอง. Screen UI uses the system Thai sans; TH Sarabun New is
+/* แลกคาบ. Screen UI uses the system Thai sans; TH Sarabun New is
    reserved for printed documents and is only downloaded when a paper is shown. */
 @font-face{font-family:'TH Sarabun New';font-weight:400;font-display:swap;src:url(../assets/sarabun-400.woff2) format('woff2')}
 @font-face{font-family:'TH Sarabun New';font-weight:700;font-display:swap;src:url(../assets/sarabun-700.woff2) format('woff2')}
