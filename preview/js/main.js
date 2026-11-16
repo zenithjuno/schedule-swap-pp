@@ -8,6 +8,10 @@
   A.renderShell=function(){
     var sem=A.sem(), box=document.getElementById('sideFoot'), ds=S.daysSince(STORE.data.lastBackupAt), n=A.route.name;
     if(n!=='pick') document.body.classList.remove('det-open');
+    // the form prints full-bleed page images; everything else keeps the normal margins
+    var ps=document.getElementById('pageStyle');
+    if(n==='form' && !ps){ ps=document.createElement('style'); ps.id='pageStyle'; ps.textContent='@media print{@page{size:A4;margin:0}}'; document.head.appendChild(ps); }
+    else if(n!=='form' && ps) ps.remove();
     if(n!=='form' && n!=='timetable') document.title=TITLE;
     document.body.classList.toggle('is-archived', !!(sem && sem.meta && sem.meta.archived));
     box.innerHTML=(sem

@@ -31,6 +31,13 @@ Page weight on first load: about 0.3 MB (was 2.6 MB in one file).
 - “สอนแทน ไม่ต้องคืน” search: any teacher free in that slot, same `free()` rule and ledger (F07).
 - A give-back on the absence date is selectable only when a leave round says that period is not on leave; give-back dates outside the semester are not offered (F04).
 
+## ใบขอแลกคาบ → PDF / DOCX (added 2026-11-16)
+`preview/js/formdoc.js` lays the พพ.1-1 form out from measurements of a real signed copy: one A4 page per leave day, crest, dotted leaders, all on one page. The same model feeds both writers, with no external library.
+- **PDF**: each page is drawn on a canvas (the browser shapes Thai correctly) and stored as a full-page image at 220 dpi. Text in the PDF is therefore not selectable.
+- **DOCX**: real editable Word XML (TH Sarabun New, exact line spacing, Wingdings 2 tick boxes), zipped store-only.
+- Per-teacher fields (ตำแหน่ง, กลุ่มสาระ, signatories) live in `STORE.data.formProfiles`, the crest in `STORE.data.formLogo` — local store and backups only, never in the repo.
+- Checked by converting the DOCX with LibreOffice and rasterising both outputs. Not yet opened in Microsoft Word itself.
+
 ## Verify
 ```
 node tools/build-preview-core.cjs
