@@ -1,79 +1,309 @@
-/* หน้า “ข้อมูลและตั้งค่า” — semester data, phones, backup/restore, the copy
-   from the stable site, ranking settings, admin tools and the short guide. */
+/* หน้า “ข้อมูล” and the single way data gets into the app.
+   ONE entry point: drop (or choose) any file, anywhere. The app works out what
+   it is — school data file, personal backup, timetable .xlsx, phone .xlsx — says
+   so in plain words, and asks before changing anything.
+   Two things go out: the school data file (for other teachers; no swap
+   records) and the personal backup (everything; for moving machines). */
 (function(){
   'use strict';
   var A=window.APP, S=A.S, STORE=A.STORE, h=A.h, ui=A.ui, icon=A.icon;
-  var SOURCE_KEY='swapApp.v1';
-  var imp=null, flash={};      // staged import; one-shot result messages per section
+  var SOURCE_KEY='swapApp.v1', PACK_KIND='swap-data-pack';
+  var imp=null, flash={};
   function advOpen(){ try{ return localStorage.getItem('swap_preview_adv_view')==='1'; }catch(_){ return false; } }
   function afterDataChange(){ A.invalidate(); ui.roundId=null; ui.date=null; if(ui.meId && !A.teacher(ui.meId)) ui.meId=null; }
   function deriveAll(){ for(var l in STORE.data.semesters){ var s=STORE.data.semesters[l]; if(s && s.schedule) S.deriveRows(s.schedule, STORE.data.settings); } }
   A.deriveMissing=function(){ for(var l in STORE.data.semesters) S.ensureSemesterDerived(STORE.data.semesters[l], STORE.data.settings); };
   function note(k){ var m=flash[k]; delete flash[k]; return m?'<p class="'+(m.bad?'err':'okline')+'">'+(m.bad?'':icon('check'))+m.html+'</p>':''; }
   function say(k, html, bad){ flash[k]={html:html, bad:!!bad}; }
-  function count(sem){ var t={}; sem.schedule.forEach(function(d){ t[d.teacher_id]=1; }); return Object.keys(t).length; }
+  function teacherCount(rows){ var t={}; rows.forEach(function(d){ t[d.teacher_id]=1; }); return Object.keys(t).length; }
+  function hasData(){ return Object.keys(STORE.data.semesters||{}).length>0; }
+  function fileTag(label){ return String(label||'').replace(/[\/\\]/g,'-'); }
 
-  /* ---------- sections ---------- */
-  function secSemester(){
-    var sem=A.sem(), labels=STORE.semesterLabels(), out='<section class="card" id="sec-sem"><h2 class="card-h">ภาคเรียน</h2>';
-    if(!sem) return out+'<p class="empty">ยังไม่มีข้อมูลในรุ่นทดลองนี้ — เลือกวิธีเริ่มด้านล่าง</p></section>';
-    var mb=S.storageUsedMB(), cp=STORE.data.previewCopy;
-    out+='<dl class="stats"><div><dt>ภาคเรียนที่ใช้งาน</dt><dd>'+h(sem.meta.label)+(sem.meta.archived?' <span class="tag warn">อ่านอย่างเดียว</span>':'')+'</dd></div>'+
-      '<div><dt>ช่วงเวลา</dt><dd>'+h(S.thaiDate(sem.meta.startDate))+' – '+h(S.thaiDate(sem.meta.endDate))+'</dd></div>'+
-      '<div><dt>ครู</dt><dd>'+count(sem)+' คน</dd></div><div><dt>คาบในตาราง</dt><dd>'+sem.schedule.length.toLocaleString()+' แถว</dd></div>'+
-      '<div><dt>รายการแลกคาบ</dt><dd>'+(sem.log||[]).length+' รายการ</dd></div><div><dt>รอบการลา</dt><dd>'+(sem.leaves||[]).length+' รอบ</dd></div>'+
-      '<div><dt>พื้นที่ที่ใช้ในเครื่อง</dt><dd>'+mb.toFixed(2)+' MB <span class="muted">(เก็บแบบย่อ)</span></dd></div></dl>';
-    if(labels.length>1) out+='<label class="fld inline"><span>สลับภาคเรียน</span><select class="sel" data-chg="semSwitch">'+labels.map(function(l){
-      var ro=STORE.data.semesters[l].meta.archived; return '<option value="'+h(l)+'"'+(l===STORE.data.activeSemester?' selected':'')+'>'+h(l+(ro?' (เก็บไว้ อ่านอย่างเดียว)':' (ใช้งาน)'))+'</option>'; }).join('')+'</select></label>';
-    if(cp) out+='<p class="hint">คัดลอกจากเว็บเดิมเมื่อ '+h(new Date(cp.copiedAt).toLocaleString('th-TH'))+' (ภาคเรียน '+h(cp.sourceSemester||'—')+') — หลังจากนั้นข้อมูลสองฝั่งแยกกัน ไม่ซิงก์ถึงกัน</p>';
-    return out+note('sem')+'</section>';
+  /* ───────── the drop zone (used on the first-run screen and the data page) ───────── */
+  A.intakeHTML=function(big){
+    return '<label class="drop'+(big?' big':'')+'" for="intakeInput">'+icon('up')+
+      '<b>ลากไฟล์มาวางที่นี่</b><span>หรือกดเพื่อเลือกไฟล์ — วางตรงไหนของหน้าเว็บก็ได้</span>'+
+      '<input id="intakeInput" type="file" multiple accept=".json,.xlsx,application/json" hidden data-chg="intake"></label>';
+  };
+  var ACCEPTS='<ul class="accepts"><li><b>ไฟล์ข้อมูลโรงเรียน</b> (.json) ที่ได้จากผู้ดูแล — ตารางสอนและเบอร์ติดต่อ</li>'+
+    '<li><b>ไฟล์สำรองของฉัน</b> (.json) — ย้ายงานมาจากเครื่องอื่นหรือจากเว็บเดิม</li>'+
+    '<li><b>ไฟล์ Excel</b> ตารางสอนหรือเบอร์ติดต่อ (.xlsx) — สำหรับผู้ดูแลที่เตรียมภาคเรียนใหม่</li></ul>';
+  A.chgs.intake=function(el){ var f=[].slice.call(el.files||[]); el.value=''; A.intake(f); };
+
+  // whole-window drag & drop
+  var veil=null, depth=0;
+  function isFiles(ev){ var t=ev.dataTransfer&&ev.dataTransfer.types; if(!t) return false; for(var i=0;i<t.length;i++) if(t[i]==='Files') return true; return false; }
+  function showVeil(on){
+    if(on && !veil){ veil=document.createElement('div'); veil.className='veil'; veil.innerHTML='<div>'+icon('up')+'<b>ปล่อยไฟล์เพื่อนำเข้า</b><span>ไฟล์ข้อมูลโรงเรียน · ไฟล์สำรอง · Excel ตารางสอน/เบอร์ติดต่อ</span></div>'; document.body.appendChild(veil); }
+    if(veil) veil.hidden=!on;
   }
-  function sourceSummary(){
+  window.addEventListener('dragenter', function(ev){ if(!isFiles(ev)) return; depth++; showVeil(true); });
+  window.addEventListener('dragleave', function(ev){ if(!isFiles(ev)) return; depth=Math.max(0,depth-1); if(!depth) showVeil(false); });
+  window.addEventListener('dragover', function(ev){ if(isFiles(ev)) ev.preventDefault(); });
+  window.addEventListener('drop', function(ev){ if(!isFiles(ev)) return; ev.preventDefault(); depth=0; showVeil(false); A.intake([].slice.call(ev.dataTransfer.files||[])); });
+
+  /* ───────── intake: classify → explain → confirm → apply ───────── */
+  function readText(f){ return new Promise(function(res, rej){ var r=new FileReader(); r.onload=function(){ res(r.result); }; r.onerror=function(){ rej(new Error('อ่านไฟล์ไม่ได้')); }; r.readAsText(f); }); }
+  function readBuf(f){ return new Promise(function(res, rej){ var r=new FileReader(); r.onload=function(){ res(r.result); }; r.onerror=function(){ rej(new Error('อ่านไฟล์ไม่ได้')); }; r.readAsArrayBuffer(f); }); }
+  function classify(f){
+    var name=f.name||'', low=name.toLowerCase();
+    if(/\.json$/.test(low) || f.type==='application/json') return readText(f).then(function(t){
+      var o; try{ o=JSON.parse(t); }catch(_){ return {kind:'bad', name:name, why:'ไฟล์ .json นี้เสียหายหรือไม่ใช่ไฟล์ของโปรแกรม'}; }
+      if(o && o.semester && typeof o.semester.packed==='string'){
+        try{ o.semester.rows=S.CODEC.decode(o.semester.packed).semesters.x.schedule; delete o.semester.packed; }
+        catch(_){ return {kind:'bad', name:name, why:'ไฟล์ข้อมูลโรงเรียนนี้เสียหาย — ขอไฟล์ใหม่จากผู้ดูแล'}; } }
+      if(o && (o.kind===PACK_KIND || (o.semester && Array.isArray(o.semester.rows)))) return {kind:'pack', name:name, obj:o};
+      if(o && o.schemaVersion && o.semesters) return {kind:'backup', name:name, obj:o};
+      if(o && o.meta && Array.isArray(o.schedule)) return {kind:'bundle', name:name, obj:o};
+      return {kind:'bad', name:name, why:'ไฟล์ .json นี้ไม่ใช่ไฟล์ข้อมูลโรงเรียนหรือไฟล์สำรองของโปรแกรม'};
+    });
+    if(/\.xlsx$/.test(low)) return Promise.all([readBuf(f), A.needXLSX()]).then(function(r){
+      var wb=XLSX.read(r[0], {type:'array'});
+      if(wb.SheetNames.indexOf('VERIFIED_DATA')!==-1) return {kind:'schedule', name:name, buf:r[0]};
+      for(var i=0;i<wb.SheetNames.length;i++){ var rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[i]], {header:1, raw:false, defval:''});
+        if(rows.length && /teacher_id/i.test(String(rows[0][0]||'')) && rows[0].map(function(x){ return String(x).trim(); }).indexOf('phone')!==-1) return {kind:'phones', name:name, buf:r[0]}; }
+      return {kind:'bad', name:name, why:'ไฟล์ Excel นี้ไม่มีชีต VERIFIED_DATA (ตารางสอน) และไม่ใช่ไฟล์เบอร์ติดต่อ (teacher_id | phone)'};
+    }, function(e){ return {kind:'bad', name:name, why:'เปิดไฟล์ Excel ไม่ได้ ('+(e&&e.message||e)+')'}; });
+    return Promise.resolve({kind:'bad', name:name, why:'รับเฉพาะไฟล์ .json และ .xlsx'});
+  }
+  // a dialog step that resolves only after the dialog has really closed
+  function step(html, cls, mount){
+    return new Promise(function(res){ var val=null, d=A.dialog(html, {cls:cls||'', onClose:function(){ res(val); }});
+      mount(d, function(v){ val=v; A.closeDialog(); }); });
+  }
+  function fileLine(name){ return '<p class="fname">'+icon('doc')+h(name)+'</p>'; }
+  function okCancel(okLabel, danger){ return '<p class="err" id="stMsg" hidden></p><div class="dlg-acts"><button class="btn" data-act="dlgClose">ยกเลิก</button><button class="btn '+(danger?'btn-danger':'btn-primary')+'" id="stOk" autofocus>'+h(okLabel)+'</button></div>'; }
+
+  A.intake=function(files){
+    if(!files || !files.length) return;
+    if(STORE.loadError){ A.tell('ยังนำเข้าไม่ได้', '<p>อ่านข้อมูลเดิมในเครื่องไม่สำเร็จ โปรแกรมจึงไม่บันทึกทับ — ไปที่หน้า “ข้อมูล” เพื่อดูรายละเอียด</p>'); return; }
+    A.toast('กำลังอ่านไฟล์…');
+    Promise.all(files.map(classify)).then(function(items){
+      var done=[], order={backup:0, bundle:1, pack:2, schedule:3, phones:4, bad:5}, changed=false;
+      items.sort(function(a,b){ return order[a.kind]-order[b.kind]; });
+      var chain=Promise.resolve();
+      items.forEach(function(it){ chain=chain.then(function(){ return FLOW[it.kind](it); }).then(function(msg){ if(msg){ done.push(msg); changed=true; } }); });
+      return chain.then(function(){
+        if(done.length){ A.toast(done.join(' · ')); if(A.route.name==='plan' || A.route.name==='data') A.rerender(); else A.go('#plan'); }
+        else A.rerender();
+      });
+    }).catch(function(e){ A.toast('นำเข้าไม่สำเร็จ: '+(e&&e.message||e), {bad:true}); });
+  };
+
+  function replaceStore(obj, stamp){
+    var prev=STORE.data, prevErr=STORE.loadError; STORE.loadError=null;
+    var r=STORE.restoreFromObject(obj);
+    if(r.ok && stamp){ stamp(); var r2=STORE.save(); if(!r2.ok) r=r2; }
+    if(!r.ok){ STORE.data=prev; STORE.loadError=prevErr; return r; }
+    afterDataChange(); return r;
+  }
+  function packRowsOK(rows){
+    for(var i=0;i<rows.length;i++){ var r=rows[i];
+      if(!r || !/^\d{4}$/.test(String(r.teacher_id)) || S.DAYS.indexOf(r.day)<0 || !/^[1-9]$/.test(String(r.period)) || typeof r.status!=='string') return false; }
+    return rows.length>0;
+  }
+  function installPack(pay, name){
+    var s=pay.semester, label=String(s.label||'').trim(), first=!hasData();
+    var rows=s.rows.map(function(d){ var o={}; for(var k in d) o[k]=d[k]; return o; });
+    if(STORE.semesterExists(label)){
+      var sem=STORE.data.semesters[label], keep={sch:sem.schedule, st:sem.meta.startDate, en:sem.meta.endDate, src:sem.meta.sourceFilename};
+      S.deriveRows(rows, STORE.data.settings);
+      sem.schedule=rows; sem.meta.startDate=s.startDate||keep.st; sem.meta.endDate=s.endDate||keep.en; sem.meta.sourceFilename=s.sourceFilename||name;
+      var r=STORE.save();
+      if(!r.ok){ sem.schedule=keep.sch; sem.meta.startDate=keep.st; sem.meta.endDate=keep.en; sem.meta.sourceFilename=keep.src; return r; }
+    } else {
+      var res=STORE.commitSemester(label, s.startDate, s.endDate, s.sourceFilename||name, rows);
+      if(!res.ok) return res;
+    }
+    if(pay.phones && Object.keys(pay.phones).length){ var pb=S.phonebook(); pb.map=pay.phones; pb.lastImportedAt=pay.createdAt||new Date().toISOString(); pb.sourceFilename=name; }
+    if(first && pay.settings){ for(var k in pay.settings) if(Object.prototype.hasOwnProperty.call(STORE.data.settings,k)) STORE.data.settings[k]=pay.settings[k]; deriveAll(); }
+    STORE.save(); afterDataChange();
+    return {ok:true};
+  }
+  var FLOW={
+    bad:function(it){ return step('<h2 class="dlg-h">ไฟล์นี้ใช้ไม่ได้</h2>'+fileLine(it.name)+'<p>'+h(it.why)+'</p><p class="muted">ไฟล์ที่รับได้:</p>'+ACCEPTS+
+      '<div class="dlg-acts"><button class="btn btn-primary" data-act="dlgClose" autofocus>รับทราบ</button></div>', 'dlg-sm', function(){}).then(function(){ return null; }); },
+    pack:function(it){
+      var p=it.obj, s=p.semester||{}, rows=s.rows||[], label=String(s.label||'').trim();
+      if(!label || !packRowsOK(rows)) return FLOW.bad({name:it.name, why:'ไฟล์ข้อมูลโรงเรียนนี้ไม่ครบหรือเสียหาย — ขอไฟล์ใหม่จากผู้ดูแล'});
+      var exists=STORE.semesterExists(label), act=A.sem(), nPh=Object.keys(p.phones||{}).length;
+      var effect = exists ? 'ในเครื่องนี้มีภาคเรียน '+h(label)+' อยู่แล้ว — จะ<b>อัปเดตตารางสอนและเบอร์ติดต่อ</b> โดยเก็บรายการแลกคาบและรอบการลาของคุณไว้ครบ'
+        : (act ? 'จะเพิ่มเป็นภาคเรียนที่ใช้งาน ภาคเรียน '+h(act.meta.label)+' เดิมจะถูกเก็บไว้ดูย้อนหลังแบบอ่านอย่างเดียว' : 'จะเริ่มใช้งานด้วยข้อมูลชุดนี้');
+      return step('<h2 class="dlg-h">ไฟล์ข้อมูลโรงเรียน</h2>'+fileLine(it.name)+
+        '<dl class="stats"><div><dt>ภาคเรียน</dt><dd>'+h(label)+'</dd></div><div><dt>ช่วงเวลา</dt><dd>'+h(S.thaiDate(s.startDate))+' – '+h(S.thaiDate(s.endDate))+'</dd></div>'+
+        '<div><dt>ครู</dt><dd>'+teacherCount(rows)+' คน</dd></div><div><dt>เบอร์ติดต่อ</dt><dd>'+nPh+' เบอร์</dd></div>'+(p.createdAt?'<div><dt>สร้างเมื่อ</dt><dd>'+h(S.thaiDate(String(p.createdAt).slice(0,10)))+'</dd></div>':'')+'</dl>'+
+        '<p>'+effect+'</p>'+okCancel(exists?'อัปเดตข้อมูล':'ใช้ข้อมูลนี้'), '', function(d, finish){
+          d.querySelector('#stOk').onclick=function(){ var r=installPack(p, it.name);
+            if(!r.ok){ var m=d.querySelector('#stMsg'); m.hidden=false; m.textContent='ไม่สำเร็จ: '+r.error; return; }
+            finish((exists?'อัปเดต':'ใช้')+'ข้อมูลภาคเรียน '+label+' แล้ว'); };
+        });
+    },
+    backup:function(it){
+      var o=it.obj, labels=Object.keys(o.semesters||{}), logs=0, leaves=0;
+      labels.forEach(function(l){ var s=o.semesters[l]||{}; logs+=(s.log||[]).length; leaves+=(s.leaves||[]).length; });
+      var mine=hasData();
+      return step('<h2 class="dlg-h">ไฟล์สำรองของฉัน</h2>'+fileLine(it.name)+
+        '<dl class="stats"><div><dt>ภาคเรียน</dt><dd>'+h(labels.join(', ')||'—')+'</dd></div><div><dt>รายการแลกคาบ</dt><dd>'+logs+'</dd></div><div><dt>รอบการลา</dt><dd>'+leaves+'</dd></div>'+
+        '<div><dt>เบอร์ติดต่อ</dt><dd>'+Object.keys((o.phonebook&&o.phonebook.map)||{}).length+'</dd></div></dl>'+
+        (mine?'<div class="banner warn">'+icon('warn')+'<div><b>ข้อมูลทั้งหมดในเครื่องนี้จะถูกแทนที่</b> ด้วยข้อมูลในไฟล์ — ถ้ามีงานที่ยังไม่ได้สำรอง ให้ยกเลิกแล้วสำรองก่อน</div></div>':'<p>จะนำข้อมูลทั้งหมดในไฟล์มาใช้ในเครื่องนี้</p>')+
+        okCancel(mine?'แทนที่ด้วยไฟล์นี้':'กู้คืน', mine), '', function(d, finish){
+          d.querySelector('#stOk').onclick=function(){ var r=replaceStore(o);
+            if(!r.ok){ var m=d.querySelector('#stMsg'); m.hidden=false; m.textContent='ไม่สำเร็จ: '+r.error+' — ข้อมูลเดิมไม่ถูกแก้ไข'; return; }
+            finish('กู้คืนจากไฟล์สำรองแล้ว'); };
+        });
+    },
+    bundle:function(it){
+      var o=it.obj, label=(o.meta&&o.meta.label)||'';
+      return step('<h2 class="dlg-h">ภาคเรียนที่เก็บไว้</h2>'+fileLine(it.name)+'<p>ไฟล์นี้คือภาคเรียน <b>'+h(label)+'</b> ที่ส่งออกไว้ จะถูกเพิ่มกลับเข้ามาเป็นภาคเรียนสำหรับดูย้อนหลัง (อ่านอย่างเดียว)</p>'+okCancel('เพิ่มภาคเรียนนี้'), 'dlg-sm', function(d, finish){
+        d.querySelector('#stOk').onclick=function(){ var r=replaceStore(o);
+          if(!r.ok){ var m=d.querySelector('#stMsg'); m.hidden=false; m.textContent='ไม่สำเร็จ: '+r.error; return; } finish('เพิ่มภาคเรียน '+label+' แล้ว'); };
+      });
+    },
+    schedule:function(it){
+      try{
+        var read=S.readVerifiedSheet(it.buf), v=read.blocker?{ok:false, blocker:read.blocker}:S.validateBlockers(read.rows);
+        if(!v.ok) imp={fail:v.blocker.msg, fileName:it.name};
+        else { var work=v.rows.map(function(d){ var o={}; for(var k in d) o[k]=d[k]; return o; }), changed=S.reparseSomserm(work), act=A.sem();
+          imp={rows:work, changed:changed, warnings:S.scanWarnings(work, act&&act.schedule?act.schedule.length:null), fileName:it.name}; }
+      }catch(err){ imp={fail:'อ่านไฟล์ไม่สำเร็จ: '+(err&&err.message||err), fileName:it.name}; }
+      return step('<h2 class="dlg-h">ตารางสอนจาก Excel</h2>'+fileLine(it.name)+impReport(), 'dlg-wide', function(d, finish){
+        var ok=d.querySelector('#impOk'); if(!ok) return;
+        ok.onclick=function(){
+          var label=(d.querySelector('#semLabelInput').value||'').trim(), start=d.querySelector('#semStartInput').value, end=d.querySelector('#semEndInput').value, hint=d.querySelector('#semHint');
+          function bad(t){ hint.hidden=false; hint.textContent=t; }
+          if(!label) return bad('กรุณากรอกชื่อภาคเรียน');
+          if(!start || !end) return bad('กรุณากรอกวันเปิดและวันปิดภาคเรียน');
+          if(end<start) return bad('วันปิดต้องไม่มาก่อนวันเปิด');
+          if(STORE.semesterExists(label)) return bad('มีภาคเรียน “'+label+'” อยู่แล้ว — ใช้ชื่ออื่น');
+          var res=STORE.commitSemester(label, start, end, imp.fileName, imp.rows);
+          if(!res.ok) return bad('บันทึกไม่สำเร็จ: '+res.error);
+          imp=null; afterDataChange(); finish('บันทึกภาคเรียน '+label+' แล้ว');
+        };
+      }).then(function(msg){ imp=null; return msg; });
+    },
+    phones:function(it){
+      if(!A.sem()) return FLOW.bad({name:it.name, why:'ต้องมีตารางสอนในเครื่องก่อน จึงจะจับคู่เบอร์กับรหัสครูได้ — นำเข้าตารางสอนหรือไฟล์ข้อมูลโรงเรียนก่อน'});
+      if(A.readOnly()) return FLOW.bad({name:it.name, why:S.readOnlyText()});
+      var res; try{ res=S.parsePhoneWorkbook(it.buf); }catch(e){ res={ok:false, error:String(e&&e.message||e)}; }
+      if(!res.ok) return FLOW.bad({name:it.name, why:'นำเข้าเบอร์ไม่สำเร็จ: '+res.error});
+      var extra=(res.unknownIds.length?'<p class="muted">ข้ามรหัสครูที่ไม่อยู่ในตารางสอน '+res.unknownIds.length+' รายการ</p>':'')+
+        (res.badRows.length?'<p class="err">อ่านไม่ได้ '+res.badRows.length+' แถว: '+res.badRows.slice(0,6).map(function(b){ return 'แถว '+b.row; }).join(', ')+'</p>':'');
+      return step('<h2 class="dlg-h">เบอร์ติดต่อจาก Excel</h2>'+fileLine(it.name)+
+        '<dl class="stats"><div><dt>ครูที่มีเบอร์</dt><dd>'+res.total+' คน</dd></div>'+(res.teacherCount!=null?'<div><dt>ยังไม่มีเบอร์</dt><dd>'+(res.teacherCount-res.total)+' คน</dd></div>':'')+'</dl>'+extra+
+        '<p>จะใช้เบอร์ชุดนี้แทนเบอร์ติดต่อที่มีอยู่ในเครื่อง</p>'+okCancel('ใช้เบอร์ชุดนี้'), 'dlg-sm', function(d, finish){
+          d.querySelector('#stOk').onclick=function(){ var pb=S.phonebook(); pb.map=res.phones; pb.lastImportedAt=new Date().toISOString(); pb.sourceFilename=it.name; STORE.save(); finish('นำเข้าเบอร์ติดต่อ '+res.total+' เบอร์แล้ว'); };
+        });
+    }
+  };
+  function impReport(){
+    if(imp.fail) return '<div class="report bad"><b>ไฟล์ไม่ผ่าน — ไม่นำเข้าข้อมูลใด ๆ</b><p>'+h(imp.fail)+'</p><p class="hint">แก้ไขจุดที่แจ้งแล้วลากไฟล์มาใหม่ ข้อมูลเดิมไม่ถูกแก้ไข</p></div>'+
+      '<div class="dlg-acts"><button class="btn btn-primary" data-act="dlgClose" autofocus>รับทราบ</button></div>';
+    var rows=imp.rows, w=imp.warnings, c=S.statusCounts(rows), hard=(w.room.length||w.fourdig.length||w.subj.length||w.drift), act=A.sem();
+    function ws(title, items, render){
+      if(!items.length) return '';
+      return '<details><summary>'+h(title)+' ('+items.length+')</summary><ul class="rlist">'+items.slice(0,40).map(function(it){ return '<li><span class="rn">แถว '+it.row+'</span>'+render(it)+'</li>'; }).join('')+
+        (items.length>40?'<li class="muted">… และอีก '+(items.length-40)+' รายการ</li>':'')+'</ul></details>';
+    }
+    var guess=(imp.fileName.match(/(\d{4})[_\/-]?(\d)/)||[]);
+    var checks=ws('ข้อความไม่ตรงกับต้นฉบับ', w.recon, function(it){ return 'ได้ “'+h(it.subject+it.group+it.room)+'” แต่ต้นฉบับคือ “'+h(it.raw)+'”'; })+
+      ws('ห้องที่ไม่รู้จัก', w.room, function(it){ return 'ห้อง “'+h(it.room)+'”'; })+ws('ห้อง 4 หลักที่ไม่ขึ้นต้นด้วย 1', w.fourdig, function(it){ return 'ห้อง “'+h(it.room)+'”'; })+
+      ws('รหัสวิชาผิดรูปแบบ', w.subj, function(it){ return 'รหัสวิชา “'+h(it.subject)+'”'; })+
+      (imp.changed.length?'<details><summary>คาบซ่อมเสริมที่แปลงเป็นคาบสอน ('+imp.changed.length+')</summary><ul class="rlist">'+imp.changed.slice(0,60).map(function(ch){
+        return '<li><span class="rn">'+h(ch.before.teacher_id)+'</span>'+h(ch.before.day)+' คาบ '+h(ch.before.period)+': <code>'+h(ch.before.raw)+'</code> → '+h(ch.after.group)+' ห้อง '+h(ch.after.room)+(ch.ambiguous?' <span class="tag warn">ตีความได้ 2 แบบ</span>':'')+'</li>'; }).join('')+'</ul></details>':'');
+    return '<div class="report '+(hard?'warn':'ok')+'"><b>'+(hard?'รูปแบบถูกต้อง แต่มีจุดที่ควรดูก่อนใช้':'รูปแบบถูกต้อง พร้อมใช้งาน')+'</b>'+
+      '<dl class="stats"><div><dt>ครู</dt><dd>'+teacherCount(rows)+' คน</dd></div><div><dt>แถว</dt><dd>'+rows.length.toLocaleString()+'</dd></div>'+
+      '<div><dt>คาบรวมห้อง</dt><dd>'+rows.filter(function(d){ return d.group.indexOf(',')!==-1; }).length+'</dd></div><div><dt>ซ่อมเสริม</dt><dd>'+imp.changed.length+'</dd></div>'+
+      '<div><dt>สถานะ</dt><dd class="sm">'+Object.keys(c).map(function(k){ return c[k]+' '+h(k); }).join(' · ')+'</dd></div></dl>'+
+      (w.drift?'<p class="err">จำนวนแถวต่างจากภาคเรียนก่อนมาก: '+w.drift.prev+' → '+w.drift.now+' ('+(w.drift.pct>0?'+':'')+w.drift.pct+'%)</p>':'')+checks+'</div>'+
+      '<h3 class="dlg-sub">ตั้งชื่อภาคเรียน</h3>'+
+      '<div class="row3"><label class="fld"><span>ชื่อภาคเรียน</span><input class="inp" id="semLabelInput" placeholder="เช่น 2570/1" value="'+h(guess[1]?guess[1]+'/'+guess[2]:'')+'" autocomplete="off"></label>'+
+      '<label class="fld"><span>วันเปิดภาคเรียน</span><input type="date" class="inp" id="semStartInput"></label>'+
+      '<label class="fld"><span>วันปิดภาคเรียน</span><input type="date" class="inp" id="semEndInput"></label></div>'+
+      (act?'<p class="hint">ภาคเรียน '+h(act.meta.label)+' ที่ใช้อยู่จะถูกเก็บไว้ดูย้อนหลังแบบอ่านอย่างเดียว</p>':'')+
+      '<p class="err" id="semHint" hidden></p>'+
+      '<div class="dlg-acts"><button class="btn" data-act="dlgClose">ยกเลิก</button><button class="btn btn-primary" id="impOk">บันทึกเป็นภาคเรียนนี้</button></div>';
+  }
+
+  /* ───────── what goes out ───────── */
+  A.acts.exportPack=function(){
+    var a=A.sem();
+    if(!a || !a.schedule || !a.schedule.length){ say('out','ยังไม่มีตารางสอนให้ส่งออก',true); A.rerender(); return; }
+    var pay={kind:PACK_KIND, version:1, createdAt:new Date().toISOString(),
+      semester:{label:a.meta.label, startDate:a.meta.startDate, endDate:a.meta.endDate, sourceFilename:a.meta.sourceFilename||'',
+        packed:S.CODEC.encode({semesters:{x:{schedule:a.schedule}}})},      // same lossless compact table the local store uses
+      phones:(STORE.data.phonebook&&STORE.data.phonebook.map)||{}, settings:STORE.data.settings};
+    A.download(new Blob([JSON.stringify(pay)],{type:'application/json'}), 'ข้อมูลตารางสอน_'+fileTag(a.meta.label)+'.json');
+    say('out','ดาวน์โหลดไฟล์ข้อมูลโรงเรียนแล้ว — ส่งไฟล์นี้ให้ครูคนอื่นทาง LINE หรือ Google Drive ได้เลย'); A.rerender();
+  };
+  A.acts.backup=function(){
+    if(!STORE.data.activeSemester){ say('out','ยังไม่มีข้อมูลให้สำรอง',true); A.rerender(); return; }
+    A.download(STORE.backupBlob(), 'swap_preview_backup_'+fileTag(STORE.data.activeSemester)+'_'+new Date().toISOString().slice(0,10)+'.json');
+    STORE.markBackedUp(); say('out','ดาวน์โหลดไฟล์สำรองแล้ว'); A.rerender();
+  };
+  A.chgs.semSwitch=function(el){
+    var r=STORE.setActiveSemester(el.value);
+    if(!r.ok) A.toast(r.error||'สลับภาคเรียนไม่สำเร็จ',{bad:true}); else { afterDataChange(); A.toast('สลับไปภาคเรียน '+el.value); }
+    A.rerender();
+  };
+  A.acts.copyOld=function(){
+    function run(){
+      var obj; try{ obj=JSON.parse(localStorage.getItem(SOURCE_KEY)); }catch(e){ A.toast('อ่านข้อมูลของเว็บเดิมไม่สำเร็จ',{bad:true}); return; }
+      var r=replaceStore(obj, function(){ STORE.data.previewCopy={copiedAt:new Date().toISOString(), sourceSemester:STORE.data.activeSemester}; STORE.data.lastBackupAt=null; STORE.data.approvedSinceBackup=0; });
+      if(!r.ok){ A.toast('คัดลอกไม่สำเร็จ: '+r.error,{bad:true}); return; }
+      A.toast('คัดลอกข้อมูลจากเว็บเดิมแล้ว'); if(A.route.name==='plan') A.rerender(); else A.go('#plan');
+    }
+    if(!hasData()) run();
+    else A.ask({title:'คัดลอกทับข้อมูลในเครื่องนี้?', body:'<p>ตาราง รายการแลกคาบ และรอบการลาในรุ่นทดลองจะถูกแทนที่ด้วยสำเนาจากเว็บเดิม เว็บเดิมไม่ถูกแก้ไข</p>', ok:'คัดลอกทับ', danger:true}).then(function(y){ if(y) run(); });
+  };
+  function oldSiteInfo(){
     var raw=null; try{ raw=localStorage.getItem(SOURCE_KEY); }catch(_){}
     if(!raw) return null;
-    try{
-      var d=JSON.parse(raw); if(!d || !d.semesters) return {error:'ข้อมูลของเว็บเดิมมีรูปแบบที่ไม่รู้จัก'};
-      var labels=Object.keys(d.semesters), rows=0, logs=0, leaves=0;
-      labels.forEach(function(l){ var s=d.semesters[l]; rows+=(s.schedule||[]).length; logs+=(s.log||[]).length; leaves+=(s.leaves||[]).length; });
-      return {raw:raw, active:d.activeSemester, labels:labels, rows:rows, logs:logs, leaves:leaves, phones:Object.keys((d.phonebook&&d.phonebook.map)||{}).length};
-    }catch(e){ return {error:'อ่านข้อมูลของเว็บเดิมไม่สำเร็จ ('+(e.message||e)+')'}; }
+    try{ var d=JSON.parse(raw); if(!d || !d.semesters || !Object.keys(d.semesters).length) return null;
+      var logs=0; Object.keys(d.semesters).forEach(function(l){ logs+=((d.semesters[l]||{}).log||[]).length; });
+      return {active:d.activeSemester, logs:logs}; }catch(_){ return null; }
   }
-  function secCopy(){
-    var s=sourceSummary(), has=Object.keys(STORE.data.semesters||{}).length>0;
-    var out='<section class="card" id="sec-copy"><h2 class="card-h">คัดลอกข้อมูลจากเว็บเดิม</h2>';
-    if(!s) out+='<p class="muted">ไม่พบข้อมูลของเว็บเดิมในเบราว์เซอร์นี้ — ต้องเปิดจากที่อยู่เว็บเดียวกันและเบราว์เซอร์เดียวกับที่ใช้เว็บเดิม หรือใช้ “กู้คืนจากไฟล์สำรอง” ด้านล่างแทน</p>';
-    else if(s.error) out+='<p class="err">'+h(s.error)+'</p>';
-    else out+='<p>พบข้อมูลของเว็บเดิมในเบราว์เซอร์นี้ การคัดลอกเป็นการอ่านอย่างเดียว เว็บเดิมไม่ถูกแก้ไข</p>'+
-      '<dl class="stats"><div><dt>ภาคเรียน</dt><dd>'+h(s.labels.join(', '))+' <span class="muted">(ใช้งาน: '+h(s.active||'—')+')</span></dd></div>'+
-      '<div><dt>ตาราง</dt><dd>'+s.rows.toLocaleString()+' แถว</dd></div><div><dt>รายการแลกคาบ</dt><dd>'+s.logs+'</dd></div><div><dt>รอบการลา</dt><dd>'+s.leaves+'</dd></div><div><dt>เบอร์ติดต่อ</dt><dd>'+s.phones+'</dd></div></dl>'+
-      '<button class="btn '+(has?'':'btn-primary')+'" data-act="copyOld">'+icon('down')+(has?'คัดลอกทับข้อมูลรุ่นทดลอง…':'คัดลอกเข้ารุ่นทดลอง')+'</button>'+
-      (has?'<p class="hint">รุ่นทดลองมีข้อมูลอยู่แล้ว การคัดลอกจะแทนที่ทั้งหมด — สำรองข้อมูลรุ่นทดลองก่อนถ้าต้องการเก็บไว้</p>':'');
-    return out+note('copy')+'</section>';
+  A.oldSiteHTML=function(){
+    var o=oldSiteInfo(); if(!o) return '';
+    return '<div class="oldsite"><div><b>พบข้อมูลของเว็บเดิมในเบราว์เซอร์นี้</b><span class="muted"> ภาคเรียน '+h(o.active||'—')+' · รายการแลกคาบ '+o.logs+' รายการ</span></div>'+
+      '<button class="btn btn-sm" data-act="copyOld">'+icon('down')+'คัดลอกมาใช้</button></div>';
+  };
+
+  /* ───────── page ───────── */
+  function secSemester(){
+    var sem=A.sem(), labels=STORE.semesterLabels();
+    if(!sem) return '';
+    var pb=S.phonebook(), nPh=Object.keys(pb.map||{}).length, stale=S.phoneIsStale(), cp=STORE.data.previewCopy;
+    return '<section class="card" id="sec-sem"><h2 class="card-h">ข้อมูลในเครื่องนี้</h2>'+
+      '<dl class="stats"><div><dt>ภาคเรียน</dt><dd>'+h(sem.meta.label)+(sem.meta.archived?' <span class="tag warn">อ่านอย่างเดียว</span>':'')+'</dd></div>'+
+      '<div><dt>ช่วงเวลา</dt><dd>'+h(S.thaiDate(sem.meta.startDate))+' – '+h(S.thaiDate(sem.meta.endDate))+'</dd></div>'+
+      '<div><dt>ครู</dt><dd>'+teacherCount(sem.schedule)+' คน</dd></div>'+
+      '<div><dt>เบอร์ติดต่อ</dt><dd>'+nPh+' เบอร์'+(nPh&&stale?' <span class="tag warn">ก่อนเปิดเทอมนี้</span>':'')+'</dd></div>'+
+      '<div><dt>รายการแลกคาบ</dt><dd>'+(sem.log||[]).length+'</dd></div><div><dt>รอบการลา</dt><dd>'+(sem.leaves||[]).length+'</dd></div>'+
+      '<div><dt>พื้นที่ที่ใช้</dt><dd>'+S.storageUsedMB().toFixed(2)+' MB</dd></div></dl>'+
+      (labels.length>1?'<label class="fld inline"><span>สลับภาคเรียน</span><select class="sel" data-chg="semSwitch">'+labels.map(function(l){
+        var ro=STORE.data.semesters[l].meta.archived; return '<option value="'+h(l)+'"'+(l===STORE.data.activeSemester?' selected':'')+'>'+h(l+(ro?' (เก็บไว้ อ่านอย่างเดียว)':' (ใช้งาน)'))+'</option>'; }).join('')+'</select></label>':'')+
+      (cp?'<p class="hint">คัดลอกจากเว็บเดิมเมื่อ '+h(new Date(cp.copiedAt).toLocaleString('th-TH'))+' — หลังจากนั้นข้อมูลสองฝั่งแยกกัน</p>':'')+'</section>';
   }
-  function secBackup(){
-    var ds=S.daysSince(STORE.data.lastBackupAt);
-    return '<section class="card" id="sec-backup"><h2 class="card-h">สำรองและกู้คืน</h2>'+
-      '<p class="muted">ข้อมูลทั้งหมดอยู่ในเบราว์เซอร์ของเครื่องนี้เท่านั้น ไฟล์สำรองเป็น .json รูปแบบเดียวกับเว็บเดิม ใช้ข้ามกันได้ · สำรองล่าสุด: '+(ds==null?'ยังไม่เคย':ds+' วันที่แล้ว')+'</p>'+
-      '<div class="tools"><button class="btn btn-primary" data-act="backup">'+icon('down')+'สำรองข้อมูล (.json)</button>'+
-      '<label class="btn" for="restoreInput">'+icon('up')+'กู้คืนจากไฟล์สำรอง…</label><input id="restoreInput" type="file" accept=".json,application/json" hidden data-chg="restore">'+
-      '<button class="btn" data-act="exportReady">สร้างไฟล์พร้อมใช้ (.html)</button></div>'+
-      '<p class="hint">“ไฟล์พร้อมใช้” คือโปรแกรมทั้งตัวในไฟล์เดียวพร้อมตารางสอนและเบอร์ติดต่อ (ไม่รวมรายการแลกคาบ) เปิดได้โดยไม่ต้องต่ออินเทอร์เน็ต — ไฟล์นี้มีข้อมูลส่วนบุคคล อย่าอัปโหลดขึ้นที่สาธารณะ</p>'+
-      note('backup')+'</section>';
+  function secIn(){
+    return '<section class="card" id="sec-in"><h2 class="card-h">'+(hasData()?'นำข้อมูลเข้า':'เริ่มใช้งาน')+'</h2>'+A.intakeHTML(!hasData())+
+      '<p class="muted sm">ไม่ต้องเลือกว่าเป็นไฟล์ชนิดไหน โปรแกรมจะบอกเองว่าไฟล์คืออะไรและถามก่อนเปลี่ยนข้อมูล</p>'+ACCEPTS+A.oldSiteHTML()+'</section>';
   }
-  function secImport(){
-    return '<section class="card" id="sec-import"><h2 class="card-h">นำเข้าตารางสอนภาคเรียนใหม่</h2>'+
-      '<p class="muted">ไฟล์ .xlsx ที่มีชีต <code>VERIFIED_DATA</code> — ตรวจรูปแบบแบบทั้งหมดหรือไม่เลย ภาคเรียนที่ใช้อยู่จะถูกเก็บเป็นอ่านอย่างเดียว</p>'+
-      '<div class="tools"><label class="btn" for="fileInput">เลือกไฟล์ตารางสอน .xlsx…</label><input id="fileInput" type="file" accept=".xlsx" hidden data-chg="impFile">'+
-      '<button class="btn btn-sm btn-ghost" data-act="tmplSchedule">แม่แบบตารางสอน</button></div>'+
-      '<div id="impReport">'+(imp?impReport():'')+'</div>'+note('import')+'</section>';
+  function secOut(){
+    var ds=S.daysSince(STORE.data.lastBackupAt), sem=A.sem();
+    if(!sem) return '';
+    return '<section class="card" id="sec-out"><h2 class="card-h">ส่งข้อมูลออก</h2><div class="outs">'+
+      '<div class="out"><h3>'+icon('user')+'ให้ครูคนอื่นใช้</h3><p>ตารางสอนและเบอร์ติดต่อของภาคเรียน '+h(sem.meta.label)+' ในไฟล์เดียว <b>ไม่มี</b>รายการแลกคาบหรือรอบการลาของคุณ ผู้รับแค่ลากไฟล์มาวางบนเว็บ</p>'+
+        '<button class="btn btn-primary" data-act="exportPack">'+icon('down')+'ไฟล์ข้อมูลโรงเรียน</button></div>'+
+      '<div class="out"><h3>'+icon('copy')+'ของฉันเอง: ย้ายเครื่อง / กันหาย</h3><p>ทุกอย่างในเครื่องนี้ รวมรายการแลกคาบ รอบการลา และข้อมูลในใบขอแลก · สำรองล่าสุด: '+(ds==null?'ยังไม่เคย':(ds===0?'วันนี้':ds+' วันที่แล้ว'))+'</p>'+
+        '<button class="btn" data-act="backup">'+icon('down')+'ไฟล์สำรองของฉัน</button></div></div>'+
+      '<p class="hint">ทั้งสองไฟล์มีชื่อและเบอร์โทรของครู — ส่งให้เฉพาะคนในโรงเรียน อย่าอัปโหลดขึ้นที่สาธารณะ</p>'+note('out')+note('backup')+'</section>';
   }
-  function secPhones(){
-    var pb=S.phonebook(), n=Object.keys(pb.map||{}).length, stale=S.phoneIsStale(), has=!!pb.lastImportedAt||n>0;
-    return '<section class="card" id="sec-phones"><h2 class="card-h">เบอร์ติดต่อครู <span class="muted">(ไม่บังคับ)</span></h2>'+
-      '<p class="muted">'+(has?(n+' เบอร์ · อัปเดตล่าสุด '+h(S.phoneDateBE(pb.lastImportedAt))+' ('+h(S.phoneAgeText(pb.lastImportedAt))+')'+(stale?' — <span class="warn-t">เป็นข้อมูลก่อนเปิดภาคเรียนนี้ ควรนำเข้าใหม่</span>':'')):'ยังไม่มีเบอร์ติดต่อ')+'</p>'+
-      '<div class="tools"><label class="btn" for="phoneInput">เลือกไฟล์เบอร์ .xlsx…</label><input id="phoneInput" type="file" accept=".xlsx" hidden data-chg="phoneFile">'+
-      '<button class="btn btn-sm btn-ghost" data-act="tmplPhone">แม่แบบเบอร์ติดต่อ</button></div>'+
-      '<p class="hint">คอลัมน์ <code>teacher_id | teacher_name | phone</code> — ครูที่ยังไม่มีเบอร์ให้เว้นว่าง</p>'+note('phones')+'</section>';
+  function secPrep(){
+    return '<section class="card" id="sec-prep"><h2 class="card-h">สำหรับผู้ดูแล: เตรียมภาคเรียนใหม่</h2><ol class="guide">'+
+      '<li>ลากไฟล์ <b>ตารางสอน .xlsx</b> (ชีต <code>VERIFIED_DATA</code>) มาวาง แล้วตั้งชื่อภาคเรียน</li>'+
+      '<li>ลากไฟล์ <b>เบอร์ติดต่อ .xlsx</b> มาวาง (ไม่บังคับ) — ลากพร้อมกันสองไฟล์ก็ได้</li>'+
+      '<li>กด <b>ไฟล์ข้อมูลโรงเรียน</b> ในหัวข้อ “ส่งข้อมูลออก” แล้วส่งไฟล์นั้นให้ครูคนอื่น</li></ol>'+
+      '<div class="tools"><button class="btn btn-sm btn-ghost" data-act="tmplSchedule">ดาวน์โหลดแม่แบบตารางสอน</button><button class="btn btn-sm btn-ghost" data-act="tmplPhone">ดาวน์โหลดแม่แบบเบอร์ติดต่อ</button></div></section>';
   }
   function settingRow(m, st, defs){
     var val=(st[m.key]!=null)?st[m.key]:defs[m.key], chg=String(val)!==String(defs[m.key]);
@@ -97,9 +327,11 @@
   }
   function secAdmin(){
     var arch=STORE.semesterLabels().filter(function(l){ var m=STORE.data.semesters[l].meta; return m && m.archived; });
-    return '<section class="card" id="sec-admin"><h2 class="card-h">เครื่องมือผู้ดูแล</h2>'+
+    return '<section class="card" id="sec-admin"><h2 class="card-h">เครื่องมืออื่น</h2>'+
       '<details><summary>ตรวจสอบระบบคำนวณ</summary><p class="hint">รันชุดทดสอบมาตรฐานกับกลไกคำนวณ (ไม่ใช้ข้อมูลภาคเรียน) เพื่อยืนยันว่าผลยังถูกต้อง</p>'+
         '<button class="btn btn-sm" data-act="selfTest">เริ่มตรวจสอบ</button><div id="selfTestResult"></div></details>'+
+      '<details><summary>ไฟล์โปรแกรมแบบเปิดได้ไม่ต้องต่อเน็ต (.html)</summary><p class="hint">โปรแกรมทั้งตัวพร้อมตารางสอนและเบอร์ติดต่อในไฟล์เดียว ใช้เมื่อต้องเปิดในที่ที่ไม่มีอินเทอร์เน็ต — ปกติใช้ “ไฟล์ข้อมูลโรงเรียน” สะดวกกว่า</p>'+
+        '<button class="btn btn-sm" data-act="exportReady">สร้างไฟล์ .html</button></details>'+
       '<details><summary>ภาคเรียนที่เก็บไว้</summary>'+(arch.length?arch.map(function(l){
           return '<div class="rowline"><b>'+h(l)+'</b><button class="btn btn-sm" data-act="archExport" data-label="'+h(l)+'">ส่งออก .json แล้วลบออกจากเครื่อง</button></div>'; }).join('')
           :'<p class="muted">ยังไม่มีภาคเรียนที่เก็บไว้</p>')+'</details>'+
@@ -113,72 +345,21 @@
       '<li><b>จัดคาบที่ลา</b> — เลือกผู้ลา สร้างรอบการลา แล้วกด “หาคนแทน” ทีละคาบ</li>'+
       '<li><b>เลือกคู่</b> — เทียบวันสอนคืนและข้อควรรู้ ดูตารางจำลองสองฝ่ายได้ก่อนบันทึก</li>'+
       '<li><b>เอาไปคุย</b> — เปิด “ตารางไปคุย” พิมพ์หรือคัดลอกข้อความสรุปส่งให้ครูปลายทาง</li>'+
-      '<li><b>ตกลงแล้ว</b> — เปลี่ยนเป็น “รออนุมัติ” แล้วพิมพ์ใบขอแลกคาบ (พพ.1-1) ได้เลย</li>'+
+      '<li><b>ตกลงแล้ว</b> — เปลี่ยนเป็น “รออนุมัติ” แล้วดาวน์โหลดใบขอแลกคาบ (พพ.1-1)</li>'+
       '<li><b>อนุมัติแล้ว</b> — เปลี่ยนสถานะ ตารางสอนจริงจะปรับตาม</li></ol>'+
-      '<p class="hint">สถานะ “เสนอ” และ “รออนุมัติ” จองคาบไว้เพื่อกันการนัดซ้อน · “ยกเลิก” คืนคาบทันที · ข้อมูลอยู่ในเครื่องนี้เท่านั้น ไม่ถูกส่งออกไปที่ใด</p></section>';
+      '<p class="hint">ข้อมูลอยู่ในเบราว์เซอร์ของเครื่องนี้เท่านั้น ไม่ถูกส่งไปที่ใด · เปลี่ยนเครื่องหรือเบราว์เซอร์ต้องนำไฟล์สำรองไปวางที่เครื่องใหม่</p></section>';
   }
   A.pages.data={
     render:function(){
-      return '<header class="page-head"><div><h1>ข้อมูลและตั้งค่า</h1><p>รุ่นทดลองเก็บข้อมูลแยกจากเว็บเดิม — งานที่ทำที่นี่ไม่กระทบเว็บเดิม</p></div></header>'+
-        (STORE.loadError?'<div class="banner bad">'+icon('warn')+'<div><b>อ่านข้อมูลเดิมในเครื่องไม่สำเร็จ</b><p>'+h(STORE.loadError)+'</p><p>โปรแกรมจะไม่บันทึกทับข้อมูลเดิม — กู้คืนจากไฟล์สำรองเพื่อเริ่มใหม่</p></div></div>':'')+
-        '<div class="data-grid"><div>'+secSemester()+secCopy()+secBackup()+secImport()+secPhones()+'</div><div>'+secSettings()+secAdmin()+secGuide()+'</div></div>';
+      return '<header class="page-head"><div><h1>ข้อมูล</h1><p>นำข้อมูลเข้า ส่งออก และตั้งค่า — ข้อมูลของรุ่นทดลองแยกจากเว็บเดิม</p></div></header>'+
+        (STORE.loadError?'<div class="banner bad">'+icon('warn')+'<div><b>อ่านข้อมูลเดิมในเครื่องไม่สำเร็จ</b><p>'+h(STORE.loadError)+'</p><p>โปรแกรมจะไม่บันทึกทับข้อมูลเดิม — ใช้ “ล้างทั้งหมด” ในเครื่องมืออื่น แล้วนำไฟล์สำรองมาวางใหม่</p></div></div>':'')+
+        '<div class="data-grid"><div>'+secSemester()+secIn()+secOut()+secPrep()+'</div><div>'+secSettings()+secAdmin()+secGuide()+'</div></div>';
     },
     after:function(view, args){
       if(args[0]){ var el=document.getElementById('sec-'+args[0]); if(el){ el.scrollIntoView({block:'start'}); el.classList.add('flash'); } }
       var adv=view.querySelector('[data-adv]');
       if(adv) adv.addEventListener('toggle', function(){ try{ localStorage.setItem('swap_preview_adv_view', adv.open?'1':'0'); }catch(_){} });
     }
-  };
-
-  /* ---------- semester / copy / backup ---------- */
-  A.chgs.semSwitch=function(el){
-    var r=STORE.setActiveSemester(el.value);
-    if(!r.ok){ A.toast(r.error||'สลับภาคเรียนไม่สำเร็จ',{bad:true}); } else { afterDataChange(); A.toast('สลับไปภาคเรียน '+el.value); }
-    A.rerender();
-  };
-  function replaceStore(obj, stamp){
-    var prev=STORE.data, prevErr=STORE.loadError;
-    STORE.loadError=null;
-    var r=STORE.restoreFromObject(obj);
-    if(r.ok && stamp){ stamp(); r=STORE.save(); if(r.ok) r.kind='store'; }
-    if(!r.ok){ STORE.data=prev; STORE.loadError=prevErr; return r; }
-    afterDataChange(); return r;
-  }
-  A.acts.copyOld=function(){
-    var s=sourceSummary(); if(!s || s.error) { A.rerender(); return; }
-    var has=Object.keys(STORE.data.semesters||{}).length>0;
-    function run(){
-      var obj; try{ obj=JSON.parse(localStorage.getItem(SOURCE_KEY)); }catch(e){ say('copy','อ่านข้อมูลของเว็บเดิมไม่สำเร็จ',true); A.rerender(); return; }
-      var r=replaceStore(obj, function(){
-        STORE.data.previewCopy={copiedAt:new Date().toISOString(), sourceSemester:STORE.data.activeSemester};
-        STORE.data.lastBackupAt=null; STORE.data.approvedSinceBackup=0; });
-      if(!r.ok) say('copy', 'คัดลอกไม่สำเร็จ: '+h(r.error)+' — ข้อมูลรุ่นทดลองเดิมไม่ถูกแก้ไข', true);
-      else { A.toast('คัดลอกข้อมูลจากเว็บเดิมแล้ว'); A.go('#plan'); return; }
-      A.rerender();
-    }
-    if(!has) run();
-    else A.ask({title:'คัดลอกทับข้อมูลรุ่นทดลอง?', body:'<p>ข้อมูลทั้งหมดในรุ่นทดลอง (ตาราง รายการแลกคาบ รอบการลา) จะถูกแทนที่ด้วยสำเนาจากเว็บเดิม เว็บเดิมไม่ถูกแก้ไข</p>', ok:'คัดลอกทับ', danger:true}).then(function(y){ if(y) run(); });
-  };
-  A.acts.backup=function(){
-    if(!STORE.data.activeSemester){ say('backup','ยังไม่มีข้อมูลให้สำรอง',true); A.rerender(); return; }
-    A.download(STORE.backupBlob(), 'swap_preview_backup_'+STORE.data.activeSemester.replace(/[\/\\]/g,'-')+'_'+new Date().toISOString().slice(0,10)+'.json');
-    STORE.markBackedUp(); say('backup','ดาวน์โหลดไฟล์สำรองแล้ว'); A.rerender();
-  };
-  A.chgs.restore=function(el){
-    var f=el.files && el.files[0]; if(!f) return;
-    var rd=new FileReader();
-    rd.onload=function(ev){
-      var obj; try{ obj=JSON.parse(ev.target.result); }catch(_){ say('backup','ไฟล์ไม่ใช่ JSON ที่ถูกต้อง — ข้อมูลเดิมไม่ถูกแก้ไข',true); A.rerender(); return; }
-      var full=!!(obj && obj.schemaVersion && obj.semesters);
-      A.ask({title:'กู้คืนจากไฟล์นี้?', body:'<p>'+h(f.name)+'</p><p>'+(full?'ข้อมูลทั้งหมดในรุ่นทดลองจะถูกแทนที่ด้วยข้อมูลในไฟล์':'ภาคเรียนในไฟล์จะถูกเพิ่มเป็นภาคเรียนที่เก็บไว้ (อ่านอย่างเดียว)')+'</p>', ok:'กู้คืน', danger:full}).then(function(y){
-        if(!y) return;
-        var r=replaceStore(obj);
-        if(!r.ok) say('backup','กู้คืนไม่สำเร็จ: '+h(r.error)+' — ข้อมูลเดิมไม่ถูกแก้ไข',true);
-        else { A.toast('กู้คืนสำเร็จ ('+(r.kind==='store'?'ทั้งคลังข้อมูล':'ภาคเรียน '+r.label)+')'); if(r.kind==='store'){ A.go('#plan'); return; } }
-        A.rerender();
-      });
-    };
-    rd.readAsText(f);
   };
 
   /* ---------- ready file (single self-contained .html) ---------- */
@@ -215,90 +396,6 @@
     });
   };
 
-  /* ---------- schedule import ---------- */
-  function impReport(){
-    if(imp.fail) return '<div class="report bad"><b>ไฟล์ไม่ผ่าน — ไม่นำเข้าข้อมูลใด ๆ</b><p>'+h(imp.fail)+'</p><p class="hint">แก้ไขจุดที่แจ้งแล้วเลือกไฟล์ใหม่ ข้อมูลเดิมไม่ถูกแก้ไข</p></div>';
-    var rows=imp.rows, w=imp.warnings, c=S.statusCounts(rows), hard=(w.room.length||w.fourdig.length||w.subj.length||w.drift);
-    var tc={}; rows.forEach(function(d){ tc[d.teacher_id]=1; });
-    function ws(title, items, render){
-      if(!items.length) return '<p class="okline">'+icon('check')+h(title)+': ไม่พบปัญหา</p>';
-      return '<details><summary>'+h(title)+' ('+items.length+')</summary><ul class="rlist">'+items.slice(0,40).map(function(it){ return '<li><span class="rn">แถว '+it.row+'</span>'+render(it)+'</li>'; }).join('')+
-        (items.length>40?'<li class="muted">… และอีก '+(items.length-40)+' รายการ</li>':'')+'</ul></details>';
-    }
-    var guess=(imp.fileName.match(/(\d{4})[_\/-]?(\d)/)||[]);
-    return '<div class="report '+(hard?'warn':'ok')+'"><b>'+h(imp.fileName)+' — ตรวจรูปแบบผ่าน โปรดยืนยันก่อนใช้งาน</b>'+
-      '<dl class="stats"><div><dt>แถว</dt><dd>'+rows.length.toLocaleString()+'</dd></div><div><dt>ครู</dt><dd>'+Object.keys(tc).length+'</dd></div>'+
-      '<div><dt>คาบรวมห้อง</dt><dd>'+rows.filter(function(d){ return d.group.indexOf(',')!==-1; }).length+'</dd></div><div><dt>ซ่อมเสริม</dt><dd>'+imp.changed.length+'</dd></div>'+
-      '<div><dt>สถานะ</dt><dd class="sm">'+Object.keys(c).map(function(k){ return c[k]+' '+h(k); }).join(' · ')+'</dd></div></dl>'+
-      (imp.changed.length?'<details><summary>คาบซ่อมเสริมที่แปลงเป็นคาบสอน ('+imp.changed.length+')</summary><ul class="rlist">'+imp.changed.slice(0,60).map(function(ch){
-        return '<li><span class="rn">'+h(ch.before.teacher_id)+'</span>'+h(ch.before.day)+' คาบ '+h(ch.before.period)+': <code>'+h(ch.before.raw)+'</code> → '+h(ch.after.group)+' ห้อง '+h(ch.after.room)+(ch.ambiguous?' <span class="tag warn">ตีความได้ 2 แบบ</span>':'')+'</li>'; }).join('')+'</ul></details>':'')+
-      ws('ความสอดคล้องกับข้อความต้นฉบับ', w.recon, function(it){ return 'สร้างกลับได้ “'+h(it.subject+it.group+it.room)+'” แต่ต้นฉบับคือ “'+h(it.raw)+'”'; })+
-      ws('ห้องที่ไม่รู้จัก', w.room, function(it){ return 'ห้อง “'+h(it.room)+'”'; })+
-      ws('ห้อง 4 หลักที่ไม่ขึ้นต้นด้วย 1', w.fourdig, function(it){ return 'ห้อง “'+h(it.room)+'”'; })+
-      ws('รหัสวิชาผิดรูปแบบ', w.subj, function(it){ return 'รหัสวิชา “'+h(it.subject)+'”'; })+
-      (w.drift?'<p class="err">จำนวนแถวต่างจากภาคเรียนก่อนมาก: '+w.drift.prev+' → '+w.drift.now+' ('+(w.drift.pct>0?'+':'')+w.drift.pct+'%)</p>':'')+
-      '<div class="row3"><label class="fld"><span>ชื่อภาคเรียน</span><input class="inp" id="semLabelInput" placeholder="เช่น 2570/1" value="'+h(guess[1]?guess[1]+'/'+guess[2]:'')+'" autocomplete="off"></label>'+
-      '<label class="fld"><span>วันเปิดภาคเรียน</span><input type="date" class="inp" id="semStartInput"></label>'+
-      '<label class="fld"><span>วันปิดภาคเรียน</span><input type="date" class="inp" id="semEndInput"></label></div>'+
-      '<p class="err" id="semHint" hidden></p>'+
-      '<div class="tools"><button class="btn btn-primary" data-act="impConfirm">บันทึกเป็นภาคเรียนนี้</button><button class="btn" data-act="impCancel">ยกเลิก</button></div></div>';
-  }
-  A.chgs.impFile=function(el){
-    var f=el.files && el.files[0]; if(!f) return;
-    var host=document.getElementById('impReport'); host.innerHTML='<p class="muted">กำลังอ่านไฟล์…</p>';
-    A.needXLSX().then(function(){
-      var rd=new FileReader();
-      rd.onload=function(e){
-        try{
-          var read=S.readVerifiedSheet(e.target.result), v=read.blocker?{ok:false, blocker:read.blocker}:S.validateBlockers(read.rows);
-          if(!v.ok) imp={fail:v.blocker.msg};
-          else {
-            var work=v.rows.map(function(d){ var o={}; for(var k in d) o[k]=d[k]; return o; });
-            var changed=S.reparseSomserm(work), act=A.sem();
-            imp={rows:work, changed:changed, warnings:S.scanWarnings(work, act&&act.schedule?act.schedule.length:null), fileName:f.name};
-          }
-        }catch(err){ imp={fail:'อ่านไฟล์ไม่สำเร็จ: '+(err&&err.message||err)+' — ไฟล์อาจไม่ใช่ .xlsx ที่ถูกต้อง'}; }
-        host.innerHTML=impReport();
-      };
-      rd.onerror=function(){ imp={fail:'ไม่สามารถอ่านไฟล์นี้ได้'}; host.innerHTML=impReport(); };
-      rd.readAsArrayBuffer(f);
-    }).catch(function(err){ imp={fail:'โหลดตัวอ่านไฟล์ Excel ไม่สำเร็จ ('+err.message+') — ตรวจการเชื่อมต่อแล้วลองใหม่'}; host.innerHTML=impReport(); });
-  };
-  A.acts.impCancel=function(){ imp=null; A.rerender(); };
-  A.acts.impConfirm=function(){
-    var label=(document.getElementById('semLabelInput').value||'').trim(), start=document.getElementById('semStartInput').value, end=document.getElementById('semEndInput').value;
-    var hint=document.getElementById('semHint'); function bad(t){ hint.hidden=false; hint.textContent=t; }
-    if(!label) return bad('กรุณากรอกชื่อภาคเรียน');
-    if(!start || !end) return bad('กรุณากรอกวันเปิดและวันปิดภาคเรียน');
-    if(end<start) return bad('วันปิดต้องไม่มาก่อนวันเปิด');
-    if(STORE.semesterExists(label)) return bad('มีภาคเรียน “'+label+'” อยู่แล้ว — ใช้ชื่ออื่น');
-    var res=STORE.commitSemester(label, start, end, imp.fileName, imp.rows);
-    if(!res.ok) return bad('บันทึกไม่สำเร็จ: '+res.error);
-    imp=null; afterDataChange();
-    A.toast('บันทึกภาคเรียน '+label+' แล้ว'+(res.archived?' — ภาคเรียน '+res.archived+' ถูกเก็บเป็นอ่านอย่างเดียว':''));
-    A.go('#plan');
-  };
-  A.chgs.phoneFile=function(el){
-    var f=el.files && el.files[0]; if(!f) return;
-    if(!A.sem()){ say('phones','นำเข้าตารางสอนก่อน จึงจะจับคู่เบอร์กับรหัสครูได้',true); A.rerender(); return; }
-    if(A.readOnly()){ say('phones',h(S.readOnlyText()),true); A.rerender(); return; }
-    A.needXLSX().then(function(){
-      var rd=new FileReader();
-      rd.onload=function(ev){
-        try{
-          var res=S.parsePhoneWorkbook(ev.target.result);
-          if(!res.ok) say('phones','นำเข้าเบอร์ไม่สำเร็จ: '+h(res.error),true);
-          else {
-            var pb=S.phonebook(); pb.map=res.phones; pb.lastImportedAt=new Date().toISOString(); pb.sourceFilename=f.name; STORE.save();
-            say('phones','นำเข้าแล้ว '+res.total+' เบอร์'+(res.teacherCount!=null?' · ครูที่ยังไม่มีเบอร์ '+(res.teacherCount-res.total)+' คน':'')+
-              (res.unknownIds.length?' · ข้ามรหัสที่ไม่อยู่ในตาราง '+res.unknownIds.length+' รายการ':'')+(res.badRows.length?' · อ่านไม่ได้ '+res.badRows.length+' แถว (แถว '+res.badRows.slice(0,8).map(function(b){ return b.row; }).join(', ')+')':''), !!res.badRows.length);
-          }
-        }catch(err){ say('phones','อ่านไฟล์ไม่สำเร็จ: '+h(err&&err.message||err),true); }
-        A.rerender();
-      };
-      rd.readAsArrayBuffer(f);
-    }).catch(function(err){ say('phones',h(err.message),true); A.rerender(); });
-  };
   A.acts.tmplSchedule=function(){ A.needXLSX().then(function(){ S.buildScheduleTemplate(); }).catch(function(e){ A.toast(e.message,{bad:true}); }); };
   A.acts.tmplPhone=function(){ A.needXLSX().then(function(){
     S.downloadSheet([['teacher_id','teacher_name','phone'],['0101','นายตัวอย่าง หนึ่ง','0812345678'],['0102','นางสาวตัวอย่าง สอง','']], 'phones', 'template_phones.xlsx');

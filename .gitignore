@@ -7,6 +7,9 @@ private/
 swap_backup_*.json
 phones_initial*.xlsx
 ระบบสลับคาบ_*_พร้อมใช้.html
+ข้อมูลตารางสอน_*.json
+swap_preview_backup_*.json
+swap_semester_*.json
 *_พร้อมใช้.html
 
 # ไฟล์ต้นฉบับข้อมูลโรงเรียน

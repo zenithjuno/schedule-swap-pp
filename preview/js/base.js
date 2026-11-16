@@ -249,7 +249,8 @@
     dlg.className='dlg '+(opt.cls||'');
     dlg.innerHTML='<div class="dlg-box">'+html+'</div>';
     if(!dlg.open) dlg.showModal();
-    dlg.onclose=function(){ dlg.innerHTML=''; if(opt.onClose) opt.onClose(); };
+    // a late close event from the previous dialog must not tear down the one just opened
+    dlg.onclose=function(){ if(dlg.open) return; dlg.innerHTML=''; if(opt.onClose) opt.onClose(); };
     var f=dlg.querySelector('[autofocus]'); if(f) f.focus();
     return dlg;
   };

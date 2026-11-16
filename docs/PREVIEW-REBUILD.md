@@ -38,6 +38,16 @@ Page weight on first load: about 0.3 MB (was 2.6 MB in one file).
 - Per-teacher fields (ตำแหน่ง, กลุ่มสาระ, signatories) live in `STORE.data.formProfiles`, the crest in `STORE.data.formLogo` — local store and backups only, never in the repo.
 - Checked by converting the DOCX with LibreOffice and rasterising both outputs. Not yet opened in Microsoft Word itself.
 
+## Getting data in and out (reworked 2026-11-16)
+Real data never lives on the public site, so every browser needs one file once. `preview/js/data.js` now has a single entry point: drop or choose any file, anywhere on the page. The app classifies it, says what it is, and asks before changing anything.
+| File | Recognised by | Effect |
+|---|---|---|
+| School data file `ข้อมูลตารางสอน_<ภาคเรียน>.json` | `kind:"swap-data-pack"` | New semester, or — if that semester already exists — replaces timetable + phones and keeps the user's swap records and leave rounds |
+| Personal backup `.json` (this app or the stable site) | `schemaVersion` + `semesters` | Replaces the whole local store, after a warning |
+| Timetable `.xlsx` | sheet `VERIFIED_DATA` | Import contract → name the semester |
+| Phones `.xlsx` | `teacher_id … phone` header | Replaces the phone book |
+The school data file holds timetable + phones + settings only (no swap records), in the same compact table as the local store (~140 KB). It contains personal data: it is shared person to person (LINE, Drive) and is git-ignored.
+
 ## Verify
 ```
 node tools/build-preview-core.cjs

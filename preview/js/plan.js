@@ -112,11 +112,11 @@
 
   /* ---------- page ---------- */
   function emptyNoData(){
-    return '<header class="page-head"><div><h1>จัดคาบที่ลา</h1></div></header>'+
-      '<div class="hero"><h2>เริ่มจากข้อมูลตารางสอน</h2>'+
-      '<p>รุ่นทดลองนี้เก็บข้อมูลแยกจากเว็บเดิม และยังไม่มีตารางสอนในเครื่องนี้ เลือกวิธีเริ่มได้ 3 ทาง</p>'+
-      '<div class="hero-acts"><a class="btn btn-primary" href="#data/copy">คัดลอกจากเว็บเดิมในเครื่องนี้</a>'+
-      '<a class="btn" href="#data/backup">กู้คืนจากไฟล์สำรอง (.json)</a><a class="btn" href="#data/import">นำเข้าตารางสอน (.xlsx)</a></div></div>';
+    return '<header class="page-head"><div><h1>เริ่มใช้งาน</h1><p>โปรแกรมนี้ยังไม่มีตารางสอนในเครื่องนี้ — ข้อมูลของโรงเรียนไม่ได้อยู่บนเว็บ ต้องนำไฟล์มาวางหนึ่งครั้ง</p></div></header>'+
+      '<div class="start"><div class="start-main">'+A.intakeHTML(true)+A.oldSiteHTML()+'</div>'+
+      '<div class="start-side"><div class="who-card"><h3>ครูทั่วไป</h3><p>ขอ <b>ไฟล์ข้อมูลโรงเรียน</b> จากผู้ดูแล (ทาง LINE หรือ Google Drive) แล้วลากมาวาง จบในขั้นเดียว</p></div>'+
+      '<div class="who-card"><h3>ย้ายมาจากเครื่องอื่น</h3><p>ลาก <b>ไฟล์สำรองของฉัน</b> มาวาง งานเดิมทั้งหมดจะกลับมา</p></div>'+
+      '<div class="who-card"><h3>ผู้ดูแล</h3><p>ลากไฟล์ Excel <b>ตารางสอน</b> และ <b>เบอร์ติดต่อ</b> มาวาง แล้วไปหน้า “ข้อมูล” เพื่อสร้างไฟล์ข้อมูลโรงเรียนแจกครูคนอื่น</p></div></div></div>';
   }
   A.pages.plan={
     render:function(){
