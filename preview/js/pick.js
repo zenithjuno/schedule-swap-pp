@@ -127,12 +127,20 @@
   function tagHTML(ts){ return ts.length?ts.map(function(x){ return '<span class="tag '+x.lv+'">'+h(x.t)+'</span>'; }).join(''):'<span class="muted">—</span>'; }
 
   /* ---------- detail panels ---------- */
+  // One day of the group's route around the swapped period: what the students
+  // do normally vs after the swap, and a plain verdict.
   function endBlock(title, p, prev, before, after, next, delta){
-    function b(r){ var x=S.buildingOf(r); return x?' <span class="muted">(อาคาร '+h(x)+')</span>':''; }
-    function nb(tag, pp, r){ return '<li><span>'+tag+' · คาบ '+pp+'</span>'+(r?('ห้อง '+h(r)+b(r)):'<span class="muted">ขอบวัน / พักกลางวัน</span>')+'</li>'; }
-    return '<div class="walk"><h4>'+h(title)+'</h4><ul>'+nb('ก่อนหน้า', p-1, prev)+
-      '<li class="on"><span>คาบที่แลก · คาบ '+p+'</span>ห้อง '+h(before)+b(before)+' → ห้อง '+h(after)+b(after)+'</li>'+
-      nb('ถัดไป', p+1, next)+'</ul><p>การข้ามอาคารที่เปลี่ยน: <b>'+(delta>0?'+':'')+delta+'</b></p></div>';
+    function room(r, edge){ if(!r) return '<td class="none">'+edge+'</td>'; var x=S.buildingOf(r);
+      return '<td><b>ห้อง '+h(r)+'</b>'+(x?'<span>อาคาร '+h(x)+'</span>':'')+'</td>'; }
+    var verdict = delta>0 ? '<p class="wv bad">'+icon('warn')+'นักเรียนต้องเดินข้ามอาคารเพิ่ม '+delta+' ครั้ง</p>'
+                : delta<0 ? '<p class="wv good">'+icon('check')+'นักเรียนเดินข้ามอาคารน้อยลง '+(-delta)+' ครั้ง</p>'
+                          : '<p class="wv">'+(before===after?'เรียนห้องเดิม ไม่มีอะไรเปลี่ยน':'เปลี่ยนห้อง แต่ไม่ต้องข้ามอาคารเพิ่ม')+'</p>';
+    if(before===after) return '<div class="walk"><h4>'+h(title)+' · คาบ '+p+'</h4>'+verdict+'</div>';
+    var a=room(prev,'ไม่มีคาบติดกัน'), z=room(next,'ไม่มีคาบติดกัน');
+    return '<div class="walk"><h4>'+h(title)+' · คาบ '+p+'</h4>'+
+      '<table class="walk-t"><thead><tr><th></th><th>คาบก่อนหน้า</th><th>คาบ '+p+'</th><th>คาบถัดไป</th></tr></thead><tbody>'+
+      '<tr><th>ปกติ</th>'+a+room(before,'')+z+'</tr>'+
+      '<tr class="after"><th>หลังแลก</th>'+a+room(after,'').replace('<td>','<td class="chg">')+z+'</tr></tbody></table>'+verdict+'</div>';
   }
   function receipt(c){
     var st=STORE.data.settings, B=+st.WORKLOAD_WEEKLY_BASELINE;

@@ -259,11 +259,16 @@ select.st-sel{min-height:32px;padding:3px 26px 3px 10px;border-radius:999px;font
 .cav li{display:flex;gap:7px;align-items:flex-start;color:#6f4307}
 .cav .ic{margin-top:3px;color:var(--amber)}
 .walks{display:grid;gap:10px;margin-top:6px}
-.walk h4{font-size:13px;margin-bottom:3px}
-.walk li{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px dotted var(--line-2);font-size:13px}
-.walk li span:first-child{color:var(--ink-3)}
-.walk li.on{font-weight:600}
-.walk p{font-size:13px;margin-top:4px}
+.walk h4{font-size:13px;margin-bottom:4px}
+.walk-t{width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px}
+.walk-t th,.walk-t td{border:1px solid var(--line);padding:4px 7px;text-align:left;vertical-align:top}
+.walk-t thead th{background:var(--surface-2);font-size:12px;color:var(--ink-2);font-weight:600}
+.walk-t tbody th{width:64px;font-size:12px;color:var(--ink-2);font-weight:600}
+.walk-t td span{display:block;font-size:12px;color:var(--ink-3)}
+.walk-t td.none{color:var(--ink-3);font-size:12px}
+.walk-t td.chg{background:var(--amber-soft)}
+.wv{display:flex;align-items:center;gap:6px;font-size:13px;margin-top:5px;color:var(--ink-2)}
+.wv.bad{color:var(--amber);font-weight:600}.wv.good{color:var(--green);font-weight:600}
 .receipt{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
 .receipt td{padding:4px 6px;border-bottom:1px dotted var(--line-2)}
 .receipt .total td{font-weight:700;border-top:1px solid var(--ink-3);border-bottom:none}
