@@ -245,6 +245,8 @@ select.st-sel{min-height:32px;padding:3px 26px 3px 10px;border-radius:999px;font
 .wk b{font-size:13.5px}.wk span{font-size:11.5px;color:var(--ink-3)}
 .wk:hover:not(:disabled){border-color:var(--brand)}
 .wk.on{background:var(--brand);border-color:var(--brand);color:#fff}.wk.on span{color:#cfe6df}
+.wk.tight:not(.on){border-color:var(--amber-line);background:var(--amber-soft)}
+.wk.tight:not(.on) span{color:var(--amber);font-weight:600}
 .wk:disabled{opacity:.5;cursor:not-allowed;background:var(--sunk);text-decoration:line-through;text-decoration-color:var(--ink-3)}
 .wk:disabled span{text-decoration:none}
 .changes{display:flex;flex-direction:column;gap:9px}

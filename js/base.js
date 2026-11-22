@@ -110,7 +110,7 @@
   };
   // engine tags still say "Me / Y" inside stored rows — translate for display only
   A.humanWarn=function(t, e){
-    var me=A.short(e.me_name)||'ผู้ลา', y=A.short(e.y_name)||'ครูคู่แลก';
+    var me=A.short(e.me_name)||'ผู้ลา', y=A.short(e.y_name)||'ครูสอนแทน';
     return String(t||'').replace(/⚠️\s*/g,'').replace(/ครู Me/g,me).replace(/ครู Y/g,y)
       .replace(/ประชุม Me/g,me+'ต้องงดประชุม').replace(/ประชุม Y/g,y+'ต้องงดประชุม').trim();
   };
@@ -186,7 +186,7 @@
         return {cls:'tt-out'+cls, html:'<div class="tt-cell"><div class="tt-mark">'+dr+'มีคนแทน</div><div class="tt-sub">'+h(meClass)+'</div><div class="tt-by">ผู้สอนแทน: '+who+'</div></div>'};
       }
       notes.push(pre+'คาบของครูคนนี้ ('+meClass+') ย้ายไป '+mv(e.day_back,e.per_back,e.date_back)+'; '+y+' ใช้เวลานี้สอน '+yClass+' — '+stamp);
-      return {cls:'tt-out'+cls, html:'<div class="tt-cell"><div class="tt-mark">'+dr+'ย้ายออก</div><div class="tt-main">→ '+h(mv(e.day_back,e.per_back,e.date_back))+'</div><div class="tt-sub">'+h(meClass)+'</div><div class="tt-by">คู่แลก: '+h(y)+'</div></div>'};
+      return {cls:'tt-out'+cls, html:'<div class="tt-cell"><div class="tt-mark">'+dr+'ย้ายออก</div><div class="tt-main">→ '+h(mv(e.day_back,e.per_back,e.date_back))+'</div><div class="tt-sub">'+h(meClass)+'</div><div class="tt-by">แลกกับ: '+h(y)+'</div></div>'};
     }
     if(m.role==='yIn'){
       if(S.isSubOnly(e)){
@@ -198,7 +198,7 @@
     }
     if(m.role==='yOut'){
       notes.push(pre+'คาบของครูคนนี้ ('+yClass+') ย้ายไป '+mv(e.day_give,e.per_give,e.date_absent)+'; '+me+' ใช้เวลานี้สอน '+meClass+' — '+stamp);
-      return {cls:'tt-out'+cls, html:'<div class="tt-cell"><div class="tt-mark">'+dr+'ย้ายออก</div><div class="tt-main">→ '+h(mv(e.day_give,e.per_give,e.date_absent))+'</div><div class="tt-sub">'+h(yClass)+'</div><div class="tt-by">คู่แลก: '+h(me)+'</div></div>'};
+      return {cls:'tt-out'+cls, html:'<div class="tt-cell"><div class="tt-mark">'+dr+'ย้ายออก</div><div class="tt-main">→ '+h(mv(e.day_give,e.per_give,e.date_absent))+'</div><div class="tt-sub">'+h(yClass)+'</div><div class="tt-by">แลกกับ: '+h(me)+'</div></div>'};
     }
     notes.push(pre+'คาบของครูคนนี้ ('+meClass+') ย้ายมาจาก '+mv(e.day_give,e.per_give,e.date_absent)+'; ใช้เวลาแทน '+y+' — '+stamp);
     return {cls:'tt-in'+cls, html:'<div class="tt-cell"><div class="tt-mark">'+dr+'ย้ายเข้า</div><div class="tt-main">'+h(e.subject_give||'—')+'</div><div class="tt-sub">'+h(A.cls(e.group_give))+' · ห้อง '+h(e.room_give||'—')+'</div><div class="tt-by">จาก '+h(mv(e.day_give,e.per_give,e.date_absent))+'</div></div>'};

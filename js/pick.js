@@ -20,11 +20,21 @@
   function settle(c, ctx){
     var a=allowed(c, ctx); c._allowed=a;
     if(!a.length){ c._off=null; return; }
-    var ch=pk.chosen[ckey(c)], off;
+    // what each possible week would really look like, counting swaps already on the books
+    var ev={}, base={};
+    a.forEach(function(o){ var d2=c.offset_info[o].giveback; ev[o]=ctx.dyn.eval(c, ctx.p, d2, true); base[o]=ctx.dyn.eval(c, ctx.p, d2, false); });
+    c._ev=ev; c._base=base;
+    function worse(o){ return ev[o].score<base[o].score; }       // tighter ONLY because of swaps already made
+    var ch=pk.chosen[ckey(c)], off=null;
     if(ch!=null && a.indexOf(ch)>=0) off=ch;
-    else if(a.indexOf(c.default_offset)>=0) off=c.default_offset;
-    else off=a.slice().sort(function(x,y){ return Math.abs(x-c.default_offset)-Math.abs(y-c.default_offset); })[0];
-    c._off=off; c._gb=c.offset_info[off].giveback;
+    else {
+      // the engine's preferred week first, then the nearest; skip weeks made tighter by existing swaps
+      var order=a.slice().sort(function(x,y){ return Math.abs(x-c.default_offset)-Math.abs(y-c.default_offset); }), i;
+      for(i=0;i<order.length;i++) if(!worse(order[i])){ off=order[i]; break; }
+      if(off===null){ off=order[0]; order.forEach(function(o){ if(ev[o].score>ev[off].score) off=o; }); }
+    }
+    c._off=off; c._gb=c.offset_info[off].giveback; c._worse=worse(off);
+    ctx.dyn.apply(c, ctx.p, ev[off]);
     c.warn_absence_clash=c.offset_info[off].clash?1:0;
     c.warn_retro=(ui.dateProposed && c._gb<ui.dateProposed)?1:0;
     c.warn_self_collision=0;                 // an allowed offset is never held by the absent teacher
@@ -37,6 +47,7 @@
     if(mr>=CONS) t.push({t:me+' ติด '+mr+' คาบ', lv:'warn'});
     if(yr>=CONS) t.push({t:y+' ติด '+yr+' คาบ', lv:'warn'});
     if(c.overload_n>0) t.push({t:'ภาระเกินเกณฑ์', lv:'warn'});
+    if(c._worse) t.push({t:'วันนั้นแน่นขึ้น (มีคาบแลกอยู่แล้ว)', lv:'warn'});
     if(c.warnMe) t.push({t:me+' งดประชุม', lv:'info'});
     if(c.warnY) t.push({t:y+' งดประชุม', lv:'info'});
     if(c.walk_total>0) t.push({t:'นักเรียนเปลี่ยนอาคาร'+(c.walk_x2?' ×2':''), lv:'info'});
@@ -46,6 +57,11 @@
   function caveats(c, ctx){
     var CONS=+STORE.data.settings.CONSECUTIVE_THRESHOLD, o=[], me=ctx.meShort, y=A.short(c.Yname);
     var d1=A.dMid(ctx.date), d2=A.dMid(c._gb);
+    var x=(c._dyn&&c._dyn.extra)||{};
+    if(x.me1>0) o.push(me+'มีคาบที่แลกมาลง'+d1+' อยู่แล้ว '+x.me1+' คาบ (นับรวมข้อเสนอและรออนุมัติ)');
+    if(x.me2>0) o.push(me+'มีคาบที่แลกมาลง'+d2+' อยู่แล้ว '+x.me2+' คาบ (นับรวมข้อเสนอและรออนุมัติ)');
+    if(x.y1>0) o.push(y+'มีคาบที่แลกมาลง'+d1+' อยู่แล้ว '+x.y1+' คาบ');
+    if(x.y2>0) o.push(y+'มีคาบที่แลกมาลง'+d2+' อยู่แล้ว '+x.y2+' คาบ');
     if(c.warn_absence_clash) o.push('วันสอนคืนเป็นวันเดียวกับวันลา ('+d1+') — ทำได้เพราะ'+me+'ไม่ได้ลาคาบ '+c.per2+' แต่ควรตรวจอีกครั้ง');
     if(c.runMeD1>=CONS) o.push(me+'จะสอนติดกัน '+c.runMeD1+' คาบ ใน'+d1);
     if(c.runMeD2>=CONS) o.push(me+'จะสอนติดกัน '+c.runMeD2+' คาบ ใน'+d2+' (วันสอนคืน)');
@@ -104,10 +120,10 @@
       if(t.id===ctx.me) return;
       var f=eng.free(t.id, ctx.day, p); if(!f.ok) return;
       if(L.busyAt(t.id, ctx.date, String(p), self).length) return;
-      var i=info[t.id]||{wk:0,dc:0};
-      var run=eng.runGrid(t.id, ctx.day, lunchP, null, p);
-      out.push({Yid:t.id, Yname:t.name, weekly:i.wk, dc:i.dc, grp:!!i.grp, dept:!!i.dept, meet:f.warn,
-        lunch:(eng.displayLunch(t.id, ctx.day)===p), run:run, over:(i.dc+1>OT), long:(run>=CONS)});
+      var i=info[t.id]||{wk:0,dc:0}, hy={}; hy[t.id+'|'+ctx.date+'|'+p]=1;
+      var bef=ctx.dyn.day(t.id, ctx.date, lunchP, null, true), aft=ctx.dyn.day(t.id, ctx.date, lunchP, hy, true);   // counts swaps already on the books
+      out.push({Yid:t.id, Yname:t.name, weekly:i.wk, dc:bef.count, grp:!!i.grp, dept:!!i.dept, meet:f.warn,
+        lunch:(eng.displayLunch(t.id, ctx.day)===p), run:aft.run, over:(aft.count>OT), long:(aft.run>=CONS), extra:bef.count-ctx.dyn.baseCount(t.id, ctx.date)});
     });
     out.sort(function(a,b){
       return (b.grp-a.grp) || (b.dept-a.dept) || ((a.meet+a.lunch+a.over+a.long)-(b.meet+b.lunch+b.over+b.long)) || (a.dc-b.dc) || (a.weekly-b.weekly) || (a.Yid<b.Yid?-1:1);
@@ -122,6 +138,7 @@
     if(s.lunch) t.push({t:'ตรงพักกลางวัน', lv:'warn'});
     if(s.long) t.push({t:'ติด '+s.run+' คาบ', lv:'warn'});
     if(s.over) t.push({t:'ภาระเกินเกณฑ์', lv:'warn'});
+    if(s.extra>0) t.push({t:'มีคาบแลกมาลงวันนั้นแล้ว '+s.extra+' คาบ', lv:'info'});
     return t;
   }
   function tagHTML(ts){ return ts.length?ts.map(function(x){ return '<span class="tag '+x.lv+'">'+h(x.t)+'</span>'; }).join(''):'<span class="muted">—</span>'; }
@@ -147,7 +164,7 @@
     var ov=-(+st.DAY_OVERLOAD_PENALTY)*c.overload_n, co=-(+st.CONSECUTIVE_PENALTY)*c.overrun_n;
     function r(l,v,n){ return '<tr><td>'+h(l)+'</td><td class="num">'+(v>=0?'+':'')+v+'</td><td class="muted">'+h(n)+'</td></tr>'; }
     return '<table class="receipt"><tr><td>คะแนนเริ่มต้น</td><td class="num">'+(+st.BASE_SCORE)+'</td><td class="muted">ค่าตั้งต้นของทุกคู่</td></tr>'+
-      r('ภาระสอนต่อสัปดาห์ของครูคู่แลก', c.wk_term, 'สอน '+c.Y_weekly+' คาบ/สัปดาห์ เทียบเกณฑ์ '+B)+
+      r('ภาระสอนต่อสัปดาห์ของครูสอนแทน', c.wk_term, 'สอน '+c.Y_weekly+' คาบ/สัปดาห์ เทียบเกณฑ์ '+B)+
       r('สอนเกินต่อวัน', ov, c.overload_n+' วัน-ครู × '+(+st.DAY_OVERLOAD_PENALTY))+
       r('สอนติดกันยาว', co, c.overrun_n+' วัน-ครู × '+(+st.CONSECUTIVE_PENALTY))+
       r('การเดินของนักเรียน', c.walk_term, 'ข้ามอาคารสุทธิ '+(c.walk_total>=0?'+':'')+c.walk_total)+
@@ -158,17 +175,20 @@
     for(var off=-S.WEEK_SPAN; off<=S.WEEK_SPAN; off++){
       var i=c.offset_info[off]; if(!i || !inSem(i.giveback)) continue;
       var ok=c._allowed.indexOf(off)>=0, why=i.blocked?(i.hold==='soft'?'มีข้อเสนออื่นจองไว้':'ติดคิวที่อนุมัติแล้ว'):(i.clash?'ตรงกับวันลา':'');
-      out+='<button class="wk'+(off===c._off?' on':'')+'" data-act="wkPick" data-key="'+h(ckey(c))+'" data-off="'+off+'"'+(ok?'':' disabled')+
-        (why?' title="'+h(why)+'"':'')+'><b>'+h(A.dShort(i.giveback))+'</b><span>'+h(ok?wkLabel(off):why)+'</span></button>';
+      var tight=ok && c._ev && c._ev[off].score<c._base[off].score, drop=tight?(c._base[off].score-c._ev[off].score):0;
+      if(tight) why='วันนั้นมีคาบแลกมาลงแล้ว คะแนนลดลง '+drop;
+      out+='<button class="wk'+(off===c._off?' on':'')+(tight?' tight':'')+'" data-act="wkPick" data-key="'+h(ckey(c))+'" data-off="'+off+'"'+(ok?'':' disabled')+
+        (why?' title="'+h(why)+'"':'')+'><b>'+h(A.dShort(i.giveback))+'</b><span>'+h(ok?(wkLabel(off)+(tight?' · แน่นขึ้น':'')):why)+'</span></button>';
     }
     return out;
   }
   function loadTable(c, ctx){
-    var eng=A.eng();
-    function cell(b,a){ return '<td>'+b+' → <b class="'+(a>b?'up':(a<b?'dn':''))+'">'+a+'</b> คาบ</td>'; }
+    var b=c._dyn.before, a=c._dyn.after, x=c._dyn.extra, more=(x.me1>0||x.me2>0||x.y1>0||x.y2>0);
+    function cell(bc,ac,ex){ return '<td>'+bc+' → <b class="'+(ac>bc?'up':(ac<bc?'dn':''))+'">'+ac+'</b> คาบ'+(ex>0?'<span class="sub">รวมแลกมาลงแล้ว '+ex+'</span>':'')+'</td>'; }
     return '<table class="mini"><thead><tr><th></th><th>'+h(A.dShort(ctx.date))+'</th><th>'+h(A.dShort(c._gb))+'</th></tr></thead><tbody>'+
-      '<tr><th>'+h(ctx.meShort)+'</th>'+cell(eng.dayCount(ctx.me, ctx.day), c.aMe_d1)+cell(eng.dayCount(ctx.me, c.day2), c.aMe_d2)+'</tr>'+
-      '<tr><th>'+h(A.short(c.Yname))+'</th>'+cell(eng.dayCount(c.Yid, ctx.day), c.aY_d1)+cell(eng.dayCount(c.Yid, c.day2), c.aY_d2)+'</tr></tbody></table>';
+      '<tr><th>'+h(ctx.meShort)+'</th>'+cell(b.me1.count, a.me1.count, x.me1)+cell(b.me2.count, a.me2.count, x.me2)+'</tr>'+
+      '<tr><th>'+h(A.short(c.Yname))+'</th>'+cell(b.y1.count, a.y1.count, x.y1)+cell(b.y2.count, a.y2.count, x.y2)+'</tr></tbody></table>'+
+      (more?'<p class="hint">ตัวเลข “ก่อน” นับรวมคาบที่แลกมาลงไว้แล้วในวันนั้น (ข้อเสนอ รออนุมัติ และอนุมัติแล้ว)</p>':'');
   }
   function detHead(name, id, weekly){
     return '<header class="det-h"><div><h2>'+h(name)+'</h2><p class="muted">รหัส '+h(id)+' · สอน '+weekly+' คาบ/สัปดาห์</p><p>'+A.phoneLink(S.phoneFor(id))+'</p></div>'+
@@ -226,7 +246,8 @@
         return back+'<header class="page-head"><div><h1>หาคนแทน</h1><p>'+h(A.dLong(date))+' · คาบ '+h(per)+'</p></div></header>'+
           '<div class="banner warn">'+icon('warn')+'<div><b>คาบนี้หาคนแทนด้วยโปรแกรมไม่ได้</b><p>'+h(res.message||'ไม่ใช่คาบสอนที่แลกได้')+'</p></div></div>';
       var src=res.source, taken=A.entryAt(me, date, per).entry;
-      var ctx=cur={me:me, meName:meName, meShort:A.short(meName), date:date, day:day, per:String(per), src:src, G:res.G, taken:taken, list:[], subs:[]};
+      var ctx=cur={me:me, meName:meName, meShort:A.short(meName), date:date, day:day, per:String(per), src:src, G:res.G, taken:taken, list:[], subs:[],
+        dyn:new S.Dyn(eng, A.log(), me+'|'+date+'|'+per), p:{me:me, date1:date, per1:String(per), lunchP:res.lunch_p}};
 
       var head=back+'<header class="page-head"><div><h1>หาคนแทน <span class="h1-sub">คาบ '+h(per)+' · '+h(A.dLong(date))+'</span></h1>'+
         '<p><b>'+h(src.subject||'—')+'</b> '+h(A.cls(src.group))+' · ห้อง '+h(src.room||'—')+' · ผู้ลา '+h(meName)+'</p></div></header>';
@@ -240,24 +261,31 @@
         hidden=cs.filter(function(c){ return c._off===null; }).length;
         cs=cs.filter(function(c){ return c._off!==null; });
         n=cs.length;
+        // the engine ranked on the plain timetable; rank again on what each week really looks like
+        cs.slice().sort(function(a,b){
+          if(b.SCORE!==a.SCORE) return b.SCORE-a.SCORE;
+          var da=S.DAYN[a.day2], db=S.DAYN[b.day2]; if(da!==db) return da-db;
+          var pa=+a.per2, pb=+b.per2; if(pa!==pb) return pa-pb;
+          return a.Yid<b.Yid?-1:(a.Yid>b.Yid?1:0); }).forEach(function(c,i){ c.rank=i+1; });
         if(q) cs=cs.filter(function(c){ return (c.Yid+' '+c.Yname).toLowerCase().indexOf(q)>=0; });
         if(pk.sort==='date') cs.sort(function(a,b){ return a._gb<b._gb?-1:(a._gb>b._gb?1:(+a.per2)-(+b.per2)); });
         else if(pk.sort==='name') cs.sort(function(a,b){ return a.Yname.localeCompare(b.Yname,'th') || (a._gb<b._gb?-1:1); });
+        else cs.sort(function(a,b){ return a.rank-b.rank; });
         ctx.list=cs;
         if(pk.sel===null && cs.length && window.innerWidth>=1080) pk.sel=ckey(cs[0]);
         var GMIN=+STORE.data.settings.SCORE_COLOR_GREEN_MIN, YMIN=+STORE.data.settings.SCORE_COLOR_YELLOW_MIN;
-        table='<table class="cands"><thead><tr><th>ครูคู่แลก</th><th>สอนคืนวันที่</th><th>คาบที่แลกกัน</th><th>ข้อควรรู้</th><th class="num" title="คะแนนจัดอันดับ ไม่ใช่เปอร์เซ็นต์">อันดับ</th></tr></thead><tbody>'+
+        table='<table class="cands"><thead><tr><th>ครูสอนแทน</th><th>สอนคืนวันที่</th><th>คาบที่คุณไปสอนคืน</th><th>ข้อควรรู้</th><th class="num" title="คะแนนจัดอันดับ ไม่ใช่เปอร์เซ็นต์">อันดับ</th></tr></thead><tbody>'+
           cs.map(function(c){
             var on=(ckey(c)===pk.sel), band=c.SCORE>=GMIN?'g':(c.SCORE>=YMIN?'y':'r');
             return '<tr class="'+(on?'on':'')+'" data-act="candSel" data-key="'+h(ckey(c))+'" tabindex="0">'+
               '<td><b>'+h(c.Yname)+'</b><span class="sub">'+h(c.Yid)+'</span></td>'+
               '<td><b>'+h(A.dShort(c._gb))+'</b> คาบ '+h(c.per2)+'<span class="sub">'+h(wkLabel(c._off))+'</span></td>'+
-              '<td>'+h(c.Ysub||'—')+'<span class="sub">ห้อง '+h(c.Yroom||'—')+'</span></td>'+
+              '<td>แทน '+h(c.Ysub||'—')+'<span class="sub">ห้อง '+h(c.Yroom||'—')+'</span></td>'+
               '<td class="tags">'+tagHTML(tags(c, ctx))+'</td>'+
               '<td class="num"><span class="score '+band+'" title="คะแนนจัดอันดับ '+c.SCORE+'">'+c.rank+'<i>'+c.SCORE+'</i></span></td></tr>';
           }).join('')+'</tbody></table>';
         if(!cs.length) table=n?'<p class="empty">ไม่พบชื่อที่ค้นหา</p>':
-          '<div class="banner warn">'+icon('warn')+'<div><b>ไม่พบครูที่แลกคาบแบบสอนคืนได้</b><p>ครูที่สอน '+h(A.cls(res.G))+' ไม่ว่างในคาบนี้ หรือคาบที่เขาสอนตรงกับเวลาที่ผู้ลาไม่ว่าง ลองดู “สอนแทน ไม่ต้องคืน” หรือบันทึกคนนอกสอนแทน</p></div></div>';
+          '<div class="banner warn">'+icon('warn')+'<div><b>ไม่พบครูสอนแทนที่แลกกันแบบสอนคืนได้</b><p>ครูที่สอน '+h(A.cls(res.G))+' ไม่ว่างในคาบนี้ หรือคาบที่เขาสอนตรงกับเวลาที่ผู้ลาไม่ว่าง ลองดู “สอนแทน ไม่ต้องคืน” หรือบันทึกคนนอกสอนแทน</p></div></div>';
         var sel=cs.filter(function(c){ return ckey(c)===pk.sel; })[0];
         detail=sel?swapDetail(sel, ctx):'';
       } else {
@@ -277,7 +305,7 @@
         detail=ssel?subDetail(ssel, ctx):'';
       }
       var tools='<div class="tools"><div class="seg">'+
-          '<label><input type="radio" name="pkMode" value="swap" data-chg="pkMode"'+(pk.mode==='swap'?' checked':'')+'><span>แลกคาบ (สอนคืน)</span></label>'+
+          '<label><input type="radio" name="pkMode" value="swap" data-chg="pkMode"'+(pk.mode==='swap'?' checked':'')+'><span>สอนแทน แล้วไปสอนคืน</span></label>'+
           '<label><input type="radio" name="pkMode" value="sub" data-chg="pkMode"'+(pk.mode==='sub'?' checked':'')+'><span>สอนแทน ไม่ต้องคืน</span></label></div>'+
         '<button class="btn btn-sm btn-ghost" data-act="extOpen" data-date="'+h(date)+'" data-per="'+h(per)+'"'+((A.readOnly()||taken)?' disabled':'')+'>'+icon('plus')+'คนนอกสอนแทน</button>'+
         '<span class="grow"></span>'+

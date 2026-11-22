@@ -56,10 +56,19 @@ Real data never lives on the public site, so every browser needs one file once. 
 | Phones `.xlsx` | `teacher_id … phone` header | Replaces the phone book |
 The school data file holds timetable + phones + settings only (no swap records), in the same compact table as the local store (~140 KB). It contains personal data: it is shared person to person (LINE, Drive) and is git-ignored.
 
+## Dynamic load — swaps already on the books (2026-11-20)
+`js/dynamic.js` re-scores each candidate against the *effective* timetable of the two real dates involved: base timetable + every live record (เสนอ / รออนุมัติ / อนุมัติแล้ว; ยกเลิก frees) + the candidate's own two moves. This feeds the overload and consecutive-run penalties, the before→after load table, the tags, the rank order and the saved record.
+- Pick page: the week chips mark a week "แน่นขึ้น" when swaps already made would lower the score there; the default week skips such weeks (only when the plain timetable would not be tighter, so with no swaps the result is identical to before); the detail panel says how many swapped-in periods each teacher already has that day.
+- สอนแทน-only search uses the same effective counts.
+- Still plain-timetable (not dynamic): the weekly workload term and student walking between buildings.
+- Not added on purpose: any penalty for piling swaps on the same weekday across the semester (the user does not want that).
+- Tests: `node tests/preview-dynamic.cjs` — hand-computed expectations plus equality with the engine on the oracle fixture when the log is empty.
+
 ## Verify
 ```
 node tools/build-preview-core.cjs
 node tests/preview-core.cjs [private/swap_backup_….json]
+node tests/preview-dynamic.cjs
 node private/test_ledger_suite.js legacy/index.html
 node tools/serve-preview.cjs      # http://127.0.0.1:8765/  (old app: /legacy/)
 ```

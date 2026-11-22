@@ -319,7 +319,7 @@
       if(!groups[m.group]){ groups[m.group]=''; order.push(m.group); }
       groups[m.group]+=settingRow(m, st, defs);
     });
-    return '<section class="card" id="sec-settings"><h2 class="card-h">การจัดอันดับคู่แลก</h2>'+basic+
+    return '<section class="card" id="sec-settings"><h2 class="card-h">การจัดอันดับครูสอนแทน</h2>'+basic+
       '<details class="adv" data-adv'+(advOpen()?' open':'')+'><summary>น้ำหนักคะแนนและเกณฑ์ (ขั้นสูง)</summary>'+
       '<p class="hint">ค่าพวกนี้เปลี่ยนลำดับของผลค้นหา ไม่เปลี่ยนว่าใครแลกได้หรือไม่ได้</p>'+
       order.map(function(g){ return '<h3 class="set-g">'+h(g)+'</h3>'+groups[g]; }).join('')+
