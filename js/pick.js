@@ -122,7 +122,8 @@
       if(L.busyAt(t.id, ctx.date, String(p), self).length) return;
       var i=info[t.id]||{wk:0,dc:0}, hy={}; hy[t.id+'|'+ctx.date+'|'+p]=1;
       var bef=ctx.dyn.day(t.id, ctx.date, lunchP, null, true), aft=ctx.dyn.day(t.id, ctx.date, lunchP, hy, true);   // counts swaps already on the books
-      out.push({Yid:t.id, Yname:t.name, weekly:i.wk, dc:bef.count, grp:!!i.grp, dept:!!i.dept, meet:f.warn,
+      var wk=ctx.dyn.week(t.id, ctx.date, true); wk.extra=wk.count-i.wk;
+      out.push({Yid:t.id, Yname:t.name, weekly:wk.count, wk:wk, dc:bef.count, grp:!!i.grp, dept:!!i.dept, meet:f.warn,
         lunch:(eng.displayLunch(t.id, ctx.day)===p), run:aft.run, over:(aft.count>OT), long:(aft.run>=CONS), extra:bef.count-ctx.dyn.baseCount(t.id, ctx.date)});
     });
     out.sort(function(a,b){
@@ -164,7 +165,7 @@
     var ov=-(+st.DAY_OVERLOAD_PENALTY)*c.overload_n, co=-(+st.CONSECUTIVE_PENALTY)*c.overrun_n;
     function r(l,v,n){ return '<tr><td>'+h(l)+'</td><td class="num">'+(v>=0?'+':'')+v+'</td><td class="muted">'+h(n)+'</td></tr>'; }
     return '<table class="receipt"><tr><td>คะแนนเริ่มต้น</td><td class="num">'+(+st.BASE_SCORE)+'</td><td class="muted">ค่าตั้งต้นของทุกคู่</td></tr>'+
-      r('ภาระสอนต่อสัปดาห์ของครูสอนแทน', c.wk_term, 'สอน '+c.Y_weekly+' คาบ/สัปดาห์ เทียบเกณฑ์ '+B)+
+      r('ภาระสอนของครูสอนแทน สัปดาห์ '+A.span(c._dyn.yWeek.start, S.ttAddDays(c._dyn.yWeek.start,4)), c.wk_term, 'สอน '+c._dyn.yWeek.count+' → '+c.Y_weekly+' คาบ'+(c._dyn.yWeek.extra?' (รวมแลกแล้ว '+(c._dyn.yWeek.extra>0?'+':'')+c._dyn.yWeek.extra+')':'')+' เทียบเกณฑ์ '+B)+
       r('สอนเกินต่อวัน', ov, c.overload_n+' วัน-ครู × '+(+st.DAY_OVERLOAD_PENALTY))+
       r('สอนติดกันยาว', co, c.overrun_n+' วัน-ครู × '+(+st.CONSECUTIVE_PENALTY))+
       r('การเดินของนักเรียน', c.walk_term, 'ข้ามอาคารสุทธิ '+(c.walk_total>=0?'+':'')+c.walk_total)+
@@ -177,8 +178,9 @@
       var ok=c._allowed.indexOf(off)>=0, why=i.blocked?(i.hold==='soft'?'มีข้อเสนออื่นจองไว้':'ติดคิวที่อนุมัติแล้ว'):(i.clash?'ตรงกับวันลา':'');
       var tight=ok && c._ev && c._ev[off].score<c._base[off].score, drop=tight?(c._base[off].score-c._ev[off].score):0;
       if(tight) why='วันนั้นมีคาบแลกมาลงแล้ว คะแนนลดลง '+drop;
+      var sc=ok && c._ev ? '<i class="sc">คะแนน '+c._ev[off].score+'</i>' : '';
       out+='<button class="wk'+(off===c._off?' on':'')+(tight?' tight':'')+'" data-act="wkPick" data-key="'+h(ckey(c))+'" data-off="'+off+'"'+(ok?'':' disabled')+
-        (why?' title="'+h(why)+'"':'')+'><b>'+h(A.dShort(i.giveback))+'</b><span>'+h(ok?(wkLabel(off)+(tight?' · แน่นขึ้น':'')):why)+'</span></button>';
+        (why?' title="'+h(why)+'"':'')+'><b>'+h(A.dShort(i.giveback))+'</b><span>'+h(ok?(wkLabel(off)+(tight?' · แน่นขึ้น':'')):why)+'</span>'+sc+'</button>';
     }
     return out;
   }
@@ -190,8 +192,22 @@
       '<tr><th>'+h(A.short(c.Yname))+'</th>'+cell(b.y1.count, a.y1.count, x.y1)+cell(b.y2.count, a.y2.count, x.y2)+'</tr></tbody></table>'+
       (more?'<p class="hint">ตัวเลข “ก่อน” นับรวมคาบที่แลกมาลงไว้แล้วในวันนั้น (ข้อเสนอ รออนุมัติ และอนุมัติแล้ว)</p>':'');
   }
-  function detHead(name, id, weekly){
-    return '<header class="det-h"><div><h2>'+h(name)+'</h2><p class="muted">รหัส '+h(id)+' · สอน '+weekly+' คาบ/สัปดาห์</p><p>'+A.phoneLink(S.phoneFor(id))+'</p></div>'+
+  // weekly load: the covering teacher in the absence week (scored), the absent teacher in the give-back week (shown only)
+  function weekTable(c, ctx){
+    var y=c._dyn.yWeek, m=c._dyn.meWeek, same=(y.start===m.start);
+    function row(who, w, note){
+      var cls=w.after>w.count?'up':(w.after<w.count?'dn':'');
+      return '<tr><th>'+h(who)+'</th><td>'+h(A.span(w.start, S.ttAddDays(w.start,4)))+'</td><td>'+w.count+' → <b class="'+cls+'">'+w.after+'</b> คาบ'+
+        (w.extra?'<span class="sub">รวมแลกแล้ว '+(w.extra>0?'+':'')+w.extra+'</span>':'')+'</td><td class="muted">'+h(note)+'</td></tr>';
+    }
+    return '<table class="mini"><thead><tr><th></th><th>สัปดาห์</th><th>ก่อน → หลัง</th><th></th></tr></thead><tbody>'+
+      row(A.short(c.Yname), y, 'ใช้คิดคะแนน')+row(ctx.meShort, m, 'แสดงให้ทราบ')+'</tbody></table>'+
+      '<p class="hint">'+(same?'คืนในสัปดาห์เดียวกัน ภาระรายสัปดาห์ของทั้งสองคนเท่าเดิม':'คืนคนละสัปดาห์ ครูสอนแทนสอนเพิ่ม 1 คาบในสัปดาห์ที่มาแทน และคุณสอนเพิ่ม 1 คาบในสัปดาห์ที่ไปสอนคืน')+'</p>';
+  }
+  // wk = {start, count, extra}: the teacher's load in the week of the absence, swaps included
+  function detHead(name, id, wk){
+    var ex=wk.extra?' (ปกติ '+(wk.count-wk.extra)+', แลกแล้ว '+(wk.extra>0?'+':'')+wk.extra+')':'';
+    return '<header class="det-h"><div><h2>'+h(name)+'</h2><p class="muted">รหัส '+h(id)+' · สัปดาห์ '+h(A.span(wk.start, S.ttAddDays(wk.start,4)))+' สอน '+wk.count+' คาบ'+h(ex)+'</p><p>'+A.phoneLink(S.phoneFor(id))+'</p></div>'+
       '<button class="btn btn-ghost det-x" data-act="detClose" aria-label="ปิด">'+icon('x')+'</button></header>';
   }
   function saveBar(ctx, extra){
@@ -203,11 +219,12 @@
   }
   function swapDetail(c, ctx){
     var lines=A.entryLines(swapEntry(c, ctx, false)), cv=caveats(c, ctx), raw=c.seq_row||{};
-    return detHead(c.Yname, c.Yid, c.Y_weekly)+
+    return detHead(c.Yname, c.Yid, c._dyn.yWeek)+
       '<section><h3>วันสอนคืน <span class="muted">— วัน'+h(c.day2)+' คาบ '+h(c.per2)+'</span></h3><div class="wks">'+weekChips(c, ctx)+'</div></section>'+
       '<section><h3>สิ่งที่จะเปลี่ยน</h3><ol class="changes">'+lines.map(function(l){
         return '<li><span class="when">'+h(A.dMid(l.date))+' · คาบ '+h(l.per)+'</span><b>'+h(l.text)+'</b><span class="muted">'+h(l.sub)+'</span></li>'; }).join('')+'</ol></section>'+
       '<section><h3>จำนวนคาบสอนในวันนั้น</h3>'+loadTable(c, ctx)+'</section>'+
+      '<section><h3>จำนวนคาบสอนในสัปดาห์</h3>'+weekTable(c, ctx)+'</section>'+
       '<section><h3>ข้อควรรู้ก่อนตกลง</h3>'+(cv.length?'<ul class="cav">'+cv.map(function(t){ return '<li>'+icon('warn')+h(t)+'</li>'; }).join('')+'</ul>':'<p class="okline">'+icon('check')+'ไม่มีข้อควรระวัง</p>')+'</section>'+
       '<details><summary>การเดินเปลี่ยนห้องของนักเรียน</summary><div class="walks">'+
         endBlock(A.dShort(ctx.date)+' (วันที่ลา)', +ctx.per, c.prev_u, c.R1, c.Yroom, c.next_u, c.giveup_d)+
@@ -222,7 +239,7 @@
     if(s.lunch) cv.push('คาบนี้เป็นช่วงพักกลางวันตามปกติของ'+y);
     if(s.long) cv.push(y+'จะสอนติดกัน '+s.run+' คาบในวันนั้น');
     if(s.over) cv.push(y+'จะสอนเกิน '+STORE.data.settings.DAY_OVERLOAD_THRESHOLD+' คาบในวันนั้น');
-    return detHead(s.Yname, s.Yid, s.weekly)+
+    return detHead(s.Yname, s.Yid, s.wk)+
       '<section><h3>สิ่งที่จะเปลี่ยน</h3><ol class="changes"><li><span class="when">'+h(A.dMid(l.date))+' · คาบ '+h(l.per)+'</span><b>'+h(l.text)+'</b><span class="muted">'+h(l.sub)+'</span></li></ol></section>'+
       '<section><h3>จำนวนคาบสอนในวันนั้น</h3><p>'+h(y)+': '+s.dc+' → <b class="up">'+(s.dc+1)+'</b> คาบ</p>'+
         '<p class="muted">'+(s.grp?'สอน '+h(A.cls(ctx.G))+' อยู่แล้ว':'ไม่ได้สอน '+h(A.cls(ctx.G))+' ตามปกติ')+(s.dept?' · สอนกลุ่มวิชาเดียวกัน':'')+'</p></section>'+
@@ -294,7 +311,7 @@
         if(pk.sort==='name') ss.sort(function(a,b){ return a.Yname.localeCompare(b.Yname,'th'); });
         ctx.subs=ss;
         if(pk.sel===null && ss.length && window.innerWidth>=1080) pk.sel=ckey(ss[0]);
-        table='<table class="cands"><thead><tr><th>ครูที่ว่างคาบนี้</th><th>สอนวันนั้น</th><th>ต่อสัปดาห์</th><th>ข้อควรรู้</th></tr></thead><tbody>'+
+        table='<table class="cands"><thead><tr><th>ครูที่ว่างคาบนี้</th><th>สอนวันนั้น</th><th>สัปดาห์นี้</th><th>ข้อควรรู้</th></tr></thead><tbody>'+
           ss.slice(0,120).map(function(s){
             return '<tr class="'+(ckey(s)===pk.sel?'on':'')+'" data-act="candSel" data-key="'+h(ckey(s))+'" tabindex="0">'+
               '<td><b>'+h(s.Yname)+'</b><span class="sub">'+h(s.Yid)+'</span></td><td>'+s.dc+' → '+(s.dc+1)+' คาบ</td><td>'+s.weekly+' คาบ</td>'+

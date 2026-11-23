@@ -16,8 +16,14 @@
    + weekly and walking terms, which stay as the engine computed them), so with
    an empty log the result is identical to the engine's.
 
-   Not dynamic (kept from the engine): weekly workload term, student walking
-   between buildings. */
+   Weekly workload term: the covering teacher's load in the WEEK they come in
+   (Mon–Fri of the absence date), counting swaps already on the books AND this
+   swap. A give-back in the same week leaves that load unchanged (+1 −1); a
+   give-back in another week adds one period, so it scores a little lower than
+   the engine's plain count (which looks at the base timetable before the swap).
+   The absent teacher's load in the give-back week is reported, not scored:
+   they teach the make-up whoever covers.
+   Not dynamic (kept from the engine): student walking between buildings. */
 (function(root){
   'use strict';
   var S=root.SWAP, own=Object.prototype.hasOwnProperty;
@@ -51,6 +57,16 @@
     return {count:cnt, run:best};
   };
   Dyn.prototype.baseCount=function(tid, date){ return this.eng.dayCount(tid, this.weekday(date)); };
+  // periods taught Mon–Fri of the week containing `date` (holidays are not modelled: every weekday counts)
+  Dyn.prototype.week=function(tid, date, useOv, hypo){
+    var ws=S.ttWeekStart(date), n=0, d;
+    for(var i=0;i<5;i++){ d=S.ttAddDays(ws,i); for(var p=1;p<=9;p++) n+=this.mark(tid, d, p, hypo||null, useOv); }
+    return {start:ws, count:n};
+  };
+  Dyn.prototype.wkTerm=function(n){
+    var st=this.set, B=+st.WORKLOAD_WEEKLY_BASELINE;
+    return n>B ? -(n-B)*(+st.WORKLOAD_WEEKLY_PENALTY_PER_PERIOD) : (n<B ? (B-n)*(+st.WORKLOAD_WEEKLY_BONUS_PER_PERIOD) : 0);
+  };
 
   /* Evaluate candidate c if the give-back happens on date2. Pure: returns numbers, mutates nothing.
      p = {me, date1, per1, lunchP}; useOv=false gives the plain-timetable answer for comparison. */
@@ -63,9 +79,14 @@
     var b={me1:this.day(me,d1,L,null,useOv), me2:this.day(me,d2,L,null,useOv), y1:this.day(y,d1,L,null,useOv), y2:this.day(y,d2,L,null,useOv)};
     var days=same?['me1','y1']:['me1','me2','y1','y2'], overload=0, overrun=0;
     days.forEach(function(k){ if(a[k].count>OT) overload++; if(a[k].run>=CONS) overrun++; });
-    var score=(+st.BASE_SCORE)+c.wk_term-(+st.DAY_OVERLOAD_PENALTY)*overload-(+st.CONSECUTIVE_PENALTY)*overrun+c.walk_term;
+    var yw=this.week(y, d1, useOv), ywA=this.week(y, d1, useOv, hypo), mw=this.week(me, d2, useOv), mwA=this.week(me, d2, useOv, hypo), wk=this.wkTerm(ywA.count);
+    var score=(+st.BASE_SCORE)+wk-(+st.DAY_OVERLOAD_PENALTY)*overload-(+st.CONSECUTIVE_PENALTY)*overrun+c.walk_term;
     var extra={me1:b.me1.count-this.baseCount(me,d1), me2:b.me2.count-this.baseCount(me,d2), y1:b.y1.count-this.baseCount(y,d1), y2:b.y2.count-this.baseCount(y,d2)};
-    return {date2:d2, after:a, before:b, extra:extra, overload:overload, overrun:overrun, score:score};
+    var yBase=this.eng.weekly(y), mBase=this.eng.weekly(me);
+    return {date2:d2, after:a, before:b, extra:extra, overload:overload, overrun:overrun, score:score,
+            yWeek:{start:yw.start, count:yw.count, after:ywA.count, extra:yw.count-yBase},       // covering teacher, week of the absence
+            meWeek:{start:mw.start, count:mw.count, after:mwA.count, extra:mw.count-mBase},      // absent teacher, week of the give-back
+            wk_term:wk};
   };
 
   // write the evaluation into the candidate so every existing reader (tags, receipts, saved record) sees it
@@ -74,6 +95,7 @@
     c.aMe_d1=a.me1.count; c.aMe_d2=a.me2.count; c.aY_d1=a.y1.count; c.aY_d2=a.y2.count;
     c.runMeD1=a.me1.run; c.runMeD2=a.me2.run; c.runYD1=a.y1.run; c.runYD2=a.y2.run;
     c.overload_n=ev.overload; c.overrun_n=ev.overrun; c.SCORE=ev.score;
+    c.Y_weekly=ev.yWeek.after; c.Me_weekly=ev.meWeek.after; c.wk_term=ev.wk_term;
     var d1=this.weekday(p.date1), d2=this.weekday(ev.date2), mr=Math.max(c.runMeD1,c.runMeD2), yr=Math.max(c.runYD1,c.runYD2), t='';
     if(mr>=CONS) t+='⚠️ ครู Me ติด '+mr+' คาบ ('+((c.runMeD2>c.runMeD1)?d2:d1)+'); ';
     if(yr>=CONS) t+='⚠️ ครู Y ติด '+yr+' คาบ ('+((c.runYD2>c.runYD1)?d2:d1)+'); ';
