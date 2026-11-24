@@ -258,7 +258,8 @@
         for (const [id, name] of this.teachers) {
           const depts = this.departments.get(id) || new Set();
           // a name search looks through everyone: the subject filter narrows the list, it does not lock it
-          if (id === teacherId || !(`${id} ${name}`.toLowerCase().includes(q)) || (!q && !inScope(depts))) continue;
+          // the picked teacher is always listed, so the saved entry gets a score even when found by search
+          if (id === teacherId || (id !== assignedId && (!(`${id} ${name}`.toLowerCase().includes(q)) || (!q && !inScope(depts))))) continue;
           const check = this.coverAt(id, date, period);
           if (!check.ok) continue;
           slot.candidates.push({teacherId: id, teacherName: name, department: [...depts][0] || null, departments: [...depts],

@@ -105,6 +105,10 @@ assert.equal(p3({scope: 'lesson-department'}).candidates.map(c => c.teacherId).j
 assert.equal(p3({scope: 'department', department: 'ส'}).candidates.map(c => c.teacherId).join(), teacher.social);
 // … but a name search still reaches everyone
 assert.equal(p3({scope: 'lesson-department', query: teacher.language}).candidates.map(c => c.teacherId).join(), teacher.language);
+// a teacher picked through search keeps a score after the search is cleared (live test 2026-11-25: score was null)
+const pickedOut = p3({scope: 'lesson-department', assignments: {3: teacher.language}});
+assert.equal(pickedOut.entry.score, 118);
+assert.equal(pickedOut.candidates.map(c => c.teacherId).join(), [teacher.cover, teacher.language].join());
 // weights come from settings
 const heavier = S.subScore({...settings, SUB_BONUS_SAME_CLASS: 30}, {dayAfter: {count: 1, run: 1}, weekAfter: 2, sameClass: true, sameDept: false, meeting: false, lunch: true});
 assert.equal(heavier.score, 100 + 18 + 30 - 15);
