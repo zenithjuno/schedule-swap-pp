@@ -5,7 +5,7 @@
 (function(){
   'use strict';
   var A=window.APP, S=A.S, STORE=A.STORE, h=A.h, ui=A.ui, icon=A.icon;
-  var pk=A.pk={slot:'', mode:'swap', sel:null, chosen:{}, q:'', sort:'rank'};
+  var pk=A.pk={slot:'', mode:'swap', sel:null, chosen:{}, q:'', sort:'rank', dept:'all'};
   var cur=null;   // last computed context, read by the handlers
 
   function ckey(c){ return c.Yid+'|'+(c.day2||'')+'|'+(c.per2||''); }
@@ -107,13 +107,12 @@
     var eng=A.eng(), st=STORE.data.settings, L=S.buildLedger(A.log()), self=ctx.me+'|'+ctx.date+'|'+ctx.per;
     var CONS=+st.CONSECUTIVE_THRESHOLD, OT=+st.DAY_OVERLOAD_THRESHOLD, p=+ctx.per;
     var lunchP = ctx.src.level==='junior' ? +st.LUNCH_JUNIOR_PERIOD : +st.LUNCH_SENIOR_PERIOD;
-    var info=Object.create(null), dept=String(ctx.src.subject||'').charAt(0);
+    var info=Object.create(null), dept=S.deptOf(ctx.src.subject), sets=S.deptSets(eng.rows);
     eng.rows.forEach(function(d){
       var t=info[d.teacher_id]||(info[d.teacher_id]={wk:0, dc:0, grp:false, dept:false});
       if(d.status==='NON_TEACHING') return;
       t.wk++; if(d.day===ctx.day) t.dc++;
       if(d.group===ctx.G) t.grp=true;
-      if(dept && String(d.subject||'').charAt(0)===dept) t.dept=true;
     });
     var out=[];
     A.teachers().forEach(function(t){
@@ -123,18 +122,20 @@
       var i=info[t.id]||{wk:0,dc:0}, hy={}; hy[t.id+'|'+ctx.date+'|'+p]=1;
       var bef=ctx.dyn.day(t.id, ctx.date, lunchP, null, true), aft=ctx.dyn.day(t.id, ctx.date, lunchP, hy, true);   // counts swaps already on the books
       var wk=ctx.dyn.week(t.id, ctx.date, true); wk.extra=wk.count-i.wk;
-      out.push({Yid:t.id, Yname:t.name, weekly:wk.count, wk:wk, dc:bef.count, grp:!!i.grp, dept:!!i.dept, meet:f.warn,
-        lunch:(eng.displayLunch(t.id, ctx.day)===p), run:aft.run, over:(aft.count>OT), long:(aft.run>=CONS), extra:bef.count-ctx.dyn.baseCount(t.id, ctx.date)});
+      var ds=sets[t.id]||{}, lunch=(eng.displayLunch(t.id, ctx.day)===p);
+      var sc=S.subScore(st, {dayAfter:aft, weekAfter:wk.count+1, sameClass:!!i.grp, sameDept:!!(dept && ds[dept]), meeting:!!f.warn, lunch:lunch});
+      out.push({Yid:t.id, Yname:t.name, weekly:wk.count, wk:wk, dc:bef.count, grp:!!i.grp, dept:!!(dept && ds[dept]), depts:ds, meet:f.warn,
+        lunch:lunch, run:aft.run, over:(aft.count>OT), long:(aft.run>=CONS), extra:bef.count-ctx.dyn.baseCount(t.id, ctx.date),
+        SCORE:sc.score, parts:sc.parts});
     });
-    out.sort(function(a,b){
-      return (b.grp-a.grp) || (b.dept-a.dept) || ((a.meet+a.lunch+a.over+a.long)-(b.meet+b.lunch+b.over+b.long)) || (a.dc-b.dc) || (a.weekly-b.weekly) || (a.Yid<b.Yid?-1:1);
-    });
+    out.sort(function(a,b){ return (b.SCORE-a.SCORE) || (a.dc-b.dc) || (a.weekly-b.weekly) || (a.Yid<b.Yid?-1:1); });
+    out.forEach(function(s,i){ s.rank=i+1; });
     return out;
   }
   function subTags(s){
     var t=[];
     if(s.grp) t.push({t:'สอนห้องนี้อยู่แล้ว', lv:'good'});
-    if(s.dept) t.push({t:'กลุ่มวิชาเดียวกัน', lv:'good'});
+    if(s.dept) t.push({t:'กลุ่มสาระเดียวกัน', lv:'good'});
     if(s.meet) t.push({t:'ต้องงดประชุม', lv:'info'});
     if(s.lunch) t.push({t:'ตรงพักกลางวัน', lv:'warn'});
     if(s.long) t.push({t:'ติด '+s.run+' คาบ', lv:'warn'});
@@ -242,10 +243,26 @@
     return detHead(s.Yname, s.Yid, s.wk)+
       '<section><h3>สิ่งที่จะเปลี่ยน</h3><ol class="changes"><li><span class="when">'+h(A.dMid(l.date))+' · คาบ '+h(l.per)+'</span><b>'+h(l.text)+'</b><span class="muted">'+h(l.sub)+'</span></li></ol></section>'+
       '<section><h3>จำนวนคาบสอนในวันนั้น</h3><p>'+h(y)+': '+s.dc+' → <b class="up">'+(s.dc+1)+'</b> คาบ</p>'+
-        '<p class="muted">'+(s.grp?'สอน '+h(A.cls(ctx.G))+' อยู่แล้ว':'ไม่ได้สอน '+h(A.cls(ctx.G))+' ตามปกติ')+(s.dept?' · สอนกลุ่มวิชาเดียวกัน':'')+'</p></section>'+
+        '<p class="muted">'+(s.grp?'สอน '+h(A.cls(ctx.G))+' อยู่แล้ว':'ไม่ได้สอน '+h(A.cls(ctx.G))+' ตามปกติ')+(s.dept?' · สอนกลุ่มสาระเดียวกัน':'')+'</p></section>'+
       '<section><h3>ข้อควรรู้ก่อนตกลง</h3>'+(cv.length?'<ul class="cav">'+cv.map(function(t){ return '<li>'+icon('warn')+h(t)+'</li>'; }).join('')+'</ul>':'<p class="okline">'+icon('check')+'ไม่มีข้อควรระวัง</p>')+'</section>'+
+      '<details><summary>ที่มาของคะแนนจัดอันดับ ('+s.SCORE+')</summary>'+subReceipt(s)+'</details>'+
       saveBar(ctx);
   }
+  function subReceipt(s){
+    return '<table class="receipt">'+s.parts.map(function(x,i){
+      return '<tr><td>'+h(x.label)+'</td><td class="num">'+(i&&x.value>=0?'+':'')+x.value+'</td><td class="muted">'+h(x.note)+'</td></tr>'; }).join('')+
+      '<tr class="total"><td>คะแนนจัดอันดับ</td><td class="num">'+s.SCORE+'</td><td class="muted">ปรับน้ำหนักได้ที่ ข้อมูล › การจัดอันดับครูสอนแทน</td></tr></table>';
+  }
+  // subject-group filter for "สอนแทน ไม่ต้องคืน": narrows the list, never locks it (a name search looks through everyone)
+  A.subDeptOptions=function(cur, lessonDept, perPeriod){
+    var have={}; A.eng().rows.forEach(function(r){ var d=S.deptOf(r.subject); if(d && r.status!=='NON_TEACHING') have[d]=1; });
+    var o='<option value="all"'+(cur==='all'?' selected':'')+'>ทุกกลุ่มสาระ</option>';
+    if(lessonDept) o+='<option value="lesson"'+(cur==='lesson'?' selected':'')+'>กลุ่มสาระเดียวกับวิชาที่ลา ('+h(S.deptName(lessonDept))+')</option>';
+    else if(perPeriod) o+='<option value="lesson"'+(cur==='lesson'?' selected':'')+'>กลุ่มสาระเดียวกับวิชาของแต่ละคาบ</option>';
+    S.DEPTS.concat(Object.keys(have).filter(function(k){ return !S.DEPTS.some(function(d){ return d.key===k; }); }).map(function(k){ return {key:k}; }))
+      .forEach(function(d){ if(have[d.key]) o+='<option value="'+h(d.key)+'"'+(cur===d.key?' selected':'')+'>'+h(S.deptName(d.key))+'</option>'; });
+    return o;
+  };
 
   /* ---------- page ---------- */
   A.pages.pick={
@@ -307,17 +324,23 @@
         detail=sel?swapDetail(sel, ctx):'';
       } else {
         var ss=findSubs(ctx); n=ss.length;
+        var lessonDept=S.deptOf(src.subject), want=pk.dept==='lesson'?lessonDept:pk.dept, filtered=0;
         if(q) ss=ss.filter(function(s){ return (s.Yid+' '+s.Yname).toLowerCase().indexOf(q)>=0; });
+        else if(want && want!=='all'){ var all=ss.length; ss=ss.filter(function(s){ return !!s.depts[want]; }); filtered=all-ss.length; }
         if(pk.sort==='name') ss.sort(function(a,b){ return a.Yname.localeCompare(b.Yname,'th'); });
         ctx.subs=ss;
         if(pk.sel===null && ss.length && window.innerWidth>=1080) pk.sel=ckey(ss[0]);
-        table='<table class="cands"><thead><tr><th>ครูที่ว่างคาบนี้</th><th>สอนวันนั้น</th><th>สัปดาห์นี้</th><th>ข้อควรรู้</th></tr></thead><tbody>'+
+        var GM=+STORE.data.settings.SCORE_COLOR_GREEN_MIN, YM=+STORE.data.settings.SCORE_COLOR_YELLOW_MIN;
+        table='<table class="cands"><thead><tr><th>ครูที่ว่างคาบนี้</th><th>สอนวันนั้น</th><th>สัปดาห์นี้</th><th>ข้อควรรู้</th><th class="num" title="คะแนนจัดอันดับ ไม่ใช่เปอร์เซ็นต์">อันดับ</th></tr></thead><tbody>'+
           ss.slice(0,120).map(function(s){
+            var band=s.SCORE>=GM?'g':(s.SCORE>=YM?'y':'r');
             return '<tr class="'+(ckey(s)===pk.sel?'on':'')+'" data-act="candSel" data-key="'+h(ckey(s))+'" tabindex="0">'+
-              '<td><b>'+h(s.Yname)+'</b><span class="sub">'+h(s.Yid)+'</span></td><td>'+s.dc+' → '+(s.dc+1)+' คาบ</td><td>'+s.weekly+' คาบ</td>'+
-              '<td class="tags">'+tagHTML(subTags(s))+'</td></tr>'; }).join('')+'</tbody></table>'+
-          (ss.length>120?'<p class="muted sm">แสดง 120 คนแรก — พิมพ์ชื่อเพื่อค้นหา</p>':'');
-        if(!ss.length) table='<p class="empty">'+(n?'ไม่พบชื่อที่ค้นหา':'ไม่มีครูที่ว่างในคาบนี้')+'</p>';
+              '<td><b>'+h(s.Yname)+'</b><span class="sub">'+h(s.Yid)+'</span></td><td>'+s.dc+' → '+(s.dc+1)+' คาบ</td><td>'+s.weekly+' → '+(s.weekly+1)+' คาบ</td>'+
+              '<td class="tags">'+tagHTML(subTags(s))+'</td>'+
+              '<td class="num"><span class="score '+band+'" title="คะแนนจัดอันดับ '+s.SCORE+'">'+s.rank+'<i>'+s.SCORE+'</i></span></td></tr>'; }).join('')+'</tbody></table>'+
+          (ss.length>120?'<p class="muted sm">แสดง 120 คนแรก — พิมพ์ชื่อเพื่อค้นหา</p>':'')+
+          (filtered?'<p class="muted sm">ซ่อน '+filtered+' คนจากกลุ่มสาระอื่น — พิมพ์ชื่อเพื่อค้นจากครูทุกคน หรือเลือก “ทุกกลุ่มสาระ”</p>':'');
+        if(!ss.length) table='<p class="empty">'+(q?'ไม่พบชื่อที่ค้นหา':(filtered?'ไม่มีครูในกลุ่มสาระนี้ที่ว่าง — เลือก “ทุกกลุ่มสาระ” หรือพิมพ์ชื่อครู':'ไม่มีครูที่ว่างในคาบนี้'))+'</p>';
         var ssel=ss.filter(function(s){ return ckey(s)===pk.sel; })[0];
         detail=ssel?subDetail(ssel, ctx):'';
       }
@@ -326,17 +349,18 @@
           '<label><input type="radio" name="pkMode" value="sub" data-chg="pkMode"'+(pk.mode==='sub'?' checked':'')+'><span>สอนแทน ไม่ต้องคืน</span></label></div>'+
         '<button class="btn btn-sm btn-ghost" data-act="extOpen" data-date="'+h(date)+'" data-per="'+h(per)+'"'+((A.readOnly()||taken)?' disabled':'')+'>'+icon('plus')+'คนนอกสอนแทน</button>'+
         '<span class="grow"></span>'+
+        (pk.mode==='sub'?'<select class="sel" data-chg="pkDept" aria-label="กลุ่มสาระ">'+A.subDeptOptions(pk.dept, S.deptOf(src.subject))+'</select>':'')+
         '<label class="search">'+icon('search')+'<input id="pkQ" class="inp" type="search" placeholder="ค้นชื่อครู" value="'+h(pk.q)+'" data-inp="pkQ"></label>'+
         '<select class="sel" data-chg="pkSort" aria-label="เรียงตาม">'+
           (pk.mode==='swap'?'<option value="rank"'+(pk.sort==='rank'?' selected':'')+'>เรียงตามอันดับแนะนำ</option><option value="date"'+(pk.sort==='date'?' selected':'')+'>เรียงตามวันสอนคืน</option>'
-                            :'<option value="rank"'+(pk.sort!=='name'?' selected':'')+'>เรียงตามความเหมาะสม</option>')+
+                            :'<option value="rank"'+(pk.sort!=='name'?' selected':'')+'>เรียงตามอันดับแนะนำ</option>')+
           '<option value="name"'+(pk.sort==='name'?' selected':'')+'>เรียงตามชื่อ</option></select></div>';
       var opts=pk.mode==='swap'?'<details class="opts"><summary>ตัวเลือกการค้นหา</summary><div class="row2">'+
         '<label class="fld"><span>ให้เสนอวันสอนคืนไปทาง</span><select class="sel" data-chg="pkPref">'+['อนาคต','อดีต','ใกล้ที่สุด'].map(function(p){ return '<option'+(p===ui.pref?' selected':'')+'>'+p+'</option>'; }).join('')+'</select></label>'+
         '<label class="fld"><span>วันที่เสนอ (ใช้เตือนการบันทึกย้อนหลัง)</span><input type="date" class="inp" data-chg="pkProposed" value="'+h(ui.dateProposed)+'"></label></div></details>':'';
       var count='<p class="count">'+(pk.mode==='swap'
         ? 'พบ '+n+' ตัวเลือก — ทุกคนสอน '+h(A.cls(res.G))+' และว่างตรงกันทั้งสองคาบ'+(hidden?' · ซ่อน '+hidden+' ตัวเลือกที่ไม่มีวันสอนคืนที่ใช้ได้':'')
-        : 'พบ '+n+' คนที่ว่างในคาบนี้ — ไม่ต้องมีคาบมาแลกคืน จึงไม่มีคะแนนจัดอันดับ')+'</p>';
+        : 'พบ '+n+' คนที่ว่างในคาบนี้ — ไม่ต้องมีคาบมาแลกคืน เรียงตามคะแนนจัดอันดับสอนแทน')+'</p>';
       return head+tools+opts+count+'<div class="pick'+(detail?' has-det':'')+'"><div class="pick-l">'+table+'</div>'+
         '<aside class="det" id="det">'+(detail||'<p class="empty">เลือกครูจากรายการ เพื่อดูวันสอนคืน ข้อควรรู้ และตารางจำลองสองฝ่าย</p>')+'</aside></div>';
     }
@@ -354,6 +378,7 @@
   A.acts.wkPick=function(el){ pk.chosen[el.getAttribute('data-key')]=+el.getAttribute('data-off'); A.rerender(); };
   A.chgs.pkMode=function(el){ pk.mode=el.value; pk.sel=null; pk.sort='rank'; A.rerender(); };
   A.chgs.pkSort=function(el){ pk.sort=el.value; A.rerender(); };
+  A.chgs.pkDept=function(el){ pk.dept=el.value; pk.sel=null; A.rerender(); };
   A.chgs.pkPref=function(el){ ui.pref=el.value; pk.chosen={}; A.rerender(); };
   A.chgs.pkProposed=function(el){ if(el.value){ ui.dateProposed=el.value; A.rerender(); } };
   A.inps.pkQ=function(el){ pk.q=el.value; A.rerender(); var q=document.getElementById('pkQ'); if(q){ q.focus(); try{ q.setSelectionRange(q.value.length,q.value.length); }catch(_){} } };

@@ -737,7 +737,7 @@
     // fallback: all-cancelled groups, only for (teacher,date) NOT in a round
     var by=Object.create(null), order=[];
     for(var i2=0;i2<log.length;i2++){
-      var e2=log[i2]; if(!e2||!e2.me_id||!e2.date_absent) continue;
+      var e2=log[i2]; if(!e2||!e2.me_id||!e2.date_absent||e2.workflow==='target-swap') continue;
       if(roundDay[e2.me_id+'|'+String(e2.date_absent).slice(0,10)]) continue;
       var k2=ledKey(e2.me_id,e2.date_absent,e2.per_give);
       if(!by[k2]){ by[k2]=[]; order.push(k2); }
@@ -1587,7 +1587,7 @@
   }
   function beShort(iso){ if(!iso) return '—'; return __SWAP_DATES__.formatBE(String(iso).slice(0,10), false); }
   // A สอนแทน row has no give-back, so its life ends on the absence date.
-  function entryEndDate(e){ return String(e.date_back||e.date_absent||'').slice(0,10); }
+  function entryEndDate(e){ var give=ledDate(e.date_absent), back=ledDate(e.date_back); return back>give?back:give; }
   function isSubOnly(e){ return e.kind==='สอนแทน' || !e.date_back; }
   function isFinished(e){ return e.status==='อนุมัติแล้ว' && entryEndDate(e) < todayISO(); }
   function logRowClass(st){

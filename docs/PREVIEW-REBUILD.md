@@ -77,3 +77,18 @@ node private/test_ledger_suite.js legacy/index.html
 node tools/serve-preview.cjs      # http://127.0.0.1:8765/  (old app: /legacy/)
 ```
 Not yet verified: printed/PDF pagination, Safari, and the GitHub Pages deployment.
+
+## จัดคนสอนแทนทั้งวัน (`#subs/<date>`, js/subs.js)
+- Entry: button "จัดคนสอนแทนทั้งวัน" on a day card in the plan page when 2+ periods still need cover.
+- UI over `S.activeModes().planSubstitutes()` / `S.commitMode('substitute')` from js/modes.js (see docs/MODES-ENGINE.md). Saves `kind:'สอนแทน'`, status เสนอ, `recordLeave:false` (leave rounds stay managed by the plan page).
+- Subject-group filter (both here and in the single-period "สอนแทน ไม่ต้องคืน" list): groups come from the first letter of every subject code a teacher teaches (อ จ ญ ฝ = ภาษาต่างประเทศ). It narrows the list; a name search always looks through everyone.
+- Substitute score `S.subScore` (js/dynamic.js): BASE + weekly term (after taking the period) − day overload − long run + SUB_BONUS_SAME_CLASS + SUB_BONUS_SAME_DEPT − SUB_PENALTY_MEETING − SUB_PENALTY_LUNCH. New settings are added to DEFAULT_SETTINGS / SETTINGS_META at load time by dynamic.js.
+- CSS: the page's classes are prefixed `sb-` (an earlier `.sc` clashed with the week-chip score).
+- Candidate load counts the other periods picked on the same screen (draft assignments).
+
+## Score defaults v2 (2026-11-23)
+- Agreed with the school: weekly baseline 16 (median real load; was 20), +2 / −2 per period under / over (bonus was 1), day overload −15 (was −10) so a heavy day weighs the same as a long run (−15), and a 5-period day counts as overloaded (threshold 4, was 5: in the real timetable 91% of teacher-days are ≤ 4 periods). Long runs that already exist in the timetable still count: a teacher who already teaches 3+ in a row is less likely to accept.
+- Set in js/dynamic.js on top of the generated defaults (the legacy app keeps the old numbers). `S.upgradeScoreSettings` moves stored settings still holding an old default to the new one once (marker `SCORE_DEFAULTS_V:2`), on load, backup restore, ready-file and legacy-copy imports; values someone changed are kept.
+- Subject code ก = การงานอาชีพ (grouped with ง).
+- Real data (955 searches, 7,180 candidates), with the 5-period rule: median score 72, best candidate per search median 100; colour bands green 21% / yellow 37% / red 42% with the unchanged 90 / 70 thresholds.
+- Tests pin their own settings; tests/preview-dynamic.cjs [11] covers the upgrade.

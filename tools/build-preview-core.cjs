@@ -64,6 +64,17 @@ patch(/function loadEmbeddedFixture\(\)\{[\s\S]*?\n  \}/.exec(body)[0],"function
 // The dateless oracle path (self-test) is untouched and stays 21/21.
 patch("var yid=d.teacher_id, day2=d.day, sameDay=(day1===day2);","var yid=d.teacher_id, day2=d.day, sameDay=(day1===day2) && !(opts && opts.dateAbsent);",'same-weekday fix');
 
+// A target-first offer can fall after the desired slot. Finish at the later end.
+patch("function entryEndDate(e){ return String(e.date_back||e.date_absent||'').slice(0,10); }",
+      "function entryEndDate(e){ var give=ledDate(e.date_absent), back=ledDate(e.date_back); return back>give?back:give; }",
+      'last actual date of an entry');
+
+// A cancelled elective swap does not imply that the teacher was absent.
+// Real leave rounds and live coverage still participate in the existing audit.
+patch("if(!e2||!e2.me_id||!e2.date_absent) continue;",
+      "if(!e2||!e2.me_id||!e2.date_absent||e2.workflow==='target-swap') continue;",
+      'target-first swaps in absence audit');
+
 // P4 — the template's example row must not carry a real person's name
 { const re=/(ชื่อครูพร้อมคำนำหน้า เช่น )[^']+/g, n=(body.match(re)||[]).length;
   if(n!==1) throw new Error('patch "template example name" matched '+n+' times');

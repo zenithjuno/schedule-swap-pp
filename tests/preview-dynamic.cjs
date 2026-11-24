@@ -17,7 +17,8 @@ function ok(name,cond,extra){ console.log((cond?'  ✅ ':'  ❌ ')+name+(cond||e
 // A is otherwise free on Mondays. Absence: Wed 2026-11-18; give-back on Mon 2026-11-23 (the NEXT week).
 // Weekly term = B's load in the absence week (16–20 Nov) AFTER this swap: B gains Wed p3 there and
 // loses Mon 23 p6 in the following week, so the absence week goes 1 → 2 → (20 − 2) × 1 = +18.
-const settings=S.cloneSettings(S.DEFAULT_SETTINGS);
+// pinned to the numbers the hand calculations below were done with (the app's defaults moved on 2026-11-23)
+const settings=Object.assign(S.cloneSettings(S.DEFAULT_SETTINGS),{WORKLOAD_WEEKLY_BASELINE:20,WORKLOAD_WEEKLY_BONUS_PER_PERIOD:1,WORKLOAD_WEEKLY_PENALTY_PER_PERIOD:2,DAY_OVERLOAD_PENALTY:10,DAY_OVERLOAD_THRESHOLD:5,CONSECUTIVE_PENALTY:15});
 const row=(t,day,p,g,room)=>({teacher_id:t,teacher_name:'ครูทดสอบ '+t,day,period:String(p),subject:'ค'+g,group:g,room:room||'323',raw_cell:'',status:'VERIFIED',audit_note:''});
 function mk(extraRows){ const rows=[row('A','พุธ',3,'4.1'),row('B','จันทร์',6,'4.1')].concat(extraRows||[]); S.deriveRows(rows,settings); return new S.Engine(rows,settings,[]); }
 const entry=(o)=>Object.assign({id:'e'+Math.random(),status:'อนุมัติแล้ว',me_id:'A',me_name:'A',y_id:'X1',y_name:'X',day_give:'อังคาร',per_give:'1',date_absent:'2026-12-01',day_back:'จันทร์',per_back:'7',date_back:'2026-11-23',kind:'แลกคาบ'},o);
@@ -101,6 +102,19 @@ t=run(E,[]); let same=t.dyn.eval(t.c,t.p,'2026-11-16',true);
 ok('B week stays 1, score 119', same.yWeek.count===1 && same.yWeek.after===1 && same.score===119, JSON.stringify([same.yWeek,same.score]));
 ok('A week (16–20 Nov) stays 1', same.meWeek.start==='2026-11-16' && same.meWeek.count===1 && same.meWeek.after===1, JSON.stringify(same.meWeek));
 ok('same week beats next week by 1', same.score-t.ev.score===1);
+
+console.log('\n[11] score defaults v2 and the one-time upgrade of stored settings');
+const D=S.DEFAULT_SETTINGS;
+ok('new defaults: baseline 16, ±2 per period, 5+ periods a day = overload −15, long run −15', D.DAY_OVERLOAD_THRESHOLD===4 && D.WORKLOAD_WEEKLY_BASELINE===16 && D.WORKLOAD_WEEKLY_BONUS_PER_PERIOD===2 && D.WORKLOAD_WEEKLY_PENALTY_PER_PERIOD===2 && D.DAY_OVERLOAD_PENALTY===15 && D.CONSECUTIVE_PENALTY===15);
+let old={WORKLOAD_WEEKLY_BASELINE:20,WORKLOAD_WEEKLY_BONUS_PER_PERIOD:1,DAY_OVERLOAD_PENALTY:10,DAY_OVERLOAD_THRESHOLD:5,CONSECUTIVE_PENALTY:15};
+ok('old defaults are upgraded', S.upgradeScoreSettings(old) && old.WORKLOAD_WEEKLY_BASELINE===16 && old.WORKLOAD_WEEKLY_BONUS_PER_PERIOD===2 && old.DAY_OVERLOAD_PENALTY===15 && old.DAY_OVERLOAD_THRESHOLD===4 && old.SCORE_DEFAULTS_V===2, JSON.stringify(old));
+let mine={WORKLOAD_WEEKLY_BASELINE:18,WORKLOAD_WEEKLY_BONUS_PER_PERIOD:1,DAY_OVERLOAD_PENALTY:12};
+S.upgradeScoreSettings(mine);
+ok('a value changed on purpose is kept (18, 12), an untouched one moves (bonus 1 → 2)', mine.WORKLOAD_WEEKLY_BASELINE===18 && mine.DAY_OVERLOAD_PENALTY===12 && mine.WORKLOAD_WEEKLY_BONUS_PER_PERIOD===2, JSON.stringify(mine));
+ok('runs only once', !S.upgradeScoreSettings(Object.assign(mine,{WORKLOAD_WEEKLY_BASELINE:20})) && mine.WORKLOAD_WEEKLY_BASELINE===20);
+mem['swapApp.preview.v1']=S.CODEC.encode({schemaVersion:1,semesters:{},settings:{BASE_SCORE:100,WORKLOAD_WEEKLY_BASELINE:20,WORKLOAD_WEEKLY_BONUS_PER_PERIOD:1,DAY_OVERLOAD_PENALTY:10}});
+S.STORE.load();
+ok('a store saved before v2 loads with the new numbers', S.STORE.data.settings.WORKLOAD_WEEKLY_BASELINE===16 && S.STORE.data.settings.DAY_OVERLOAD_PENALTY===15 && S.STORE.data.settings.SUB_BONUS_SAME_CLASS===10, JSON.stringify(S.STORE.data.settings));
 
 console.log('\n[8] with an empty log it matches the engine on the oracle fixture (no clash cases)');
 // day counts, runs and penalties are identical. The score differs only by the weekly term when the give-back

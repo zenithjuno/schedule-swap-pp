@@ -108,4 +108,74 @@
   };
 
   S.Dyn=Dyn;
+
+  /* ---------- สอนแทน ไม่ต้องคืน: score + subject groups ---------- */
+  // subject code's first letter → learning-area group (foreign languages share one group)
+  var DEPTS=[
+    {key:'ท', name:'ภาษาไทย', letters:'ท'}, {key:'ค', name:'คณิตศาสตร์', letters:'ค'},
+    {key:'ว', name:'วิทยาศาสตร์และเทคโนโลยี', letters:'ว'}, {key:'ส', name:'สังคมศึกษาฯ', letters:'ส'},
+    {key:'พ', name:'สุขศึกษาและพลศึกษา', letters:'พ'}, {key:'ศ', name:'ศิลปะ', letters:'ศ'},
+    {key:'ง', name:'การงานอาชีพ', letters:'งก'}, {key:'ต', name:'ภาษาต่างประเทศ', letters:'อจญฝ'},
+    {key:'I', name:'IS (การศึกษาค้นคว้า)', letters:'I'}
+  ];
+  var byLetter={}; DEPTS.forEach(function(d){ d.letters.split('').forEach(function(l){ byLetter[l]=d.key; }); });
+  S.DEPTS=DEPTS;
+  S.deptOf=function(subject){ var l=String(subject||'').trim().charAt(0); return byLetter[l]||(l?l:null); };
+  S.deptName=function(key){ for(var i=0;i<DEPTS.length;i++) if(DEPTS[i].key===key) return DEPTS[i].name; return 'รหัสวิชา '+key; };
+  // teacher id → set of groups they teach (any subject counts)
+  S.deptSets=function(rows){
+    var out=Object.create(null);
+    rows.forEach(function(r){ if(r.status==='NON_TEACHING') return; var d=S.deptOf(r.subject); if(!d) return; (out[r.teacher_id]||(out[r.teacher_id]={}))[d]=1; });
+    return out;
+  };
+
+  // new weights, same idea as the swap score; filled into stored settings by STORE._migrate
+  var SUB_DEFAULTS={SUB_BONUS_SAME_CLASS:10, SUB_BONUS_SAME_DEPT:5, SUB_PENALTY_MEETING:5, SUB_PENALTY_LUNCH:15};
+  Object.keys(SUB_DEFAULTS).forEach(function(k){ if(S.DEFAULT_SETTINGS[k]==null) S.DEFAULT_SETTINGS[k]=SUB_DEFAULTS[k]; });
+  var G='การให้คะแนน — สอนแทนไม่ต้องคืน', at=S.SETTINGS_META.map(function(m){ return m.group; }).indexOf('สีแสดงคะแนน');
+  if(!S.SETTINGS_META.some(function(m){ return m.group===G; })) S.SETTINGS_META.splice(at<0?S.SETTINGS_META.length:at, 0,
+    {key:'SUB_BONUS_SAME_CLASS', label:'บวกคะแนน ถ้าครูสอนห้องนี้อยู่แล้ว', help:'ครูที่สอนชั้น/ห้องเดียวกันตามปกติ รู้จักนักเรียนอยู่แล้ว', type:'int', min:0, max:100, group:G, adv:true},
+    {key:'SUB_BONUS_SAME_DEPT', label:'บวกคะแนน ถ้าสอนกลุ่มสาระเดียวกับวิชาที่ลา', help:'ดูจากอักษรตัวแรกของรหัสวิชาที่ครูสอน (ค ว ส …)', type:'int', min:0, max:100, group:G, adv:true},
+    {key:'SUB_PENALTY_MEETING', label:'หักคะแนน ถ้าต้องงดประชุม', help:'คาบนั้นครูมีประชุมตามตาราง', type:'int', min:0, max:100, group:G, adv:true},
+    {key:'SUB_PENALTY_LUNCH', label:'หักคะแนน ถ้าตรงพักกลางวันของครู', help:'คาบนั้นเป็นคาบพักกลางวันของครูสอนแทน', type:'int', min:0, max:100, group:G, adv:true});
+
+  /* Score defaults v2 (2026-11-23, agreed with the school): weekly baseline 16 (the median teacher's real load,
+     was 20) with ±2 per period either side (bonus was 1), and a heavy day weighs the same as a long run
+     (overload −15, was −10), and a 5-period day already counts as overloaded (threshold 4 = more than 4;
+     was 5). The legacy app keeps the old numbers. Stored settings still holding an old
+     default are moved to the new one once; a value someone changed on purpose is left alone. */
+  var V2_OLD={WORKLOAD_WEEKLY_BASELINE:20, WORKLOAD_WEEKLY_BONUS_PER_PERIOD:1, DAY_OVERLOAD_PENALTY:10, DAY_OVERLOAD_THRESHOLD:5};
+  var V2_NEW={WORKLOAD_WEEKLY_BASELINE:16, WORKLOAD_WEEKLY_BONUS_PER_PERIOD:2, DAY_OVERLOAD_PENALTY:15, DAY_OVERLOAD_THRESHOLD:4};
+  Object.keys(V2_NEW).forEach(function(k){ S.DEFAULT_SETTINGS[k]=V2_NEW[k]; });
+  S.DEFAULT_SETTINGS.SCORE_DEFAULTS_V=2;
+  S.upgradeScoreSettings=function(st){
+    if(!st || +st.SCORE_DEFAULTS_V>=2) return false;
+    Object.keys(V2_OLD).forEach(function(k){ if(st[k]==null || String(st[k])===String(V2_OLD[k])) st[k]=V2_NEW[k]; });
+    st.SCORE_DEFAULTS_V=2; return true;
+  };
+  // every load and every backup restore goes through _migrate; look at the marker before it fills defaults in
+  var mig=S.STORE._migrate;
+  S.STORE._migrate=function(){
+    var st=this.data && this.data.settings, old=!!st && st.SCORE_DEFAULTS_V==null;
+    mig.apply(this, arguments);
+    // _migrate has just copied the v2 marker in from the defaults: drop it so the upgrade runs
+    if(old){ this.data.settings.SCORE_DEFAULTS_V=null; S.upgradeScoreSettings(this.data.settings); }
+  };
+
+  /* score a substitute (no give-back). x = {dayAfter:{count,run}, weekAfter, sameClass, sameDept, meeting, lunch}
+     → {score, parts:[{label, value, note}]} — parts add up to score */
+  S.subScore=function(st, x){
+    var B=+st.WORKLOAD_WEEKLY_BASELINE, n=x.weekAfter, OT=+st.DAY_OVERLOAD_THRESHOLD, CT=+st.CONSECUTIVE_THRESHOLD, parts=[];
+    var wk=n>B ? -(n-B)*(+st.WORKLOAD_WEEKLY_PENALTY_PER_PERIOD) : (n<B ? (B-n)*(+st.WORKLOAD_WEEKLY_BONUS_PER_PERIOD) : 0);
+    parts.push({label:'คะแนนเริ่มต้น', value:+st.BASE_SCORE, note:'ค่าตั้งต้นของทุกคน'});
+    parts.push({label:'ภาระสอนสัปดาห์นี้', value:wk, note:'สอน '+n+' คาบ (รวมคาบนี้) เทียบเกณฑ์ '+B});
+    parts.push({label:'สอนเกินต่อวัน', value:x.dayAfter.count>OT?-(+st.DAY_OVERLOAD_PENALTY):0, note:'วันนั้น '+x.dayAfter.count+' คาบ · เกณฑ์ '+OT});
+    parts.push({label:'สอนติดกันยาว', value:x.dayAfter.run>=CT?-(+st.CONSECUTIVE_PENALTY):0, note:'ติดกันสูงสุด '+x.dayAfter.run+' คาบ · เกณฑ์ '+CT});
+    parts.push({label:'สอนห้องนี้อยู่แล้ว', value:x.sameClass?+st.SUB_BONUS_SAME_CLASS:0, note:x.sameClass?'ใช่':'ไม่'});
+    parts.push({label:'กลุ่มสาระเดียวกัน', value:x.sameDept?+st.SUB_BONUS_SAME_DEPT:0, note:x.sameDept?'ใช่':'ไม่'});
+    parts.push({label:'ต้องงดประชุม', value:x.meeting?-(+st.SUB_PENALTY_MEETING):0, note:x.meeting?'ใช่':'ไม่'});
+    parts.push({label:'ตรงพักกลางวัน', value:x.lunch?-(+st.SUB_PENALTY_LUNCH):0, note:x.lunch?'ใช่':'ไม่'});
+    var score=0; parts.forEach(function(p){ score+=p.value; });
+    return {score:score, parts:parts};
+  };
 })(window);

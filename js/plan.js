@@ -62,7 +62,7 @@
     if(meta.endDate && dateISO>meta.endDate) warn.push('อยู่หลังวันปิดภาคเรียน');
     if(!day) return '<article class="day"><header class="day-h"><h3>'+h(S.formatBE(dateISO,false))+'</h3></header><p class="empty">วันนี้เป็นวันเสาร์–อาทิตย์ ไม่มีคาบสอน — เลือกวันจันทร์–ศุกร์</p></article>';
     var hasRound=!!rd, leaveSet={}; if(rd) (rd.periods||[]).forEach(function(p){ leaveSet[String(p)]=1; });
-    var cells='', rows='', nLeave=0, nCov=0, ro=A.readOnly();
+    var cells='', rows='', nLeave=0, nCov=0, nOpen=0, ro=A.readOnly();
     for(var p=1;p<=9;p++){
       var row=eng.row(me, day, String(p)), lunch=(eng.displayLunch(me, day)===p);
       if(!row){ cells+='<div class="cell c-free"><span class="cn">'+p+'</span><span class="cx">'+(lunch?'พักกลางวัน':'ว่าง')+'</span></div>'; continue; }
@@ -76,6 +76,7 @@
         (hasRound?'<label class="tick"><input type="checkbox" data-chg="leaveTick" data-date="'+dateISO+'" data-per="'+p+'"'+(onLeave?' checked':'')+(ro?' disabled':'')+'><span>ลา</span></label>':'')+
       '</div>';
       if(hasRound && !onLeave && !e) continue;          // taught as usual: nothing to arrange
+      if(!e && okSrc) nOpen++;
       var stat, info='';
       if(e){
         stat=A.statusSelect(e);
@@ -103,7 +104,8 @@
                  : '<span class="tag">ลา'+h(rd.mode)+'</span> <span class="muted">มีคนแทนแล้ว '+nCov+'/'+nLeave+' คาบ</span>';
     } else sub='<span class="muted">ยังไม่ได้ระบุว่าลาคาบไหน — เลือกจัดได้ทุกคาบสอน</span>';
     return '<article class="day">'+
-      '<header class="day-h"><h3>'+h(A.dLong(dateISO))+'</h3><div class="day-sub">'+sub+'</div></header>'+
+      '<header class="day-h"><h3>'+h(A.dLong(dateISO))+'</h3><div class="day-sub">'+sub+'</div>'+
+        (nOpen>1?'<a class="btn btn-sm" href="#subs/'+dateISO+'">'+icon('user')+'จัดคนสอนแทนทั้งวัน</a>':'')+'</header>'+
       (warn.length?'<p class="day-warn">'+icon('warn')+h(warn.join(' · '))+'</p>':'')+
       '<div class="strip-wrap"><div class="strip">'+cells+'</div></div>'+
       (rows?'<ul class="slots">'+rows+'</ul>':'<p class="empty">'+(hasRound?'วันนี้ไม่มีคาบที่ต้องหาคนแทน':'วันนี้ไม่มีคาบสอน')+'</p>')+
