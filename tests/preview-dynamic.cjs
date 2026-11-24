@@ -103,18 +103,22 @@ ok('B week stays 1, score 119', same.yWeek.count===1 && same.yWeek.after===1 && 
 ok('A week (16–20 Nov) stays 1', same.meWeek.start==='2026-11-16' && same.meWeek.count===1 && same.meWeek.after===1, JSON.stringify(same.meWeek));
 ok('same week beats next week by 1', same.score-t.ev.score===1);
 
-console.log('\n[11] score defaults v2 and the one-time upgrade of stored settings');
+console.log('\n[11] score defaults v2/v3 and the one-time upgrade of stored settings');
 const D=S.DEFAULT_SETTINGS;
 ok('new defaults: baseline 16, ±2 per period, 5+ periods a day = overload −15, long run −15', D.DAY_OVERLOAD_THRESHOLD===4 && D.WORKLOAD_WEEKLY_BASELINE===16 && D.WORKLOAD_WEEKLY_BONUS_PER_PERIOD===2 && D.WORKLOAD_WEEKLY_PENALTY_PER_PERIOD===2 && D.DAY_OVERLOAD_PENALTY===15 && D.CONSECUTIVE_PENALTY===15);
 let old={WORKLOAD_WEEKLY_BASELINE:20,WORKLOAD_WEEKLY_BONUS_PER_PERIOD:1,DAY_OVERLOAD_PENALTY:10,DAY_OVERLOAD_THRESHOLD:5,CONSECUTIVE_PENALTY:15};
-ok('old defaults are upgraded', S.upgradeScoreSettings(old) && old.WORKLOAD_WEEKLY_BASELINE===16 && old.WORKLOAD_WEEKLY_BONUS_PER_PERIOD===2 && old.DAY_OVERLOAD_PENALTY===15 && old.DAY_OVERLOAD_THRESHOLD===4 && old.SCORE_DEFAULTS_V===2, JSON.stringify(old));
+ok('old defaults are upgraded', S.upgradeScoreSettings(old) && old.WORKLOAD_WEEKLY_BASELINE===16 && old.WORKLOAD_WEEKLY_BONUS_PER_PERIOD===2 && old.DAY_OVERLOAD_PENALTY===15 && old.DAY_OVERLOAD_THRESHOLD===4 && old.SCORE_DEFAULTS_V===3, JSON.stringify(old));
 let mine={WORKLOAD_WEEKLY_BASELINE:18,WORKLOAD_WEEKLY_BONUS_PER_PERIOD:1,DAY_OVERLOAD_PENALTY:12};
 S.upgradeScoreSettings(mine);
 ok('a value changed on purpose is kept (18, 12), an untouched one moves (bonus 1 → 2)', mine.WORKLOAD_WEEKLY_BASELINE===18 && mine.DAY_OVERLOAD_PENALTY===12 && mine.WORKLOAD_WEEKLY_BONUS_PER_PERIOD===2, JSON.stringify(mine));
 ok('runs only once', !S.upgradeScoreSettings(Object.assign(mine,{WORKLOAD_WEEKLY_BASELINE:20})) && mine.WORKLOAD_WEEKLY_BASELINE===20);
 mem['swapApp.preview.v1']=S.CODEC.encode({schemaVersion:1,semesters:{},settings:{BASE_SCORE:100,WORKLOAD_WEEKLY_BASELINE:20,WORKLOAD_WEEKLY_BONUS_PER_PERIOD:1,DAY_OVERLOAD_PENALTY:10}});
 S.STORE.load();
-ok('a store saved before v2 loads with the new numbers', S.STORE.data.settings.WORKLOAD_WEEKLY_BASELINE===16 && S.STORE.data.settings.DAY_OVERLOAD_PENALTY===15 && S.STORE.data.settings.SUB_BONUS_SAME_CLASS===10, JSON.stringify(S.STORE.data.settings));
+ok('a store saved before v2 loads with the new numbers', S.STORE.data.settings.WORKLOAD_WEEKLY_BASELINE===16 && S.STORE.data.settings.DAY_OVERLOAD_PENALTY===15 && S.STORE.data.settings.SUB_BONUS_SAME_CLASS===15 && S.STORE.data.settings.SCORE_DEFAULTS_V===3, JSON.stringify(S.STORE.data.settings));
+mem['swapApp.preview.v1']=S.CODEC.encode({schemaVersion:1,semesters:{},settings:{SCORE_DEFAULTS_V:2,WORKLOAD_WEEKLY_BASELINE:16,SUB_BONUS_SAME_DEPT:5,SUB_BONUS_SAME_CLASS:12}});
+S.STORE.load();
+const v3=S.STORE.data.settings;
+ok('a v2 store: subject group 5 → 20, a changed class bonus (12) kept, new substitute keys filled in', v3.SUB_BONUS_SAME_DEPT===20 && v3.SUB_BONUS_SAME_CLASS===12 && v3.SUB_PENALTY_PER_DAY_PERIOD===4 && v3.SUB_RECENT_DAYS===30 && v3.SCORE_DEFAULTS_V===3, JSON.stringify(v3));
 
 console.log('\n[8] with an empty log it matches the engine on the oracle fixture (no clash cases)');
 // day counts, runs and penalties are identical. The score differs only by the weekly term when the give-back

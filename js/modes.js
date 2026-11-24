@@ -252,7 +252,11 @@
           }
         }
         if (!requested || previous.length || groupBooked) continue;
-        const belongs = new Set(engine.rows.filter(row => row.status !== 'NON_TEACHING' && row.group === original.group).map(row => row.teacher_id));
+        const taught = engine.rows.filter(row => row.status !== 'NON_TEACHING');
+        const belongs = new Set(taught.filter(row => row.group === original.group).map(row => row.teacher_id));
+        const sameSubject = new Set(taught.filter(row => row.group !== original.group && row.subject && row.subject === original.subject).map(row => row.teacher_id));
+        const grade = S.gradeOf(original.group);
+        const sameGrade = new Set(grade ? taught.filter(row => S.gradeOf(row.group) === grade).map(row => row.teacher_id) : []);
         const want = wantedFor(original), lessonDept = S.deptOf(original.subject);
         const inScope = depts => scope === 'all' || (!!want && [...want].some(d => depts.has(d)));
         for (const [id, name] of this.teachers) {
@@ -263,7 +267,9 @@
           const check = this.coverAt(id, date, period);
           if (!check.ok) continue;
           slot.candidates.push({teacherId: id, teacherName: name, department: [...depts][0] || null, departments: [...depts],
-            familiarGroup: belongs.has(id), sameDept: !!lessonDept && depts.has(lessonDept), inScope: inScope(depts),
+            familiarGroup: belongs.has(id), sameSubject: sameSubject.has(id), sameGrade: sameGrade.has(id) && !belongs.has(id),
+            sameDept: !!lessonDept && depts.has(lessonDept), inScope: inScope(depts),
+            recent: S.recentCovers(engine.log, id, date, engine.settings.SUB_RECENT_DAYS),
             meeting: check.meeting, lunch: check.lunch});
         }
       }
@@ -282,8 +288,9 @@
           if (slot.entry?.y_id === c.teacherId) c.week.count--;
           c.overload = c.dayAfter.count > +engine.settings.DAY_OVERLOAD_THRESHOLD;
           c.consecutive = c.dayAfter.run >= +engine.settings.CONSECUTIVE_THRESHOLD;
-          const sc = S.subScore(engine.settings, {dayAfter: c.dayAfter, weekAfter: c.week.count + 1,
-            sameClass: c.familiarGroup, sameDept: c.sameDept, meeting: c.meeting, lunch: c.lunch});
+          const sc = S.subScore(engine.settings, {dayBefore: c.dayBefore, dayAfter: c.dayAfter, weekAfter: c.week.count + 1,
+            sameClass: c.familiarGroup, sameSubject: c.sameSubject, sameGrade: c.sameGrade, sameDept: c.sameDept,
+            recent: c.recent, meeting: c.meeting, lunch: c.lunch});
           c.score = sc.score; c.scoreParts = sc.parts;
         }
         const chosen = slot.entry && slot.candidates.find(c => c.teacherId === slot.entry.y_id);

@@ -82,7 +82,7 @@ Not yet verified: printed/PDF pagination, Safari, and the GitHub Pages deploymen
 - Entry: button "จัดคนสอนแทนทั้งวัน" on a day card in the plan page when 2+ periods still need cover.
 - UI over `S.activeModes().planSubstitutes()` / `S.commitMode('substitute')` from js/modes.js (see docs/MODES-ENGINE.md). Saves `kind:'สอนแทน'`, status เสนอ, `recordLeave:false` (leave rounds stay managed by the plan page).
 - Subject-group filter (both here and in the single-period "สอนแทน ไม่ต้องคืน" list): groups come from the first letter of every subject code a teacher teaches (อ จ ญ ฝ = ภาษาต่างประเทศ). It narrows the list; a name search always looks through everyone.
-- Substitute score `S.subScore` (js/dynamic.js): BASE + weekly term (after taking the period) − day overload − long run + SUB_BONUS_SAME_CLASS + SUB_BONUS_SAME_DEPT − SUB_PENALTY_MEETING − SUB_PENALTY_LUNCH. New settings are added to DEFAULT_SETTINGS / SETTINGS_META at load time by dynamic.js.
+- Substitute score `S.subScore` (js/dynamic.js), its own formula since v3 (2026-11-25): BASE + subject group (20) + this class (15) + same subject in another class (10) + same grade, not this class (5) − 4 per period already taught that day − day overload − long run ± weekly load (1 per period from the baseline, capped at ±10) − 5 per cover (no give-back) in the 30 days before (`S.recentCovers`) − meeting − lunch. All weights are `SUB_*` settings, added to DEFAULT_SETTINGS / SETTINGS_META at load time by dynamic.js. Stored settings are upgraded step by step (`SCORE_DEFAULTS_V` 2 → 3); a value someone changed is kept.
 - CSS: the page's classes are prefixed `sb-` (an earlier `.sc` clashed with the week-chip score).
 - Candidate load counts the other periods picked on the same screen (draft assignments).
 

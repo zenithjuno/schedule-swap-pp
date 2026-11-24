@@ -116,7 +116,7 @@
       if(!res.ok) return res;
     }
     if(pay.phones && Object.keys(pay.phones).length){ var pb=S.phonebook(); pb.map=pay.phones; pb.lastImportedAt=pay.createdAt||new Date().toISOString(); pb.sourceFilename=name; }
-    if(first && pay.settings){ for(var k in pay.settings) if(Object.prototype.hasOwnProperty.call(STORE.data.settings,k)) STORE.data.settings[k]=pay.settings[k]; if(pay.settings.SCORE_DEFAULTS_V==null){ STORE.data.settings.SCORE_DEFAULTS_V=null; S.upgradeScoreSettings(STORE.data.settings); } deriveAll(); }
+    if(first && pay.settings){ for(var k in pay.settings) if(Object.prototype.hasOwnProperty.call(STORE.data.settings,k)) STORE.data.settings[k]=pay.settings[k]; STORE.data.settings.SCORE_DEFAULTS_V=+pay.settings.SCORE_DEFAULTS_V||0; S.upgradeScoreSettings(STORE.data.settings); deriveAll(); }
     STORE.save(); afterDataChange();
     return {ok:true};
   }
@@ -456,7 +456,7 @@
     if(!res.ok) return false;
     var a=A.sem();
     if(pay.phones){ var pb=S.phonebook(); pb.map=pay.phones; pb.lastImportedAt=(a&&a.meta&&a.meta.importedAt)||new Date().toISOString(); pb.sourceFilename=(s.sourceFilename||'')+' (embedded)'; }
-    if(pay.settings){ for(var k in pay.settings) if(Object.prototype.hasOwnProperty.call(STORE.data.settings,k)) STORE.data.settings[k]=pay.settings[k]; if(pay.settings.SCORE_DEFAULTS_V==null){ STORE.data.settings.SCORE_DEFAULTS_V=null; S.upgradeScoreSettings(STORE.data.settings); } }
+    if(pay.settings){ for(var k in pay.settings) if(Object.prototype.hasOwnProperty.call(STORE.data.settings,k)) STORE.data.settings[k]=pay.settings[k]; STORE.data.settings.SCORE_DEFAULTS_V=+pay.settings.SCORE_DEFAULTS_V||0; S.upgradeScoreSettings(STORE.data.settings); }
     STORE.save(); return true;
   };
 })();

@@ -129,15 +129,39 @@
     return out;
   };
 
-  // new weights, same idea as the swap score; filled into stored settings by STORE._migrate
-  var SUB_DEFAULTS={SUB_BONUS_SAME_CLASS:10, SUB_BONUS_SAME_DEPT:5, SUB_PENALTY_MEETING:5, SUB_PENALTY_LUNCH:15};
+  /* Substitute (no give-back) weights. Its own formula, not the swap one (v3, 2026-11-25, agreed with the
+     school): a sudden sick day needs someone who can look after this class and has a light day, so the
+     subject group and the class weigh most, the day's load is counted per period, and the weekly load is
+     only a small capped nudge. Filled into stored settings by STORE._migrate. */
+  var SUB_DEFAULTS={SUB_BONUS_SAME_DEPT:20, SUB_BONUS_SAME_CLASS:15, SUB_BONUS_SAME_SUBJECT:10, SUB_BONUS_SAME_GRADE:5,
+    SUB_PENALTY_PER_DAY_PERIOD:4, SUB_WEEKLY_PER_PERIOD:1, SUB_WEEKLY_CAP:10,
+    SUB_PENALTY_PER_RECENT_COVER:5, SUB_RECENT_DAYS:30, SUB_PENALTY_MEETING:5, SUB_PENALTY_LUNCH:15};
   Object.keys(SUB_DEFAULTS).forEach(function(k){ if(S.DEFAULT_SETTINGS[k]==null) S.DEFAULT_SETTINGS[k]=SUB_DEFAULTS[k]; });
   var G='การให้คะแนน — สอนแทนไม่ต้องคืน', at=S.SETTINGS_META.map(function(m){ return m.group; }).indexOf('สีแสดงคะแนน');
   if(!S.SETTINGS_META.some(function(m){ return m.group===G; })) S.SETTINGS_META.splice(at<0?S.SETTINGS_META.length:at, 0,
-    {key:'SUB_BONUS_SAME_CLASS', label:'บวกคะแนน ถ้าครูสอนห้องนี้อยู่แล้ว', help:'ครูที่สอนชั้น/ห้องเดียวกันตามปกติ รู้จักนักเรียนอยู่แล้ว', type:'int', min:0, max:100, group:G, adv:true},
-    {key:'SUB_BONUS_SAME_DEPT', label:'บวกคะแนน ถ้าสอนกลุ่มสาระเดียวกับวิชาที่ลา', help:'ดูจากอักษรตัวแรกของรหัสวิชาที่ครูสอน (ค ว ส …)', type:'int', min:0, max:100, group:G, adv:true},
+    {key:'SUB_BONUS_SAME_DEPT', label:'บวกคะแนน ถ้าอยู่กลุ่มสาระเดียวกับวิชาที่ลา', help:'ดูจากอักษรตัวแรกของรหัสวิชาที่ครูสอน (ค ว ส …)', type:'int', min:0, max:100, group:G, adv:true},
+    {key:'SUB_BONUS_SAME_CLASS', label:'บวกคะแนน ถ้าครูสอนห้องนี้อยู่แล้ว', help:'ครูที่สอนห้องเดียวกันตามปกติ รู้จักนักเรียนอยู่แล้ว', type:'int', min:0, max:100, group:G, adv:true},
+    {key:'SUB_BONUS_SAME_SUBJECT', label:'บวกคะแนน ถ้าสอนวิชาเดียวกัน (ห้องอื่น)', help:'ครูสอนรหัสวิชาเดียวกับคาบที่ลาให้ห้องอื่น รู้เนื้อหาที่ต้องสอน', type:'int', min:0, max:100, group:G, adv:true},
+    {key:'SUB_BONUS_SAME_GRADE', label:'บวกคะแนน ถ้าสอนชั้นเดียวกัน (ห้องอื่น)', help:'เช่น ลาคาบ ม.6/10 แล้วครูสอน ม.6 ห้องอื่น — ไม่บวกซ้ำถ้าสอนห้องนี้อยู่แล้ว', type:'int', min:0, max:100, group:G, adv:true},
+    {key:'SUB_PENALTY_PER_DAY_PERIOD', label:'หักคะแนน/คาบที่สอนอยู่แล้วในวันนั้น', help:'วันนั้นครูสอนกี่คาบ (รวมที่แลกหรือสอนแทนไว้แล้ว) หักเท่านี้ต่อคาบ', type:'int', min:0, max:100, group:G, adv:true},
+    {key:'SUB_WEEKLY_PER_PERIOD', label:'บวก/หักคะแนนต่อคาบ ตามภาระรายสัปดาห์', help:'เทียบกับภาระงานมาตรฐานต่อสัปดาห์ น้อยกว่าได้บวก มากกว่าถูกหัก', type:'int', min:0, max:100, group:G, adv:true},
+    {key:'SUB_WEEKLY_CAP', label:'เพดานคะแนนจากภาระรายสัปดาห์', help:'บวกหรือหักจากภาระรายสัปดาห์ได้ไม่เกินเท่านี้ ครูที่สอนน้อยมากจะได้ไม่ล้นจนแซงคนในกลุ่มสาระ', type:'int', min:0, max:100, group:G, adv:true},
+    {key:'SUB_PENALTY_PER_RECENT_COVER', label:'หักคะแนน/ครั้งที่สอนแทนไปแล้วช่วงนี้', help:'กระจายงานสอนแทน ไม่ให้ตกอยู่กับคนเดิมทุกครั้ง (นับรายการสอนแทนไม่ต้องคืนที่ยังไม่ยกเลิก)', type:'int', min:0, max:100, group:G, adv:true},
+    {key:'SUB_RECENT_DAYS', label:'นับการสอนแทนย้อนหลังกี่วัน', help:'นับครั้งที่สอนแทนในช่วงนี้ก่อนวันที่ลา (ไม่รวมวันเดียวกัน เพราะนับในภาระวันนั้นแล้ว)', type:'int', min:1, max:365, group:G, adv:true},
     {key:'SUB_PENALTY_MEETING', label:'หักคะแนน ถ้าต้องงดประชุม', help:'คาบนั้นครูมีประชุมตามตาราง', type:'int', min:0, max:100, group:G, adv:true},
     {key:'SUB_PENALTY_LUNCH', label:'หักคะแนน ถ้าตรงพักกลางวันของครู', help:'คาบนั้นเป็นคาบพักกลางวันของครูสอนแทน', type:'int', min:0, max:100, group:G, adv:true});
+
+  // grade of a class group: "6.10" → "6"
+  S.gradeOf=function(group){ var m=/^\s*([1-6])/.exec(String(group||'')); return m?m[1]:''; };
+  // substitutes (no give-back) a teacher took in the days before `date`; same-date ones are in the day load already
+  S.recentCovers=function(log, tid, date, days){
+    var t=Date.parse(date+'T00:00:00Z'), from=new Date(t-(+days||30)*864e5).toISOString().slice(0,10), n=0;
+    (log||[]).forEach(function(e){
+      if(e.status==='ยกเลิก' || e.y_id!==tid || e.date_back || e.kind!=='สอนแทน') return;
+      if(e.date_absent>=from && e.date_absent<date) n++;
+    });
+    return n;
+  };
 
   /* Score defaults v2 (2026-11-23, agreed with the school): weekly baseline 16 (the median teacher's real load,
      was 20) with ±2 per period either side (bonus was 1), and a heavy day weighs the same as a long run
@@ -147,32 +171,46 @@
   var V2_OLD={WORKLOAD_WEEKLY_BASELINE:20, WORKLOAD_WEEKLY_BONUS_PER_PERIOD:1, DAY_OVERLOAD_PENALTY:10, DAY_OVERLOAD_THRESHOLD:5};
   var V2_NEW={WORKLOAD_WEEKLY_BASELINE:16, WORKLOAD_WEEKLY_BONUS_PER_PERIOD:2, DAY_OVERLOAD_PENALTY:15, DAY_OVERLOAD_THRESHOLD:4};
   Object.keys(V2_NEW).forEach(function(k){ S.DEFAULT_SETTINGS[k]=V2_NEW[k]; });
-  S.DEFAULT_SETTINGS.SCORE_DEFAULTS_V=2;
+  // v3 (2026-11-25): substitute weights — subject group 5 → 20, this class 10 → 15 (new keys come in as defaults)
+  var STEPS=[{v:2, old:V2_OLD, nw:V2_NEW},
+    {v:3, old:{SUB_BONUS_SAME_DEPT:5, SUB_BONUS_SAME_CLASS:10}, nw:{SUB_BONUS_SAME_DEPT:20, SUB_BONUS_SAME_CLASS:15}}];
+  var LATEST=STEPS[STEPS.length-1].v;
+  S.DEFAULT_SETTINGS.SCORE_DEFAULTS_V=LATEST;
+  // moves every stored value still at an old default to the new one; values someone changed are kept
   S.upgradeScoreSettings=function(st){
-    if(!st || +st.SCORE_DEFAULTS_V>=2) return false;
-    Object.keys(V2_OLD).forEach(function(k){ if(st[k]==null || String(st[k])===String(V2_OLD[k])) st[k]=V2_NEW[k]; });
-    st.SCORE_DEFAULTS_V=2; return true;
+    var cur=st ? (+st.SCORE_DEFAULTS_V||0) : LATEST;
+    if(cur>=LATEST) return false;
+    STEPS.forEach(function(s){ if(s.v<=cur) return;
+      Object.keys(s.old).forEach(function(k){ if(st[k]==null || String(st[k])===String(s.old[k])) st[k]=s.nw[k]; }); });
+    st.SCORE_DEFAULTS_V=LATEST; return true;
   };
   // every load and every backup restore goes through _migrate; look at the marker before it fills defaults in
   var mig=S.STORE._migrate;
   S.STORE._migrate=function(){
-    var st=this.data && this.data.settings, old=!!st && st.SCORE_DEFAULTS_V==null;
+    var st=this.data && this.data.settings, had=st ? (+st.SCORE_DEFAULTS_V||0) : LATEST;
     mig.apply(this, arguments);
-    // _migrate has just copied the v2 marker in from the defaults: drop it so the upgrade runs
-    if(old){ this.data.settings.SCORE_DEFAULTS_V=null; S.upgradeScoreSettings(this.data.settings); }
+    // _migrate has just copied the latest marker in from the defaults: put the stored one back so the upgrade runs
+    if(had<LATEST){ this.data.settings.SCORE_DEFAULTS_V=had; S.upgradeScoreSettings(this.data.settings); }
   };
 
-  /* score a substitute (no give-back). x = {dayAfter:{count,run}, weekAfter, sameClass, sameDept, meeting, lunch}
+  /* score a substitute (no give-back).
+     x = {dayBefore:{count}, dayAfter:{count,run}, weekAfter, sameDept, sameClass, sameSubject, sameGrade, recent, meeting, lunch}
      → {score, parts:[{label, value, note}]} — parts add up to score */
   S.subScore=function(st, x){
     var B=+st.WORKLOAD_WEEKLY_BASELINE, n=x.weekAfter, OT=+st.DAY_OVERLOAD_THRESHOLD, CT=+st.CONSECUTIVE_THRESHOLD, parts=[];
-    var wk=n>B ? -(n-B)*(+st.WORKLOAD_WEEKLY_PENALTY_PER_PERIOD) : (n<B ? (B-n)*(+st.WORKLOAD_WEEKLY_BONUS_PER_PERIOD) : 0);
+    var cap=+st.SUB_WEEKLY_CAP, wk=Math.max(-cap, Math.min(cap, (B-n)*(+st.SUB_WEEKLY_PER_PERIOD)))||0;
+    var day=x.dayBefore ? x.dayBefore.count : x.dayAfter.count-1, grade=x.sameGrade && !x.sameClass, rc=+x.recent||0;
+    var yes=function(b){ return b?'ใช่':'ไม่'; };
     parts.push({label:'คะแนนเริ่มต้น', value:+st.BASE_SCORE, note:'ค่าตั้งต้นของทุกคน'});
-    parts.push({label:'ภาระสอนสัปดาห์นี้', value:wk, note:'สอน '+n+' คาบ (รวมคาบนี้) เทียบเกณฑ์ '+B});
-    parts.push({label:'สอนเกินต่อวัน', value:x.dayAfter.count>OT?-(+st.DAY_OVERLOAD_PENALTY):0, note:'วันนั้น '+x.dayAfter.count+' คาบ · เกณฑ์ '+OT});
+    parts.push({label:'กลุ่มสาระเดียวกัน', value:x.sameDept?+st.SUB_BONUS_SAME_DEPT:0, note:yes(x.sameDept)});
+    parts.push({label:'สอนห้องนี้อยู่แล้ว', value:x.sameClass?+st.SUB_BONUS_SAME_CLASS:0, note:yes(x.sameClass)});
+    parts.push({label:'สอนวิชาเดียวกัน (ห้องอื่น)', value:x.sameSubject?+st.SUB_BONUS_SAME_SUBJECT:0, note:yes(x.sameSubject)});
+    parts.push({label:'สอนชั้นเดียวกัน (ห้องอื่น)', value:grade?+st.SUB_BONUS_SAME_GRADE:0, note:x.sameClass&&x.sameGrade?'นับในสอนห้องนี้แล้ว':yes(grade)});
+    parts.push({label:'คาบสอนในวันนั้น', value:-day*(+st.SUB_PENALTY_PER_DAY_PERIOD)||0, note:'สอนอยู่แล้ว '+day+' คาบ'});
+    parts.push({label:'สอนเกินต่อวัน', value:x.dayAfter.count>OT?-(+st.DAY_OVERLOAD_PENALTY):0, note:'รวมคาบนี้ '+x.dayAfter.count+' คาบ · เกณฑ์ '+OT});
     parts.push({label:'สอนติดกันยาว', value:x.dayAfter.run>=CT?-(+st.CONSECUTIVE_PENALTY):0, note:'ติดกันสูงสุด '+x.dayAfter.run+' คาบ · เกณฑ์ '+CT});
-    parts.push({label:'สอนห้องนี้อยู่แล้ว', value:x.sameClass?+st.SUB_BONUS_SAME_CLASS:0, note:x.sameClass?'ใช่':'ไม่'});
-    parts.push({label:'กลุ่มสาระเดียวกัน', value:x.sameDept?+st.SUB_BONUS_SAME_DEPT:0, note:x.sameDept?'ใช่':'ไม่'});
+    parts.push({label:'ภาระสอนสัปดาห์นี้', value:wk, note:'สอน '+n+' คาบ (รวมคาบนี้) เทียบเกณฑ์ '+B+' · ไม่เกิน ±'+cap});
+    parts.push({label:'สอนแทนไปแล้วช่วงนี้', value:-rc*(+st.SUB_PENALTY_PER_RECENT_COVER)||0, note:rc+' ครั้งใน '+st.SUB_RECENT_DAYS+' วันก่อนหน้า'});
     parts.push({label:'ต้องงดประชุม', value:x.meeting?-(+st.SUB_PENALTY_MEETING):0, note:x.meeting?'ใช่':'ไม่'});
     parts.push({label:'ตรงพักกลางวัน', value:x.lunch?-(+st.SUB_PENALTY_LUNCH):0, note:x.lunch?'ใช่':'ไม่'});
     var score=0; parts.forEach(function(p){ score+=p.value; });

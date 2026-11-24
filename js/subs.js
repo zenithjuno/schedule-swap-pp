@@ -30,7 +30,10 @@
   function candTags(c){
     var st=STORE.data.settings, t=[];
     if(c.familiarGroup) t.push('<span class="tag good">สอนห้องนี้อยู่แล้ว</span>');
+    if(c.sameSubject) t.push('<span class="tag good">สอนวิชานี้ห้องอื่น</span>');
+    else if(c.sameGrade) t.push('<span class="tag good">สอนชั้นนี้</span>');
     if(c.sameDept) t.push('<span class="tag good">กลุ่มสาระเดียวกัน</span>');
+    if(c.recent) t.push('<span class="tag info">สอนแทนไปแล้ว '+c.recent+' ครั้งช่วงนี้</span>');
     if(c.meeting) t.push('<span class="tag info">ต้องงดประชุม</span>');
     if(c.lunch) t.push('<span class="tag warn">ตรงพักกลางวัน</span>');
     if(c.consecutive) t.push('<span class="tag warn">ติด '+c.dayAfter.run+' คาบ</span>');

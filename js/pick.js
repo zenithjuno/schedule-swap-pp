@@ -107,12 +107,14 @@
     var eng=A.eng(), st=STORE.data.settings, L=S.buildLedger(A.log()), self=ctx.me+'|'+ctx.date+'|'+ctx.per;
     var CONS=+st.CONSECUTIVE_THRESHOLD, OT=+st.DAY_OVERLOAD_THRESHOLD, p=+ctx.per;
     var lunchP = ctx.src.level==='junior' ? +st.LUNCH_JUNIOR_PERIOD : +st.LUNCH_SENIOR_PERIOD;
-    var info=Object.create(null), dept=S.deptOf(ctx.src.subject), sets=S.deptSets(eng.rows);
+    var info=Object.create(null), dept=S.deptOf(ctx.src.subject), sets=S.deptSets(eng.rows), grade=S.gradeOf(ctx.G), log=A.log();
     eng.rows.forEach(function(d){
-      var t=info[d.teacher_id]||(info[d.teacher_id]={wk:0, dc:0, grp:false, dept:false});
+      var t=info[d.teacher_id]||(info[d.teacher_id]={wk:0, dc:0, grp:false, subj:false, grade:false});
       if(d.status==='NON_TEACHING') return;
       t.wk++; if(d.day===ctx.day) t.dc++;
       if(d.group===ctx.G) t.grp=true;
+      else if(d.subject && d.subject===ctx.src.subject) t.subj=true;
+      if(grade && S.gradeOf(d.group)===grade) t.grade=true;
     });
     var out=[];
     A.teachers().forEach(function(t){
@@ -123,8 +125,11 @@
       var bef=ctx.dyn.day(t.id, ctx.date, lunchP, null, true), aft=ctx.dyn.day(t.id, ctx.date, lunchP, hy, true);   // counts swaps already on the books
       var wk=ctx.dyn.week(t.id, ctx.date, true); wk.extra=wk.count-i.wk;
       var ds=sets[t.id]||{}, lunch=(eng.displayLunch(t.id, ctx.day)===p);
-      var sc=S.subScore(st, {dayAfter:aft, weekAfter:wk.count+1, sameClass:!!i.grp, sameDept:!!(dept && ds[dept]), meeting:!!f.warn, lunch:lunch});
-      out.push({Yid:t.id, Yname:t.name, weekly:wk.count, wk:wk, dc:bef.count, grp:!!i.grp, dept:!!(dept && ds[dept]), depts:ds, meet:f.warn,
+      var recent=S.recentCovers(log, t.id, ctx.date, st.SUB_RECENT_DAYS);
+      var sc=S.subScore(st, {dayBefore:bef, dayAfter:aft, weekAfter:wk.count+1, sameClass:!!i.grp, sameSubject:!!i.subj, sameGrade:!!i.grade,
+        sameDept:!!(dept && ds[dept]), recent:recent, meeting:!!f.warn, lunch:lunch});
+      out.push({Yid:t.id, Yname:t.name, weekly:wk.count, wk:wk, dc:bef.count, grp:!!i.grp, subj:!!i.subj, grade:!!i.grade && !i.grp, recent:recent,
+        dept:!!(dept && ds[dept]), depts:ds, meet:f.warn,
         lunch:lunch, run:aft.run, over:(aft.count>OT), long:(aft.run>=CONS), extra:bef.count-ctx.dyn.baseCount(t.id, ctx.date),
         SCORE:sc.score, parts:sc.parts});
     });
@@ -135,7 +140,10 @@
   function subTags(s){
     var t=[];
     if(s.grp) t.push({t:'สอนห้องนี้อยู่แล้ว', lv:'good'});
+    if(s.subj) t.push({t:'สอนวิชานี้ห้องอื่น', lv:'good'});
+    else if(s.grade) t.push({t:'สอนชั้นนี้', lv:'good'});
     if(s.dept) t.push({t:'กลุ่มสาระเดียวกัน', lv:'good'});
+    if(s.recent) t.push({t:'สอนแทนไปแล้ว '+s.recent+' ครั้งช่วงนี้', lv:'info'});
     if(s.meet) t.push({t:'ต้องงดประชุม', lv:'info'});
     if(s.lunch) t.push({t:'ตรงพักกลางวัน', lv:'warn'});
     if(s.long) t.push({t:'ติด '+s.run+' คาบ', lv:'warn'});

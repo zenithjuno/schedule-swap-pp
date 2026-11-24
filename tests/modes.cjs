@@ -91,15 +91,17 @@ assert.equal(make([], {departments: {}}).planSubstitutes(coverage).departmentMis
 assert.equal(make().planSubstitutes({...coverage, assignments: {3:teacher.cover, 6:teacher.cover}})
   .slots[0].candidates[0].dayAfter.count, 2);
 
-// Substitute score, worked out by hand (BASE 100, weekly baseline 20 at +1 per period under it,
-// same class +10, same subject group +5). Wed p3 is ค1 for 4.2. Groups come from the subjects taught.
+// Substitute score v3, worked out by hand: BASE 100, subject group +20, this class +15, same subject +10,
+// same grade +5, −4 per period already taught that day, weekly ±1 per period from baseline 20 capped at ±10,
+// −5 per earlier cover. Wed p3 is ค1 for 4.2. Groups come from the subjects taught.
 const derived = () => new S.ModeEngine(new S.Engine(rows, settings, []), {meta, leaves, skipDates: [date.sport]});
 const p3 = q => derived().planSubstitutes({teacherId: teacher.me, date: date.wed, leaveMode: 'ทั้งวัน', scope: 'all', query: '', ...q}).slots[0];
 const ranked = JSON.parse(JSON.stringify(p3().candidates.map(c => [c.teacherId, c.score])));
-// cover: 1 → 2 periods that week (+18), teaches 4.2 (+10), teaches ค (+5) = 133
-// social: 2 → 3 (+17), teaches 4.2 (+10) = 127 · language: 1 → 2 (+18) = 118 · leave: on leave, not listed
-assert.deepEqual(ranked, [[teacher.cover, 133], [teacher.social, 127], [teacher.language, 118]]);
-assert.equal(p3().candidates[0].scoreParts.reduce((n, x) => n + x.value, 0), 133);
+// cover: ค group +20, teaches 4.2 +15, free all Wed (0), week 1 → 2 (+18 capped to +10) = 145
+// social: teaches 4.2 +15, Wed p4 already (−4), week +10 = 121
+// language: teaches ม.4 (4.7) +5, Wed p7 already (−4), week +10 = 111 · leave: on leave, not listed
+assert.deepEqual(ranked, [[teacher.cover, 145], [teacher.social, 121], [teacher.language, 111]]);
+assert.equal(p3().candidates[0].scoreParts.reduce((n, x) => n + x.value, 0), 145);
 // the subject filter narrows the list …
 assert.equal(p3({scope: 'lesson-department'}).candidates.map(c => c.teacherId).join(), teacher.cover);
 assert.equal(p3({scope: 'department', department: 'ส'}).candidates.map(c => c.teacherId).join(), teacher.social);
@@ -107,11 +109,24 @@ assert.equal(p3({scope: 'department', department: 'ส'}).candidates.map(c => c.
 assert.equal(p3({scope: 'lesson-department', query: teacher.language}).candidates.map(c => c.teacherId).join(), teacher.language);
 // a teacher picked through search keeps a score after the search is cleared (live test 2026-11-25: score was null)
 const pickedOut = p3({scope: 'lesson-department', assignments: {3: teacher.language}});
-assert.equal(pickedOut.entry.score, 118);
+assert.equal(pickedOut.entry.score, 111);
 assert.equal(pickedOut.candidates.map(c => c.teacherId).join(), [teacher.cover, teacher.language].join());
 // weights come from settings
 const heavier = S.subScore({...settings, SUB_BONUS_SAME_CLASS: 30}, {dayAfter: {count: 1, run: 1}, weekAfter: 2, sameClass: true, sameDept: false, meeting: false, lunch: true});
-assert.equal(heavier.score, 100 + 18 + 30 - 15);
+assert.equal(heavier.score, 100 + 10 + 30 - 15);
+// same subject in another class: a second ค1 teacher (ม.5, Monday only) → ค +20, ค1 +10, week +10 = 140
+const subjRows = rows.concat(row('0007', 'จันทร์', 1, '5.1', 'ค1'));
+S.deriveRows(subjRows, settings);
+const subj = new S.ModeEngine(new S.Engine(subjRows, settings, []), {meta, leaves, skipDates: [date.sport]})
+  .planSubstitutes({teacherId: teacher.me, date: date.wed, leaveMode: 'ทั้งวัน', scope: 'all', query: ''}).slots[0]
+  .candidates.find(c => c.teacherId === '0007');
+assert.equal(subj.sameSubject && !subj.sameGrade && subj.score, 140);
+// fairness: covers (no give-back) in the 30 days before count; cancelled, same-day, older and swaps do not
+const cov = (date_absent, extra = {}) => ({kind: 'สอนแทน', y_id: teacher.cover, date_absent, date_back: '', status: 'เสนอ', ...extra});
+const covLog = [cov('2026-11-18'), cov('2026-10-27'), cov('2026-11-24', {status: 'ยกเลิก'}), cov(date.wed),
+  cov('2026-10-25'), cov('2026-11-20', {date_back: '2026-11-27'}), cov('2026-11-19', {y_id: teacher.social})];
+assert.equal(S.recentCovers(covLog, teacher.cover, date.wed, 30), 2);
+assert.equal(S.subScore(settings, {dayAfter: {count: 1, run: 1}, weekAfter: 20, recent: 2}).score, 90);
 
 const coverEntry = {...plan.entries[0], id: 'cover', status: 'อนุมัติแล้ว'};
 const approved = {...swap, status: 'อนุมัติแล้ว'};
