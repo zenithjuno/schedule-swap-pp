@@ -3,6 +3,8 @@ Root `index.html` is the current app (see `docs/PREVIEW-REBUILD.md`); the previo
 
 ## Preview (rebuilt 2026-11-16)
 - Read `docs/PREVIEW-REBUILD.md` first. `js/core.js` is generated: change `tools/build-preview-core.cjs`, never the output.
+- Symbol map: check `CODEMAP.md` before reading large `js/*.js` files (`core.js` is 1,797L).
+- Anti-slop & syntax gate: `python3 ~/.codex/skills/gas-html-guard/scripts/gas_html_guard.py .` (exit 2 = FAIL, fix before commit).
 - Verify: `node tools/build-preview-core.cjs && node tests/preview-core.cjs && git diff --exit-code -- legacy/index.html`
 - The staged-build block below predates the rebuild; its stage gates and scope list are historical.
 

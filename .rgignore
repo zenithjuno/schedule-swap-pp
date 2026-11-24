@@ -1,0 +1,6 @@
+# Added by workspace_hygiene.py (prevent agent search token traps)
+.impeccable/
+legacy/
+private/
+assets/selftest-fixture.js
+assets/xlsx.js
